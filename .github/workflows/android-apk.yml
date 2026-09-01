@@ -1,0 +1,92 @@
+name: Android APK
+
+# This workflow intentionally does NOT use actions/cache or any other
+# caching mechanism (no setup-* cache options, no manual restore/save
+# cache steps). Every run performs a clean build from scratch.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  GODOT_VERSION: "4.3-stable"
+  GODOT_EXPORT_TEMPLATES_VERSION: "4.3.stable"
+
+jobs:
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: Install Android SDK command line tools
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK platform and build-tools
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Download Godot headless editor
+        run: |
+          curl -L -o godot.zip \
+            "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+          unzip godot.zip
+          sudo mv "Godot_v${GODOT_VERSION}_linux.x86_64" /usr/local/bin/godot
+          sudo chmod +x /usr/local/bin/godot
+
+      - name: Download Godot export templates
+        run: |
+          curl -L -o export_templates.tpz \
+            "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_export_templates.tpz"
+          mkdir -p "$HOME/.local/share/godot/export_templates/${GODOT_EXPORT_TEMPLATES_VERSION}"
+          unzip export_templates.tpz -d /tmp/templates
+          mv /tmp/templates/templates/* "$HOME/.local/share/godot/export_templates/${GODOT_EXPORT_TEMPLATES_VERSION}/"
+
+      - name: Generate debug keystore
+        run: |
+          keytool -genkeypair -v \
+            -keystore "$HOME/debug.keystore" \
+            -storepass android -alias androiddebugkey \
+            -keypass android -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US"
+
+      - name: Configure editor Android settings
+        run: |
+          mkdir -p "$HOME/.config/godot"
+          cat > "$HOME/.config/godot/editor_settings-4.tres" <<EOF
+          [gd_resource type="Resource" format=3]
+
+          [resource]
+          export/android/android_sdk_path = "${ANDROID_SDK_ROOT}"
+          export/android/debug_keystore = "$HOME/debug.keystore"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_pass = "android"
+          EOF
+
+      - name: Create build output directory
+        run: mkdir -p build/android
+
+      - name: Import project resources
+        run: godot --headless --editor --quit --path . || true
+
+      - name: Export Android debug APK
+        run: godot --headless --export-debug "Android" build/android/hello-world.apk --path .
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hello-world-apk
+          path: build/android/hello-world.apk
+          if-no-files-found: error

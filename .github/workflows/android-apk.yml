@@ -1,0 +1,122 @@
+name: Build Android APK
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  GODOT_VERSION: "4.7.2"
+  GODOT_RELEASE: stable
+  GODOT_EDITOR_SHA512: "9aa00f7a605200940bce3027a567b782f49bd8e940dd06ae9e987bd65aee1b1467edd56ed84fcdcbdd44354bf613bdbb4e5d2913e925850368e150c59ed54c65"
+  GODOT_TEMPLATES_SHA512: "ca4d71c4d7b81dfc15d1a98baa07534aa95b03fdda78a0075b06672e1648d2e5f40980c9adc28d23e1b92e732ee7bf3461997aa804af74ec2fcd7a93ccb84079"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Set up Java
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install Android SDK components
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdkmanager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+
+          set +o pipefail
+          yes | "$sdkmanager" --licenses >/dev/null
+          set -o pipefail
+
+          "$sdkmanager" \
+            "platform-tools" \
+            "build-tools;36.1.0" \
+            "platforms;android-36" \
+            "ndk;29.0.14206865" \
+            "cmake;3.22.1"
+
+      - name: Install Godot and export templates
+        shell: bash
+        run: |
+          set -euo pipefail
+          release="${GODOT_VERSION}-${GODOT_RELEASE}"
+          editor_archive="$RUNNER_TEMP/godot.zip"
+          templates_archive="$RUNNER_TEMP/export-templates.tpz"
+
+          curl --fail --location --retry 3 \
+            --output "$editor_archive" \
+            "https://github.com/godotengine/godot/releases/download/${release}/Godot_v${release}_linux.x86_64.zip"
+          curl --fail --location --retry 3 \
+            --output "$templates_archive" \
+            "https://github.com/godotengine/godot/releases/download/${release}/Godot_v${release}_export_templates.tpz"
+
+          echo "${GODOT_EDITOR_SHA512}  ${editor_archive}" | sha512sum --check
+          echo "${GODOT_TEMPLATES_SHA512}  ${templates_archive}" | sha512sum --check
+
+          mkdir -p "$RUNNER_TEMP/godot" "$RUNNER_TEMP/export-templates"
+          unzip -q "$editor_archive" -d "$RUNNER_TEMP/godot"
+          unzip -q "$templates_archive" -d "$RUNNER_TEMP/export-templates"
+
+          sudo install -m 0755 \
+            "$RUNNER_TEMP/godot/Godot_v${release}_linux.x86_64" \
+            /usr/local/bin/godot
+
+          templates_dir="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.${GODOT_RELEASE}"
+          mkdir -p "$templates_dir"
+          cp -R "$RUNNER_TEMP/export-templates/templates/." "$templates_dir/"
+
+      - name: Configure Android export
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.android" "$HOME/.config/godot"
+
+          cat > "$HOME/.config/godot/editor_settings-4.tres" <<EOF
+          [gd_resource format=3]
+
+          [resource]
+          export/android/android_sdk_path = "$ANDROID_HOME"
+          export/android/java_sdk_path = "$JAVA_HOME"
+          EOF
+
+          keytool -genkeypair \
+            -keystore "$HOME/.android/debug.keystore" \
+            -storepass android \
+            -alias androiddebugkey \
+            -keypass android \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US"
+
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_PATH=$HOME/.android/debug.keystore" >> "$GITHUB_ENV"
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_USER=androiddebugkey" >> "$GITHUB_ENV"
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=android" >> "$GITHUB_ENV"
+
+      - name: Export debug APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/android
+          godot --headless --path . --export-debug "Android" build/android/hello-world.apk
+          test -s build/android/hello-world.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: hello-world-android-apk
+          path: build/android/hello-world.apk
+          if-no-files-found: error

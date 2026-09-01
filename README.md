@@ -12,7 +12,7 @@ debug Android APK.
    godot --editor --path .
    ```
 
-3. Press **F6** or click **Run Project**. The configured `main.tscn` scene
+3. Press **F5** or click **Run Project**. The configured `main.tscn` scene
    displays `Hello World`.
 
 You can also run the project directly:

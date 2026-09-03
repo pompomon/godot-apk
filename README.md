@@ -47,3 +47,15 @@ the APK as the `hello-world-android-apk` workflow artifact.
 
 The workflow intentionally does not use GitHub Actions cache or dependency
 caching; every job performs a clean build.
+
+## Adventurer's March design & implementation docs
+
+Planning documentation for the **Adventurer's March** mobile idle fantasy
+simulator lives under [`docs/`](docs/adventurers-march-implementation-plan.md):
+
+- [Implementation plan](docs/adventurers-march-implementation-plan.md) —
+  the comprehensive design and architecture reference.
+- [Milestones checklist](docs/adventurers-march-milestones.md) — ordered,
+  trackable milestone list.
+- [`docs/adventurers-march/milestones/`](docs/adventurers-march/milestones/) —
+  a detailed implementation-ready plan per milestone.

@@ -242,14 +242,17 @@ Each Hero has a small set of base attributes that drive combat formulas
 | Attribute | Abbrev. | Effect |
 |---|---|---|
 | Might | `MIG` | Physical damage scaling, carry capacity for heavy equipment |
-| Focus | `FOC` | Magic damage scaling, resist chance vs. magic effects |
-| Grit | `GRT` | Max HP, physical damage reduction |
+| Focus | `FOC` | Offensive `MagicPower` scaling |
+| Grit | `GRT` | `MaxHP` and `Defense` scaling |
 | Guile | `GUI` | Turn order priority (initiative), evasion chance |
-| Faith | `FTH` | Healing output scaling, resist chance vs. debuffs |
+| Faith | `FTH` | Healing `MagicPower` scaling |
 
 Derived stats (computed from attributes + class + equipment + level):
 `MaxHP`, `Attack`, `MagicPower`, `Defense`, `Evasion`, `Initiative`,
-`CritChance`.
+`CritChance`. `Evasion` and `CritChance` are total probabilities in
+`[0.0, 1.0]`, including their base chance and all modifiers. Combat consumes
+only these derived stats; raw attributes are inputs to `HeroStats`, not a
+second set of combat inputs.
 
 ### Classes (MVP set)
 
@@ -297,22 +300,31 @@ an optional "Hardcore" mode) is a clearly-flagged post-MVP option.
 ### Generation
 
 Hero generation (used for starting roster and for recruitable Heroes
-offered over time) is a pure function of a seed:
+offered over time) is a pure function of a seed and a caller-allocated ID:
 
 ```
-generate_hero(seed, class_pool, trait_pool, level = 1) -> HeroData
+generate_hero(hero_id, seed, class_pool, trait_pool, level = 1) -> HeroData
   rng := RandomNumberGenerator seeded with `seed`
   class := pick from class_pool using rng
   name := pick from name table using rng
   attributes := class.base_attributes + rng-rolled variance within class range
   traits := roll 0..1 traits from trait_pool using rng, filtered to valid
             combinations for this class
-  return HeroData(name, class, level, attributes, traits, equipment = none)
+  return HeroData(hero_id, name, class, level, attributes, traits, equipment = none)
 ```
 
-Using a seeded RNG (see [§8](#8-expeditions-travel-encounters-outcomes-deterministic-resolution)
-for the shared determinism approach) means recruitment offers can be
-regenerated/audited and, if desired, previewed deterministically.
+`hero_id` is an opaque, immutable string allocated exactly once from a
+save-scoped monotonically increasing `next_hero_id` counter. It must not be
+derived from a mutable name, class, or roster position. Recruitment offers
+receive their IDs when generated and retain them when recruited; both IDs and
+the counter round-trip through the save.
+
+Using the saved RNG seed and ID counter (see
+[§8](#8-expeditions-travel-encounters-outcomes-deterministic-resolution) for
+the shared determinism approach) means recruitment offers can be
+regenerated/audited and, if desired, previewed deterministically. A new save
+starts with **100 gold**, and the MVP recruitment price is **100 gold**, so
+the first deterministic offer is immediately purchasable.
 
 ## 7. Party formation and evaluation
 
@@ -362,11 +374,12 @@ and has a chance to trigger an **encounter**.
 ```
 Expedition
  ├─ Region reference
- ├─ Party reference (snapshot of Hero stats at start)
+ ├─ Party reference (snapshot of stable Hero IDs and derived stats at start)
  ├─ Seed (u64) — derived from save-level RNG state at confirm time
  ├─ StartTimestamp (unix time, UTC)
  ├─ Duration (seconds; selected by player from Region's offered options)
- └─ Steps[] (generated at start time, not at resolution time — see below)
+ ├─ StepDurationSeconds (immutable positive integer; see below)
+ ├─ Steps[] (generated at start time, not at resolution time — see below)
       each Step:
         ├─ Kind (Travel | Encounter)
         ├─ EncounterPool reference (if Kind == Encounter)
@@ -401,20 +414,36 @@ reproducible for testing and support/debugging. The approach:
    `RandomNumberGenerator` seeded from a per-Expedition seed. Store the
    seed and the generated step list in the save (not just the seed) so
    that changing the encounter-pool data later does not retroactively
-   change an in-flight Expedition.
+   change an in-flight Expedition. Immediately after generating this full
+   candidate list, compute and persist
+   `StepDurationSeconds = Duration / candidate step count`; Region duration
+   and step-count data must make this a positive integer. This value is
+   immutable and must never be recomputed from the possibly truncated
+   `Steps[]` array, including after load.
 2. Do **not** wait for real-time ticks to "roll" outcomes; instead, each
    step's outcome (e.g., a combat's full round-by-round log) is *also*
    computed at start time, deterministically, from the same seed stream.
    This means the entire Expedition's result is known immediately after
    confirming — what changes over real time is only how much of the
-   already-computed travel journal has been "revealed" to the player.
+   already-computed travel journal has been "revealed" to the player. Keep
+   one expedition-scoped Hero-state map keyed by stable Hero ID, initialized
+   to each Hero's `MaxHP`. Each Combat receives that map and must return
+   `final_hero_states` for every Party Hero; overlay those entries by ID
+   before resolving the next step. HP therefore carries between Combats,
+   with no implicit between-encounter heal, and a Hero at 0 HP remains at 0
+   and cannot act in later Combats.
 3. Resolve steps in order. On Defeat, or on Retreat when the Region marks
    Retreat as terminal, store that step as `TerminalStepIndex`, truncate all
    later generated steps, and set `EffectiveEndTimestamp` to that step's
-   scheduled reveal time. No later rewards may exist or be revealed.
+   scheduled reveal time:
+   `StartTimestamp + (TerminalStepIndex + 1) * StepDurationSeconds`. No later
+   rewards may exist or be revealed.
 4. The Home/Status screen and Expedition Report simply compute
    `elapsed = now - StartTimestamp`, map that to a step index using each
-   step's fixed duration slice, and reveal the journal up to that index.
+   step's persisted `StepDurationSeconds`, and reveal the journal up to that
+   index. At finalization, fold saved Combat `final_hero_states` in step
+   order by stable Hero ID (a later entry replaces the earlier entry for that
+   ID) and apply the resulting map to the roster once.
    This makes idle/offline progress trivial: **resolution never depends
    on wall-clock ticking while the app is closed** (see
    [§11](#11-idle--offline-progress)).
@@ -438,9 +467,11 @@ random tiebreaker so identical Initiative doesn't always resolve in the
 same order). Ties use the seeded RNG stream, not engine iteration order,
 to preserve determinism across platforms.
 
-### Per-turn action resolution (example formulas)
+### Per-turn action resolution (MVP formulas)
 
-For a combatant taking its turn:
+Combatant snapshots contain the derived stats from §6 plus current HP from
+the expedition-scoped state map. The formulas below are normative and never
+read raw Hero attributes directly:
 
 1. **Choose target** using the targeting rule from
    [§7](#7-party-formation-and-evaluation) (front row first for
@@ -449,11 +480,11 @@ For a combatant taking its turn:
    simple, legible AI policy for MVP).
 2. **Hit chance:**
    ```
-   HitChance = clamp(0.90 + (Attacker.Guile - Defender.Guile) * 0.01, 0.50, 0.99)
+   HitChance = clamp(0.90 - Defender.Evasion, 0.50, 0.99)
    ```
 3. **Crit chance:**
    ```
-   CritChance = clamp(0.05 + Attacker.CritChance, 0.0, 0.50)
+   CritChance = clamp(Attacker.CritChance, 0.0, 0.50)
    ```
 4. **Damage (physical example, e.g. Knight/Ranger basic attack):**
    ```
@@ -464,16 +495,16 @@ For a combatant taking its turn:
 5. **Damage (magic example, e.g. Wizard spell):**
    ```
    BaseDamage = Attacker.MagicPower * SkillMultiplier
-   Mitigated  = max(1, BaseDamage - Defender.Focus)
+   Mitigated  = max(1, BaseDamage - Defender.Defense)
    FinalDamage = Mitigated * (Attacker.rolled_crit ? 1.5 : 1.0)
    ```
 6. **Healing (e.g. Cleric skill):**
    ```
-   HealAmount = Attacker.Faith * SkillMultiplier
+   HealAmount = Attacker.MagicPower * SkillMultiplier
    ```
 7. Apply `FinalDamage`/`HealAmount`, clamp HP to `[0, MaxHP]`, apply any
-   status effects the skill carries (e.g., a debuff with a `Faith`-based
-   resist check on the defender).
+   deterministic status effects carried by the skill. MVP has no separate
+   raw-attribute resistance roll.
 8. A combatant at `HP == 0` is removed from turn order for the remainder of
    the encounter (marked for Wounded/Defeat resolution at encounter end,
    not deleted from the simulation state, so combat logs remain complete).
@@ -557,7 +588,7 @@ on_app_resume():
     for each active Expedition:
         elapsed = now_utc() - expedition.StartTimestamp
         revealed_step_index = clamp(
-            floor(elapsed / expedition.StepDuration) - 1,
+            floor(elapsed / expedition.StepDurationSeconds) - 1,
             -1,
             len(expedition.Steps) - 1)
         if revealed_step_index > expedition.LastRevealedIndex:
@@ -596,12 +627,13 @@ platform-specific background-execution APIs are required for MVP.
   players' progress. MVP ships with `save_version = 1` and an explicit
   (even if initially empty) migration entry point, so the pattern exists
   before it's needed.
-- **Contents:** Company roster (all Heroes + stats + status), current Party
-  (formation slots referencing stable Hero IDs), current recruitment offers
-  and their refresh seed, inventory, gold, unlocked Regions, active Expedition
-  (including its pre-resolved, JSON-safe `Steps[]` dictionaries,
-  `LastRevealedIndex`, `TerminalStepIndex`, and `EffectiveEndTimestamp`), and
-  RNG seed state for future generation calls.
+- **Contents:** Company roster (each Hero's immutable ID, stats, and status),
+  the `next_hero_id` counter, current Party (formation slots referencing
+  stable Hero IDs), current recruitment offers and their refresh seed,
+  inventory, gold, unlocked Regions, active Expedition (including its
+  pre-resolved, JSON-safe `Steps[]` dictionaries, immutable
+  `StepDurationSeconds`, `LastRevealedIndex`, `TerminalStepIndex`, and
+  `EffectiveEndTimestamp`), and RNG seed state for future generation calls.
 - **Cadence:** autosave after any state-mutating action (Hero recruited,
   Party formed, Expedition started, each revealed reward batch and cursor
   update, Expedition Report acknowledged, item equipped) and on app pause
@@ -609,9 +641,21 @@ platform-specific background-execution APIs are required for MVP.
   Avoid saving on a fixed timer only — mobile OSes may terminate a
   backgrounded app without further notice, so save-on-mutation is required,
   not optional.
-- **Corruption handling:** keep the previous save as a `.bak` before
-  overwriting; if the primary fails to parse, fall back to `.bak` and log a
-  warning (surface as a small non-blocking toast, not a hard crash).
+- **Crash-safe replacement:** serialize to `save.json.tmp` in the same
+  directory, durably flush/sync and close it, then reopen, parse, and validate
+  it. If the current primary is valid, copy it to `save.json.bak.tmp`,
+  durably flush/sync and validate that copy, and atomically replace
+  `save.json.bak`, then sync the parent directory; never move or delete the
+  primary to make the backup. Then atomically replace the primary with the
+  validated `save.json.tmp` without deleting the destination first and sync
+  the parent directory again before reporting success. Thus a crash leaves
+  either the complete old primary or the complete new primary, never an
+  intentional no-primary window.
+- **Corruption handling:** if the primary is missing, fails validation/parsing,
+  or cannot migrate, validate and load `.bak`, log a warning (surface a small
+  non-blocking toast), and restore the primary through the same safe-write
+  path without replacing the valid backup with the missing/invalid primary.
+  Create a new game only when neither primary nor backup is valid.
 - **No cloud save for MVP** (non-goal); the JSON format and version field
   are chosen specifically so cloud sync can be layered on later without a
   redesign.
@@ -671,9 +715,9 @@ res://
   and on each `UIManager`-driven "check progress" call, reveals steps
   based on elapsed time (per §11).
 - **CombatSimulator** — pure/stateless functions taking a Party snapshot,
-  an enemy group definition, and a seed, returning a full round-by-round
-  result. No Node dependencies, so it can be exercised directly in unit
-  tests without a running scene tree.
+  current Hero-state map, enemy group definition, and seed, returning a full
+  round-by-round result. No Node dependencies, so it can be exercised
+  directly in unit tests without a running scene tree.
 - **UIManager** — swaps the visible screen under a single UI root scene
   (instantiate/free or show/hide child scenes under `main.tscn`), keeping
   navigation logic ([§5](#5-screen-and-navigation-plan)) out of individual
@@ -790,9 +834,10 @@ consideration, once the core loop is validated:
 ## 19. Testing
 
 - **Unit tests** for pure logic: `CombatSimulator` (given a fixed seed,
-  Party, and enemy group, assert an exact expected outcome/log — this is
-  possible precisely because combat is deterministic, §9), `HeroGenerator`
-  (given a seed, assert exact generated Hero), `PartyEvaluator`
+  Party/current-Hero-state map, and enemy group, assert an exact expected
+  outcome/log — this is possible precisely because combat is deterministic,
+  §9), `HeroGenerator`
+  (given an ID and seed, assert the exact generated Hero), `PartyEvaluator`
   (Party Power formula), and `SaveManager` migrations (load an old-version
   fixture, assert migrated shape).
 - Use a Godot-native test framework such as **GUT (Gut Unit Test)** or
@@ -834,8 +879,9 @@ consideration, once the core loop is validated:
   Android device, including a real backgrounding/offline-progress check
   (start an Expedition, close the app, reopen after the Expedition's
   duration has elapsed, verify the report is correct).
-- Confirm save-file resilience: manually corrupt `user://save.json` in a
-  test build and verify the `.bak` fallback path (§12) works.
+- Confirm save-file resilience: with a valid `.bak`, test both a corrupt and
+  a missing `user://save.json`; verify fallback loads and restores the primary
+  through the crash-safe replacement path (§12).
 
 ## 22. First playable vertical slice and build order
 

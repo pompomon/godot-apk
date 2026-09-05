@@ -77,21 +77,23 @@ Detail: [01-technical-foundation.md](adventurers-march/milestones/01-technical-f
 - [ ] Author 3–5 `HeroTraitResource` entries.
 - [ ] Implement `HeroGenerator` (seeded, pure function per
       [plan §6](adventurers-march-implementation-plan.md#6-heroes-classes-attributes-traits-status-generation)).
-- [ ] Implement `HeroData` model and derived-stat calculation.
+- [ ] Implement `HeroData` with immutable, persisted stable IDs and
+      derived-stat calculation.
 - [ ] Build Company Roster screen (list/grid + status badges).
 - [ ] Build Hero Detail screen (attributes, traits, status, XP).
-- [ ] Seed a starting roster of 4 Heroes (one per class) on new-game
-      creation.
-- [ ] Add deterministic gold-priced recruitment offers to the Company
-      Roster, including roster-cap checks and immediate persistence.
-- [ ] Implement versioned JSON save/load, atomic `.bak` rotation, and
-      round-trip/corruption-recovery tests for Milestone 2 state.
+- [ ] Seed a starting roster of 4 Heroes (one per class) and 100 starting
+      gold on new-game creation.
+- [ ] Add deterministic 100-gold recruitment offers to the Company Roster,
+      including roster-cap checks and immediate persistence.
+- [ ] Implement versioned JSON save/load with durable same-directory
+      temporary writes, atomic replacement that never first removes the
+      primary, and recovery from a missing or invalid primary via `.bak`.
 
 **Definition of done:** a new game starts with 4 generated Heroes visible
 in the Company Roster screen; tapping a Hero opens Hero Detail showing
 correct attributes/traits/status; the player can recruit an offered Hero and
 reload without losing it; `HeroGenerator` and `SaveManager` have deterministic
-generation and round-trip/recovery tests.
+generation, stable-ID, round-trip, interrupted-write, and recovery tests.
 
 Detail: [02-hero-roster.md](adventurers-march/milestones/02-hero-roster.md)
 
@@ -122,7 +124,9 @@ Detail: [03-party-formation.md](adventurers-march/milestones/03-party-formation.
       travel/loot/event steps only (combat wired in Milestone 5).
 - [ ] Implement `ExpeditionData` model and step-generation logic
       (seeded, resolved-at-start per
-      [plan §8](adventurers-march-implementation-plan.md#8-expeditions-travel-encounters-outcomes-deterministic-resolution)).
+      [plan §8](adventurers-march-implementation-plan.md#8-expeditions-travel-encounters-outcomes-deterministic-resolution)),
+      including persisted immutable step duration computed before any
+      terminal truncation.
 - [ ] Implement `ExpeditionManager.start_expedition(...)` and
       `reveal_progress(...)`.
 - [ ] Build Region Select screen (single Region for now) and Expedition
@@ -146,12 +150,16 @@ Detail: [04-first-expedition.md](adventurers-march/milestones/04-first-expeditio
 
 - [ ] Implement `CombatSimulator` per
       [plan §9](adventurers-march-implementation-plan.md#9-auto-combat-simulation-design)
-      (turn order, hit/crit/damage/heal formulas, round loop, outcome).
+      (derived-stat hit/crit/damage/heal formulas including Evasion, round
+      loop, outcome).
 - [ ] Author 1–2 enemy-group data definitions for Green Hollow.
 - [ ] Wire Combat encounter steps into `ExpeditionManager`'s step
       generation/resolution.
 - [ ] Truncate generated steps at Defeat or a Region-terminal Retreat and
-      persist the terminal step/end timestamp.
+      persist the terminal step/end timestamp without changing the stored
+      pre-truncation step duration.
+- [ ] Carry HP through sequential Combats and merge `final_hero_states` by
+      stable Hero ID before Expedition finalization.
 - [ ] Extend Expedition Report to render a readable combat log.
 - [ ] Add one active skill per class (Guard / Firebolt / Mend / basic
       Ranger attack variant).
@@ -160,7 +168,7 @@ Detail: [04-first-expedition.md](adventurers-march/milestones/04-first-expeditio
 deterministically via `CombatSimulator`, produce a correct
 Victory/Retreat/Defeat outcome, and display a readable round-by-round log
 in the Expedition Report; unit tests assert an exact expected outcome/log
-for a fixed seed, Party, and enemy group.
+for a fixed seed, Party/current-Hero-state map, and enemy group.
 
 Detail: [05-combat-simulation.md](adventurers-march/milestones/05-combat-simulation.md)
 
@@ -173,7 +181,8 @@ Detail: [05-combat-simulation.md](adventurers-march/milestones/05-combat-simulat
 - [ ] Build Equipment screen (assign weapon/armor, show stat deltas).
 - [ ] Apply Wounded/Resting recovery flow after Defeat/heavy-damage
       outcomes.
-- [ ] Wire loot/gold rewards from Expeditions into inventory/Company gold.
+- [ ] Extend Milestone 4's existing gold-reward reveal path with item loot
+      updates to inventory, without a second reward handler.
 
 **Definition of done:** Heroes gain XP and level up from completed
 Expeditions with visibly updated stats, items can be equipped/unequipped
@@ -232,7 +241,7 @@ Detail: [08-presentation-pass.md](adventurers-march/milestones/08-presentation-p
       test failure.
 - [ ] Perform full manual device playtest of the core loop, including a
       real offline/backgrounding check and a save-corruption/`.bak`
-      fallback check.
+      fallback check for both invalid and missing primary saves.
 - [ ] Prepare release export preset (real package id, signed release
       build) and store assets (icon, screenshots).
 

@@ -31,9 +31,10 @@ needed when equipment starts modifying them), additional Regions
 
 1. Implement `scripts/models/enemy_group_resource.gd`
    (`class_name EnemyGroupResource`): list of enemy stat blocks
-   (name, attributes/derived stats directly, or a simplified enemy
-   "class"-like definition — enemies do not need the full Hero trait/
-   generation system).
+   using the same combat-relevant derived-stat keys as Heroes. Enemy authoring
+   may use a simplified "class"-like definition, but it must produce derived
+   stats before simulation; enemies do not need the full Hero trait/generation
+   system.
 2. Author 1–2 `.tres` enemy groups under `data/encounters/` for Green
    Hollow (e.g., "Bandit Skirmishers", "Forest Wolves").
 3. Implement one active skill per MVP class as simple data + resolution
@@ -43,14 +44,17 @@ needed when equipment starts modifying them), additional Regions
    A simple `SkillResource` (name, target rule, multiplier, cooldown) is
    sufficient; AI policy: use skill if off cooldown, else basic attack.
 4. Implement `CombatSimulator` (fill in the `autoload/CombatSimulator.gd`
-   stub from Milestone 1) as **pure/stateless**: given a Party snapshot,
-   an `EnemyGroupResource`, and a seed, return a JSON-safe result dictionary:
-   outcome (`VICTORY`/`DEFEAT`/`RETREAT`), round-by-round log, and per-Hero
-   final HP/status keyed by stable Hero ID.
+   stub from Milestone 1) as **pure/stateless**: given a Party snapshot, the
+   current per-Hero HP/status map, an `EnemyGroupResource`, and a seed, return
+   a JSON-safe result dictionary: outcome
+   (`VICTORY`/`DEFEAT`/`RETREAT`), round-by-round log, and final HP/status for
+   every Party Hero keyed by the stable ID introduced in Milestone 2.
    - Turn order: sort by Initiative each round, seeded RNG tiebreak.
    - Targeting: front-row-first for melee/short-range; any slot for
      ranged/magic; lowest-HP%-among-valid-targets tiebreak.
-   - Hit/crit/damage/heal formulas exactly as specified in plan §9.
+   - Hit/crit/damage/heal formulas use only derived stats and are exactly as
+     specified in plan §9; in particular, defender `Evasion` reduces hit
+     chance.
    - Bounded by `MaxRounds` (data-tunable via `BalancingConfig`).
 5. Update `ExpeditionGenerator` to include `COMBAT` steps in Green
    Hollow's encounter pool, calling `CombatSimulator` at step-generation
@@ -58,11 +62,20 @@ needed when equipment starts modifying them), additional Regions
    storing the full result in the step's `result` dictionary.
    Resolve steps in order; on `DEFEAT`, or on `RETREAT` when Green Hollow's
    rules mark it terminal, set `terminal_step_index`, truncate later steps,
-   and set `effective_end_timestamp` to the terminal step's scheduled reveal
-   time. Reveal/finalization must never process steps after that point.
-6. Apply each Combat result's `final_hero_states` by stable Hero ID at
-   Expedition finalization. Any Hero reduced to 0 HP becomes `Wounded`
-   regardless of the Party outcome. On `DEFEAT`, surviving Heroes also become
+   and set `effective_end_timestamp` to
+   `start_timestamp + (terminal_step_index + 1) *
+   step_duration_seconds`. The persisted `step_duration_seconds` was computed
+   from the full candidate list in Milestone 4 and must not change when
+   `steps` is truncated. Reveal/finalization must never process later steps.
+6. During generation, initialize one current-Hero-state map from the Party
+   snapshot at `MaxHP`. Pass it to each Combat in step order, then overlay
+   that Combat's complete `final_hero_states` by stable Hero ID before
+   resolving the next step. There is no automatic heal between Combats; a
+   Hero at 0 HP remains at 0 and cannot participate later. At Expedition
+   finalization, fold the saved `final_hero_states` maps in step order with
+   later entries replacing earlier entries for the same ID, then apply the
+   merged map to the roster once. Any Hero at 0 HP becomes `Wounded`
+   regardless of Party outcome. On `DEFEAT`, surviving Heroes also become
    `Wounded`; otherwise surviving Heroes return to `Idle` (the recovery timer
    can be a fixed placeholder duration for now; full Wounded/Resting recovery
    flow is fleshed out in Milestone 6).
@@ -89,8 +102,9 @@ tests/test_combat_simulator.gd
 
 ```gdscript
 # CombatSimulator (autoload, stateless functions)
-func resolve_combat(party: PartyData, enemy_group: EnemyGroupResource,
-        seed: int, balancing: BalancingConfig) -> Dictionary
+func resolve_combat(party: PartyData, current_hero_states: Dictionary,
+        enemy_group: EnemyGroupResource, seed: int,
+        balancing: BalancingConfig) -> Dictionary
 # {
 #   "outcome": "victory" | "defeat" | "retreat",
 #   "rounds": [{ "round_number": int, "actions": [{
@@ -104,21 +118,31 @@ func resolve_combat(party: PartyData, enemy_group: EnemyGroupResource,
 `ExpeditionStep.result` remains a `Dictionary` for every kind. A `COMBAT`
 result uses the nested plain-data shape above, with no `RefCounted` objects
 or object keys, so the active Expedition can be written directly to JSON.
+Both `current_hero_states` and `final_hero_states` use Hero ID strings as
+keys and contain every Party Hero; `resolve_combat` must not mutate its input
+map.
 
 ## Testing requirements
 
-- Unit test: `resolve_combat` with a fixed seed, Party, and enemy group
-  produces an **exact** expected result dictionary (outcome + full log),
-  asserting the determinism guarantee from
+- Unit test: `resolve_combat` with a fixed seed, Party/current-Hero-state map,
+  and enemy group produces an **exact** expected result dictionary (outcome,
+  full log, and `final_hero_states`), asserting the determinism guarantee from
   [plan §9](../../adventurers-march-implementation-plan.md#9-auto-combat-simulation-design).
 - Unit test: turn order respects Initiative with seeded tiebreaks
   (same inputs → same order across runs).
+- Unit test: hand-computed hit/crit/physical-damage/magic-damage/heal cases
+  use the §9 derived stats; increasing defender `Evasion` lowers hit chance
+  without changing raw attributes.
 - Unit test: front-row targeting rule is enforced (melee/short-range
   attacks never target back row while front row has a living member).
 - Unit test: `MaxRounds` bound is respected (simulation always
   terminates).
-- Unit test: Defeat and Region-terminal Retreat truncate later steps and set
-  the terminal index/end timestamp; no later rewards are revealed.
+- Unit test: Defeat and Region-terminal Retreat truncate later steps without
+  changing `step_duration_seconds`, set the exact terminal index/end
+  timestamp from that stored slice, and reveal no later rewards.
+- Unit test: in an Expedition with two Combats, the second starts from the
+  first Combat's final HP; folding the two `final_hero_states` maps by ID
+  produces the roster state applied at finalization.
 - Unit test: a Hero at 0 final HP becomes `Wounded` after a Victory or Retreat,
   while surviving Heroes return to `Idle`.
 - Manual test: complete an Expedition in Green Hollow that includes a
@@ -131,12 +155,16 @@ or object keys, so the active Expedition can be written directly to JSON.
       passing exact-output unit test.
 - [ ] Front-row-first targeting and Initiative-based turn order are
       correctly implemented and tested.
+- [ ] Combat formulas consume the documented derived stats, including an
+      effective defender `Evasion`, and are covered by hand-computed tests.
 - [ ] Green Hollow includes at least one Combat encounter using at least
       one enemy group.
-- [ ] Combat outcomes correctly affect Hero status
+- [ ] HP carries across multiple Combats, and ordered
+      `final_hero_states` merging correctly affects Hero status
       (Idle vs. Wounded) at Expedition finalization.
 - [ ] Terminal combat outcomes end reveal/finalization at the Combat step
-      and cannot grant rewards from later generated steps.
+      using the unchanged pre-truncation step duration and cannot grant
+      rewards from later generated steps.
 - [ ] Expedition Report renders a readable combat log.
 
 ## Risks

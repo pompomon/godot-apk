@@ -14,7 +14,7 @@ device playtest, and a signed, store-ready Android build.
 **In scope:** unit-test coverage completion for
 `CombatSimulator`/`HeroGenerator`/`PartyEvaluator`/`SaveManager`
 migrations, CI workflow extension to run tests before export, full manual
-playtest (including offline progress and save-corruption fallback),
+playtest (including offline progress and save fallback),
 release export preset and store asset preparation.
 
 **Out of scope:** any new gameplay features or content (this milestone is
@@ -52,10 +52,12 @@ hardening and release logistics only).
    recruit/inspect Heroes, form a Party, equip items, start an Expedition
    in each shipped Region, background/close the app mid-Expedition, and
    verify correct offline-progress results on return.
-7. Perform a save-resilience check: manually corrupt `user://save.json` on
-   a test build/device and verify the `.bak` fallback path from
+7. Perform save-resilience checks on a test build/device with
+   `user://save.json` first corrupted and then missing. Verify the valid
+   `.bak` fallback path from
    [plan §12](../../adventurers-march-implementation-plan.md#12-save-system)
-   loads correctly instead of crashing or resetting progress silently.
+   loads and restores the primary instead of crashing or silently resetting
+   progress.
 8. Record playtest and save-resilience results (e.g., in the release PR
    description) as the sign-off artifact for this milestone.
 
@@ -85,7 +87,7 @@ interface established in Milestones 1–8
   requirement of this milestone).
 - Full end-to-end determinism regression test covering a complete
   Expedition with Combat steps.
-- Manual device playtest and save-corruption fallback check, both
+- Manual device playtest and invalid/missing-primary fallback checks, both
   recorded as sign-off evidence (Tasks 6–8).
 
 ## Acceptance criteria
@@ -101,7 +103,8 @@ interface established in Milestones 1–8
 - [ ] Store assets (icon, feature graphic, screenshots) are prepared.
 - [ ] Manual device playtest of the full core loop, including offline
       progress, is completed and recorded.
-- [ ] Save-corruption `.bak` fallback is verified working.
+- [ ] `.bak` fallback and primary restoration work for both an invalid and a
+      missing primary save.
 
 ## Risks
 

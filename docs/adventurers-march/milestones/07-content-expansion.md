@@ -48,8 +48,8 @@ diplomacy, crafting/enchanting (all explicit non-goals per
 6. Write a small headless "balance simulation" tool/script (can live under
    `tests/` or a `tools/` script invoked via `godot --headless`) that runs
    `CombatSimulator.resolve_combat` across many seeded Parties at, above,
-   and below each Region's recommended Party Power, and reports win
-   rates.
+   and below each Region's recommended Party Power, initializing each
+   trial's Hero-state map at `MaxHP`, and reports win rates.
 7. Tune `BalancingConfig` coefficients (damage multipliers, Party Power
    weights, encounter odds) until win-rate bands match the guidance in
    [plan §16](../../adventurers-march-implementation-plan.md#16-balancing)
@@ -111,7 +111,7 @@ func run_balance_report(regions: Array[RegionResource], trials_per_tier: int) ->
 - **Content authoring taking longer than expected:** this milestone has
   the least fixed scope (how many traits/events is "enough" is
   judgment-based). Mitigation: treat the numeric minimums in the tasks
-  above (1–2 Regions, 5–10 events per Region) as the acceptance bar, not
+  above (2 Regions, 5–10 events per Region) as the acceptance bar, not
   a ceiling — additional content can continue post-MVP.
 - **Balance tuning oscillation:** changing one coefficient can shift win
   rates across all Regions simultaneously. Mitigation: re-run the full

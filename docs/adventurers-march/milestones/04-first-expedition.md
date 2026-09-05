@@ -38,14 +38,21 @@ should contain only Loot and Event-card entries.
    `data/encounters/green_hollow_events.tres` event table (5–10 entries).
 3. Implement `scripts/models/expedition_data.gd`
    (`class_name ExpeditionData`): Region reference, Party snapshot, seed,
-   `start_timestamp`, duration, `steps: Array[ExpeditionStep]`,
-   `last_revealed_index`, `terminal_step_index` (default `-1`), and
-   `effective_end_timestamp`.
+   `start_timestamp`, duration, immutable `step_duration_seconds`,
+   `steps: Array[ExpeditionStep]`, `last_revealed_index`,
+   `terminal_step_index` (default `-1`), and `effective_end_timestamp`.
 4. Implement `scripts/systems/expedition_generator.gd`: given a Region,
    Party, seed, and duration, produce the full `steps` array with each
-   step's outcome **already resolved** (Loot amount rolled, Event
+   step's outcome **already resolved** (Loot gold amount rolled, Event
    outcome rolled) — per
    [plan §8](../../adventurers-march-implementation-plan.md#8-expeditions-travel-encounters-outcomes-deterministic-resolution).
+   After generating the full candidate step list but before resolving any
+   outcome that could later truncate it, compute
+   `step_duration_seconds = duration_seconds / candidate_step_count`.
+   Persist this positive integer and never recompute it from `steps.size()`.
+   Initialize `effective_end_timestamp` to
+   `start_timestamp + duration_seconds`; Milestone 5 may shorten it using
+   the stored step duration.
    Combat steps can be represented now (e.g., a `COMBAT` step kind) but
    should not appear in Green Hollow's pool yet — leave the kind defined
    so Milestone 5 doesn't need a data-model change.
@@ -54,7 +61,7 @@ should contain only Loot and Event-card entries.
    `ExpeditionGenerator`, sets `GameState`'s active Expedition, autosaves.
 6. Implement `ExpeditionManager.reveal_progress() -> void`: computes
    elapsed time, advances `last_revealed_index`, applies newly revealed
-   step rewards to `GameState` (gold/items), and marks the Expedition
+   gold rewards to `GameState`, and marks the Expedition
    finalized when fully revealed (Heroes' status returns from
    `OnExpedition`/`Assigned` appropriately — see Hero status handling
    below). Save the rewards and updated cursor together immediately, before
@@ -79,8 +86,9 @@ should contain only Loot and Event-card entries.
     confirm the Expedition Report shows complete, correct results.
 12. Extend `SaveManager`'s JSON-safe serializers/deserializers for
     `PartyData`, `ExpeditionData`, and every `ExpeditionStep.result`
-    dictionary, including the reveal cursor and terminal/end fields. Add an
-    active-Expedition round-trip test.
+    dictionary, including immutable `step_duration_seconds`, the reveal
+    cursor, and terminal/end fields. Add an active-Expedition round-trip
+    test.
 
 ## Expected files / scenes / scripts / data
 
@@ -110,6 +118,7 @@ var party_snapshot: PartyData
 var seed: int
 var start_timestamp: int      # unix time, UTC
 var duration_seconds: int
+var step_duration_seconds: int # immutable; based on pre-truncation step count
 var steps: Array             # Array[ExpeditionStep]
 var last_revealed_index: int
 var terminal_step_index: int # -1 when no generated step is terminal
@@ -131,22 +140,27 @@ func get_active_expedition() -> ExpeditionData
   [plan §19](../../adventurers-march-implementation-plan.md#19-testing)).
 - Unit test: `reveal_progress` called with a simulated elapsed time
   reveals exactly the expected number of steps (test by constructing an
-  `ExpeditionData` with a known `start_timestamp` in the past and mocking
-  "now").
+  `ExpeditionData` with known `start_timestamp`/`step_duration_seconds` and
+  mocking "now").
+- Unit test: generation computes `step_duration_seconds` from the complete
+  candidate count and rejects a zero count or a duration that does not divide
+  into positive whole-second slices.
 - Unit test: after a reward batch is revealed, reloading and calling
   `reveal_progress` again does not grant the batch twice.
 - Unit test: an active Expedition save/load round trip preserves its Party
-  snapshot, JSON-safe step results, reveal cursor, and terminal/end fields.
+  snapshot, JSON-safe step results, immutable `step_duration_seconds`, reveal
+  cursor, and terminal/end fields.
 - Manual test: full offline-progress check described in Task 11.
 
 ## Acceptance criteria
 
 - [ ] Green Hollow Region data exists with Loot/Event-only encounter pool.
 - [ ] Starting an Expedition snapshots the Party, sets Heroes to
-      `OnExpedition`, and fully resolves `steps` immediately.
+      `OnExpedition`, fully resolves `steps` immediately, and persists the
+      pre-truncation `step_duration_seconds`.
 - [ ] `reveal_progress` correctly reveals steps based on elapsed real
       time, including across an app restart.
-- [ ] Each reveal batch persists rewards and its cursor atomically before
+- [ ] Each reveal batch persists gold rewards and its cursor atomically before
       presentation and cannot be granted twice after restart.
 - [ ] Active Expedition state round-trips through the versioned save.
 - [ ] Expedition Report shows a correct, readable journal once the

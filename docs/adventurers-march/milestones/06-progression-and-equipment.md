@@ -14,7 +14,7 @@ progression systems.
 
 **In scope:** XP gain and leveling using class growth curves, item model
 and starter item pool, Equipment screen, full Wounded → Resting → Idle
-recovery flow, loot/gold reward wiring.
+recovery flow, and item-loot integration.
 
 **Out of scope:** crafting/enchanting (explicit non-goal), additional
 Regions/content variety (Milestone 7).
@@ -23,14 +23,14 @@ Regions/content variety (Milestone 7).
 
 - Milestone 5 (Combat simulation): Combat outcomes and Hero HP/status
   results must already flow into Expedition finalization.
+- Milestone 4 (First expedition) already owns and tests applying Loot gold
+  at reveal time; this milestone extends that path rather than replacing it.
 
 ## Tasks
 
-1. Implement XP gain: each completed Expedition step (or the Expedition as
-   a whole — pick whichever the Milestone 4 `ExpeditionGenerator` already
-   computes per-step rewards for, and keep it consistent) grants XP to
-   each participating Hero, proportional to Region difficulty and
-   Expedition duration per
+1. Implement XP gain at Expedition finalization: compute one award
+   proportional to Region difficulty and Expedition duration, then grant it
+   exactly once to each participating Hero, per
    [plan §10](../../adventurers-march-implementation-plan.md#10-events-regions-equipment-progression).
 2. Implement leveling: when a Hero's XP crosses their level's threshold,
    increment level and reapply the class's growth curve to recompute
@@ -55,9 +55,10 @@ Regions/content variety (Milestone 7).
    similarly-invoked periodic check) transitions `Resting` Heroes back to
    `Idle` once their timer elapses — reusing the same elapsed-time-based
    pattern as Expedition reveal (no new polling architecture needed).
-8. Wire Loot-step gold/item rewards (already rolled by
-   `ExpeditionGenerator` since Milestone 4) into `GameState.gold` and
-   `GameState.inventory` at reveal time.
+8. Extend Milestone 4's Loot result and reveal pipeline to roll/store item
+   resource IDs from the new item pool and add revealed items to
+   `GameState.inventory`. Keep its existing, tested gold application in
+   place; Milestone 6 does not introduce a second reward handler.
 
 ## Expected files / scenes / scripts / data
 
@@ -105,9 +106,11 @@ static func grant_xp(hero: HeroData, amount: int) -> void
 - Unit test: a `Wounded`→`Resting` Hero transitions back to `Idle` only
   after `resting_until_timestamp` has elapsed (test with a simulated
   "now" before and after the timestamp).
+- Unit test: an item reward and reveal cursor persist in one save mutation;
+  reloading cannot grant that item or its accompanying gold twice.
 - Manual test: complete an Expedition, verify XP/level/gold/items are
   applied correctly and are visible in Hero Detail/Equipment/Roster
-  screens.
+  screens, including regression-checking Milestone 4's gold path.
 
 ## Acceptance criteria
 
@@ -119,7 +122,8 @@ static func grant_xp(hero: HeroData, amount: int) -> void
       verifiable via `CombatSimulator` picking up the change).
 - [ ] Wounded Heroes automatically recover to `Idle` after their rest
       duration elapses, including across app restarts.
-- [ ] Expedition loot correctly updates `GameState.gold`/`inventory`.
+- [ ] Item loot extends the existing reveal path and correctly updates
+      `GameState.inventory` without duplicating gold or item grants.
 
 ## Risks
 

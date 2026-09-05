@@ -12,7 +12,7 @@ balancing.
 
 ## Scope
 
-**In scope:** 1–2 additional Regions with distinct encounter mixes,
+**In scope:** 2 additional Regions with distinct encounter mixes,
 expanded trait pool, expanded event-card tables, Region-unlock conditions
 tied to progression, roster-cap increases, scripted balance simulations
 and `BalancingConfig` tuning.
@@ -29,7 +29,7 @@ diplomacy, crafting/enchanting (all explicit non-goals per
 
 ## Tasks
 
-1. Author 1–2 new `RegionResource` instances (e.g., "Ashen Reach" — a
+1. Author 2 new `RegionResource` instances (e.g., "Ashen Reach" — a
    medium desert/ruins Region) with their own encounter pools (Combat +
    Loot + Event mixes distinct from Green Hollow) and enemy groups, per
    [plan §10](../../adventurers-march-implementation-plan.md#10-events-regions-equipment-progression).
@@ -96,7 +96,7 @@ func run_balance_report(regions: Array[RegionResource], trials_per_tier: int) ->
 ## Acceptance criteria
 
 - [ ] At least 3 total Regions are unlockable through normal play
-      progression (Green Hollow + 1–2 new).
+      progression (Green Hollow + 2 new).
 - [ ] Each Region has a distinct encounter/event mix and at least one
       unique enemy group.
 - [ ] Region-unlock conditions are implemented and correctly reflected in

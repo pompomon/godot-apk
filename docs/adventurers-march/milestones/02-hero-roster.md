@@ -40,7 +40,7 @@ exist and can be inspected, but cannot yet be sent anywhere.
    traits, equipment slots (empty for now), status enum.
 5. Implement `scripts/systems/hero_generator.gd`
    (`class_name HeroGenerator`) with a pure `generate_hero(seed, class_pool,
-   level = 1) -> HeroData` function per the plan's pseudocode.
+   trait_pool, level = 1) -> HeroData` function per the plan's pseudocode.
 6. Implement derived-stat calculation (`MaxHP`, `Attack`, `MagicPower`,
    `Defense`, `Evasion`, `Initiative`, `CritChance`) as a pure function
    taking a `HeroData` and returning a stats struct/dictionary, reusable by
@@ -94,7 +94,7 @@ tests/test_save_manager.gd
 ```gdscript
 # HeroGenerator
 static func generate_hero(seed: int, class_pool: Array[HeroClassResource],
-        level: int = 1) -> HeroData
+        trait_pool: Array[HeroTraitResource], level: int = 1) -> HeroData
 
 # HeroData (RefCounted)
 var hero_name: String
@@ -114,7 +114,8 @@ static func compute_derived_stats(hero: HeroData) -> Dictionary
 ```gdscript
 # RecruitmentService
 static func generate_offers(seed: int,
-        class_pool: Array[HeroClassResource]) -> Array[HeroData]
+        class_pool: Array[HeroClassResource],
+        trait_pool: Array[HeroTraitResource]) -> Array[HeroData]
 static func recruit(hero: HeroData) -> bool
 ```
 
@@ -124,9 +125,9 @@ enums script) and reused by Party formation (Milestone 3) and Expeditions
 
 ## Testing requirements
 
-- Unit test: `generate_hero` with a fixed seed and class pool produces an
-  exact, reproducible `HeroData` (same name, class, attributes, traits)
-  across repeated calls and across test runs.
+- Unit test: `generate_hero` with a fixed seed, class pool, and trait pool
+  produces an exact, reproducible `HeroData` (same name, class, attributes,
+  traits) across repeated calls and across test runs.
 - Unit test: `compute_derived_stats` produces expected values for at least
   one hand-computed example Hero per class.
 - Manual test: new game shows exactly 4 Heroes (one per class) in Company

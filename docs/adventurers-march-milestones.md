@@ -187,7 +187,7 @@ Detail: [06-progression-and-equipment.md](adventurers-march/milestones/06-progre
 
 **Depends on:** 6 (Progression and equipment).
 
-- [ ] Author 1–2 additional Regions (different encounter mixes/difficulty
+- [ ] Author 2 additional Regions (different encounter mixes/difficulty
       tiers).
 - [ ] Expand trait pool and event-card tables.
 - [ ] Add Region-unlock conditions and roster-cap increases tied to

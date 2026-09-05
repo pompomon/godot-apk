@@ -47,7 +47,8 @@ stats if present so no rework is needed later).
 5. On confirming a Party in this screen, set each included Hero's status
    to `Assigned` (via `GameState`) and store the resulting `PartyData` as
    the Company's current/pending Party (single Party for MVP, per
-   non-goals).
+   non-goals). Extend `SaveManager` to serialize each occupied formation
+   slot by stable Hero ID and autosave the Party and status changes together.
 6. Allow returning to the roster/undoing formation before an Expedition is
    actually started (Region Select, Milestone 4, is a separate
    confirmation step) — releasing Heroes back to `Idle` status if the
@@ -91,6 +92,8 @@ static func compute_party_power(party: PartyData,
   correctly (Party of only back-row Heroes scores lower than an otherwise
   identical Party with a front-row Hero).
 - Unit test: `compute_party_power` scales down for Parties smaller than 4.
+- Unit test: a save/load round trip preserves the current Party's slot-to-Hero
+  mapping and its Heroes' `Assigned` statuses.
 - Manual test: only `Idle` Heroes are selectable in the Party Formation
   screen; assigning a Hero updates its status and removes it from the
   selectable pool; Party Power updates live as slots change.
@@ -103,7 +106,8 @@ static func compute_party_power(party: PartyData,
       cases.
 - [ ] Party Formation screen only allows selecting `Idle` Heroes.
 - [ ] Confirming a Party sets included Heroes' status to `Assigned` and
-      backing out returns them to `Idle`.
+      backing out returns them to `Idle`; both mutations persist atomically
+      with the current Party.
 
 ## Risks
 

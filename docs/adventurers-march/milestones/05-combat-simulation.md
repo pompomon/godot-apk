@@ -60,11 +60,12 @@ needed when equipment starts modifying them), additional Regions
    rules mark it terminal, set `terminal_step_index`, truncate later steps,
    and set `effective_end_timestamp` to the terminal step's scheduled reveal
    time. Reveal/finalization must never process steps after that point.
-6. Apply Combat outcomes to Hero status at Expedition finalization:
-   `VICTORY`/`RETREAT` → Heroes return to `Idle`; `DEFEAT` → surviving
-   Heroes become `Wounded` (recovery timer can be a fixed placeholder
-   duration for now; full Wounded/Resting recovery flow is fleshed out in
-   Milestone 6).
+6. Apply each Combat result's `final_hero_states` by stable Hero ID at
+   Expedition finalization. Any Hero reduced to 0 HP becomes `Wounded`
+   regardless of the Party outcome. On `DEFEAT`, surviving Heroes also become
+   `Wounded`; otherwise surviving Heroes return to `Idle` (the recovery timer
+   can be a fixed placeholder duration for now; full Wounded/Resting recovery
+   flow is fleshed out in Milestone 6).
 7. Extend Expedition Report to render the combat log readably (round
    number, actor, action, target, result) — plain text/labels are
    sufficient for this milestone.
@@ -118,6 +119,8 @@ or object keys, so the active Expedition can be written directly to JSON.
   terminates).
 - Unit test: Defeat and Region-terminal Retreat truncate later steps and set
   the terminal index/end timestamp; no later rewards are revealed.
+- Unit test: a Hero at 0 final HP becomes `Wounded` after a Victory or Retreat,
+  while surviving Heroes return to `Idle`.
 - Manual test: complete an Expedition in Green Hollow that includes a
   Combat step and verify the Expedition Report shows a correct, readable
   log matching the actual resolved outcome.

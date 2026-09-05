@@ -300,7 +300,7 @@ Hero generation (used for starting roster and for recruitable Heroes
 offered over time) is a pure function of a seed:
 
 ```
-generate_hero(seed, class_pool, level = 1) -> HeroData
+generate_hero(seed, class_pool, trait_pool, level = 1) -> HeroData
   rng := RandomNumberGenerator seeded with `seed`
   class := pick from class_pool using rng
   name := pick from name table using rng
@@ -464,7 +464,7 @@ For a combatant taking its turn:
 5. **Damage (magic example, e.g. Wizard spell):**
    ```
    BaseDamage = Attacker.MagicPower * SkillMultiplier
-   Mitigated  = BaseDamage * (1.0 - Defender.MagicResist)
+   Mitigated  = max(1, BaseDamage - Defender.Focus)
    FinalDamage = Mitigated * (Attacker.rolled_crit ? 1.5 : 1.0)
    ```
 6. **Healing (e.g. Cleric skill):**
@@ -556,19 +556,25 @@ function of elapsed wall-clock time:
 on_app_resume():
     for each active Expedition:
         elapsed = now_utc() - expedition.StartTimestamp
-        revealed_step_index = min(len(expedition.Steps) - 1,
-                                   floor(elapsed / expedition.StepDuration))
+        revealed_step_index = clamp(
+            floor(elapsed / expedition.StepDuration) - 1,
+            -1,
+            len(expedition.Steps) - 1)
         if revealed_step_index > expedition.LastRevealedIndex:
             # Apply rewards/status changes and advance the cursor as one
-            # mutation, persist it, then present the consolidated summary.
+            # mutation. Finalize persistent state with the last batch, then
+            # save everything before presenting any results.
             newly_revealed = expedition.Steps[
                 expedition.LastRevealedIndex+1 .. revealed_step_index]
             apply(newly_revealed)
             expedition.LastRevealedIndex = revealed_step_index
+            is_complete = revealed_step_index == len(expedition.Steps) - 1
+            if is_complete:
+                finalize_expedition_state(expedition)
             SaveManager.save()
             display(newly_revealed)
-        if revealed_step_index == len(expedition.Steps) - 1:
-            finalize_expedition(expedition)  # move to Expedition Report
+            if is_complete:
+                show_expedition_report()
 ```
 
 This runs both on normal app resume (`NOTIFICATION_APPLICATION_FOCUS_IN` /
@@ -590,11 +596,12 @@ platform-specific background-execution APIs are required for MVP.
   players' progress. MVP ships with `save_version = 1` and an explicit
   (even if initially empty) migration entry point, so the pattern exists
   before it's needed.
-- **Contents:** Company roster (all Heroes + stats + status), current
-  recruitment offers and their refresh seed, inventory, gold, unlocked
-  Regions, active Expedition (including its pre-resolved, JSON-safe
-  `Steps[]` dictionaries, `LastRevealedIndex`, `TerminalStepIndex`, and
-  `EffectiveEndTimestamp`), and RNG seed state for future generation calls.
+- **Contents:** Company roster (all Heroes + stats + status), current Party
+  (formation slots referencing stable Hero IDs), current recruitment offers
+  and their refresh seed, inventory, gold, unlocked Regions, active Expedition
+  (including its pre-resolved, JSON-safe `Steps[]` dictionaries,
+  `LastRevealedIndex`, `TerminalStepIndex`, and `EffectiveEndTimestamp`), and
+  RNG seed state for future generation calls.
 - **Cadence:** autosave after any state-mutating action (Hero recruited,
   Party formed, Expedition started, each revealed reward batch and cursor
   update, Expedition Report acknowledged, item equipped) and on app pause

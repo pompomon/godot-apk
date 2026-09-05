@@ -51,7 +51,7 @@ caching; every job performs a clean build.
 ## Adventurer's March design & implementation docs
 
 Planning documentation for the **Adventurer's March** mobile idle fantasy
-simulator lives under [`docs/`](docs/adventurers-march-implementation-plan.md):
+simulator lives under [`docs/`](docs/):
 
 - [Implementation plan](docs/adventurers-march-implementation-plan.md) —
   the comprehensive design and architecture reference.

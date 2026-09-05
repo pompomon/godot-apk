@@ -40,7 +40,7 @@ milestone without needing additional context.
 16. [Balancing](#16-balancing)
 17. [Monetization considerations](#17-monetization-considerations)
 18. [Analytics](#18-analytics)
-19. [Testing strategy](#19-testing-strategy)
+19. [Testing strategy](#19-testing)
 20. [Risks](#20-risks)
 21. [Release preparation](#21-release-preparation)
 22. [First playable vertical slice and build order](#22-first-playable-vertical-slice-and-build-order)
@@ -734,7 +734,7 @@ App boot (main.tscn)
   `CombatSimulator` headlessly (via a test/tool script) across many seeded
   Parties vs. a given encounter to sanity-check win rates before shipping
   new content — this is a natural extension of the unit-test harness in
-  [§19](#19-testing-strategy).
+  [§19](#19-testing).
 - Target win-rate guidance for MVP: a Party at or above a Region's
   recommended Power should win the majority of Combat encounters in that
   Region (~70–85%), while a Party notably under-leveled should lose

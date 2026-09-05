@@ -39,7 +39,8 @@ should contain only Loot and Event-card entries.
 3. Implement `scripts/models/expedition_data.gd`
    (`class_name ExpeditionData`): Region reference, Party snapshot, seed,
    `start_timestamp`, duration, `steps: Array[ExpeditionStep]`,
-   `last_revealed_index`.
+   `last_revealed_index`, `terminal_step_index` (default `-1`), and
+   `effective_end_timestamp`.
 4. Implement `scripts/systems/expedition_generator.gd`: given a Region,
    Party, seed, and duration, produce the full `steps` array with each
    step's outcome **already resolved** (Loot amount rolled, Event
@@ -56,7 +57,9 @@ should contain only Loot and Event-card entries.
    step rewards to `GameState` (gold/items), and marks the Expedition
    finalized when fully revealed (Heroes' status returns from
    `OnExpedition`/`Assigned` appropriately — see Hero status handling
-   below).
+   below). Save the rewards and updated cursor together immediately, before
+   presenting the newly revealed results, so restarting cannot apply a
+   reward batch twice.
 7. Set each Party Hero's status to `OnExpedition` when
    `start_expedition` runs, and back to `Idle` when
    `reveal_progress` finalizes the Expedition (no Wounded/Defeat handling
@@ -74,6 +77,10 @@ should contain only Loot and Event-card entries.
 11. Manually verify offline progress: start an Expedition with a short
     duration, force-quit the app, wait past the duration, reopen, and
     confirm the Expedition Report shows complete, correct results.
+12. Extend `SaveManager`'s JSON-safe serializers/deserializers for
+    `PartyData`, `ExpeditionData`, and every `ExpeditionStep.result`
+    dictionary, including the reveal cursor and terminal/end fields. Add an
+    active-Expedition round-trip test.
 
 ## Expected files / scenes / scripts / data
 
@@ -105,6 +112,8 @@ var start_timestamp: int      # unix time, UTC
 var duration_seconds: int
 var steps: Array             # Array[ExpeditionStep]
 var last_revealed_index: int
+var terminal_step_index: int # -1 when no generated step is terminal
+var effective_end_timestamp: int
 
 # ExpeditionManager (autoload)
 func start_expedition(region: RegionResource, party: PartyData,
@@ -124,6 +133,10 @@ func get_active_expedition() -> ExpeditionData
   reveals exactly the expected number of steps (test by constructing an
   `ExpeditionData` with a known `start_timestamp` in the past and mocking
   "now").
+- Unit test: after a reward batch is revealed, reloading and calling
+  `reveal_progress` again does not grant the batch twice.
+- Unit test: an active Expedition save/load round trip preserves its Party
+  snapshot, JSON-safe step results, reveal cursor, and terminal/end fields.
 - Manual test: full offline-progress check described in Task 11.
 
 ## Acceptance criteria
@@ -133,6 +146,9 @@ func get_active_expedition() -> ExpeditionData
       `OnExpedition`, and fully resolves `steps` immediately.
 - [ ] `reveal_progress` correctly reveals steps based on elapsed real
       time, including across an app restart.
+- [ ] Each reveal batch persists rewards and its cursor atomically before
+      presentation and cannot be granted twice after restart.
+- [ ] Active Expedition state round-trips through the versioned save.
 - [ ] Expedition Report shows a correct, readable journal once the
       Expedition completes.
 - [ ] Determinism unit test passes.

@@ -91,10 +91,11 @@ main.tscn (updated to boot through UIManager)
 - `SaveManager.load_or_create() -> void` and `SaveManager.save() -> void`
   — signatures fixed now, bodies filled in starting Milestone 2 (roster)
   and Milestone 4 (Expedition state).
-- `GameState` exposes typed properties for `roster: Array[HeroData]`,
-  `gold: int`, `inventory: Array[ItemData]`, `unlocked_regions:
-  Array[StringName]` — declared now (can be empty defaults) so later
-  milestones don't need to modify the autoload's public shape.
+- `GameState` exposes `roster: Array`, `gold: int`, `inventory: Array`, and
+  `unlocked_regions: Array[StringName]`. Keep the model arrays untyped in
+  this milestone so the autoload parses before `HeroData` and `ItemData`
+  exist; change them to `Array[HeroData]` in Milestone 2 and
+  `Array[ItemData]` in Milestone 6 when those classes are defined.
 - Each base `Resource` subclass declares its exported fields exactly as
   named in [plan §6](../../adventurers-march-implementation-plan.md#6-heroes-classes-attributes-traits-status-generation)
   and [plan §10](../../adventurers-march-implementation-plan.md#10-events-regions-equipment-progression)

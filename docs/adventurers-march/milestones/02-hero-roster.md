@@ -6,14 +6,15 @@
 ## Objective
 
 Introduce Heroes as real, generated data: classes, attributes, traits, and
-status, plus the screens needed to view the Company's roster.
+status, deterministic recruitment, persistence, and the screens needed to
+view and grow the Company's roster.
 
 ## Scope
 
 **In scope:** `HeroClassResource`/`HeroTraitResource` content for the four
 MVP classes, `HeroData` model, seeded `HeroGenerator`, derived-stat
 calculation, Company Roster and Hero Detail screens, seeding a starting
-roster of 4 Heroes.
+roster of 4 Heroes, gold-priced recruitment offers, and versioned save/load.
 
 **Out of scope:** Party formation, equipment, Expeditions, combat — Heroes
 exist and can be inspected, but cannot yet be sent anywhere.
@@ -52,6 +53,20 @@ exist and can be inspected, but cannot yet be sent anywhere.
 9. On new-game creation (`SaveManager.load_or_create()` when no save
    exists), generate and store 4 Heroes (one per class) into
    `GameState.roster`.
+10. Implement deterministic recruitment offers from the save-level RNG seed.
+    Show the current offers and gold cost on the Company Roster screen; a
+    successful recruit deducts gold, adds the Hero, advances/replaces the
+    offer, and saves immediately. Disable recruitment when funds are
+    insufficient or the roster cap is reached.
+11. Implement `SaveManager.load_or_create()` and `save()` for the state
+    available in this milestone: save version, roster, gold, unlocked
+    Regions, recruitment offers, and RNG seed state. Serialize `HeroData`
+    and Resource references to plain JSON-safe dictionaries/IDs and restore
+    them on load.
+12. Add the version-to-migration dispatch entry point for version 1 and
+    atomic writes: write/close a temporary file successfully, rotate the
+    previous valid primary to `save.json.bak`, then replace the primary.
+    On parse/validation failure, load the backup with a warning.
 
 ## Expected files / scenes / scripts / data
 
@@ -65,11 +80,13 @@ data/traits/cautious.tres
 data/traits/quick_healer.tres
 scripts/models/hero_data.gd
 scripts/systems/hero_generator.gd
+scripts/systems/recruitment_service.gd
 scripts/systems/hero_stats.gd            # derived-stat calculation
 scenes/ui/roster/roster_screen.tscn
 scenes/ui/hero_detail/hero_detail_screen.tscn
 tests/test_hero_generator.gd
 tests/test_hero_stats.gd
+tests/test_save_manager.gd
 ```
 
 ## Interfaces / data contracts
@@ -94,6 +111,13 @@ static func compute_derived_stats(hero: HeroData) -> Dictionary
     #           "Initiative", "CritChance" }
 ```
 
+```gdscript
+# RecruitmentService
+static func generate_offers(seed: int,
+        class_pool: Array[HeroClassResource]) -> Array[HeroData]
+static func recruit(hero: HeroData) -> bool
+```
+
 `HeroStatus` should be declared once (e.g., in `hero_data.gd` or a shared
 enums script) and reused by Party formation (Milestone 3) and Expeditions
 (Milestone 4) — do not redefine status values in multiple places.
@@ -107,6 +131,11 @@ enums script) and reused by Party formation (Milestone 3) and Expeditions
   one hand-computed example Hero per class.
 - Manual test: new game shows exactly 4 Heroes (one per class) in Company
   Roster; each opens a correct Hero Detail screen.
+- Unit test: a save/load round trip preserves the roster, gold, unlocked
+  Regions, recruitment offers, and RNG seed state exactly.
+- Unit test: an invalid primary save falls back to the last valid `.bak`.
+- Unit test: recruiting checks gold/cap, persists the mutation, and produces
+  deterministic replacement offers from the stored seed.
 
 ## Acceptance criteria
 
@@ -119,6 +148,10 @@ enums script) and reused by Party formation (Milestone 3) and Expeditions
 - [ ] Hero Detail screen shows correct attributes/traits/status/XP for the
       selected Hero.
 - [ ] New game seeds exactly 4 Heroes, one per class.
+- [ ] The player can recruit a deterministic offer when they have enough
+      gold and roster capacity, and the purchase survives reload.
+- [ ] Versioned save/load round-trips all Milestone 2 state, uses atomic
+      backup rotation, and recovers from an invalid primary via `.bak`.
 
 ## Risks
 

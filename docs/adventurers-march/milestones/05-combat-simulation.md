@@ -44,9 +44,9 @@ needed when equipment starts modifying them), additional Regions
    sufficient; AI policy: use skill if off cooldown, else basic attack.
 4. Implement `CombatSimulator` (fill in the `autoload/CombatSimulator.gd`
    stub from Milestone 1) as **pure/stateless**: given a Party snapshot,
-   an `EnemyGroupResource`, and a seed, return a full result: outcome
-   (`VICTORY`/`DEFEAT`/`RETREAT`), round-by-round log, and per-Hero final
-   HP/status.
+   an `EnemyGroupResource`, and a seed, return a JSON-safe result dictionary:
+   outcome (`VICTORY`/`DEFEAT`/`RETREAT`), round-by-round log, and per-Hero
+   final HP/status keyed by stable Hero ID.
    - Turn order: sort by Initiative each round, seeded RNG tiebreak.
    - Targeting: front-row-first for melee/short-range; any slot for
      ranged/magic; lowest-HP%-among-valid-targets tiebreak.
@@ -56,6 +56,10 @@ needed when equipment starts modifying them), additional Regions
    Hollow's encounter pool, calling `CombatSimulator` at step-generation
    time (still resolve-at-start, per Milestone 4's architecture) and
    storing the full result in the step's `result` dictionary.
+   Resolve steps in order; on `DEFEAT`, or on `RETREAT` when Green Hollow's
+   rules mark it terminal, set `terminal_step_index`, truncate later steps,
+   and set `effective_end_timestamp` to the terminal step's scheduled reveal
+   time. Reveal/finalization must never process steps after that point.
 6. Apply Combat outcomes to Hero status at Expedition finalization:
    `VICTORY`/`RETREAT` → Heroes return to `Idle`; `DEFEAT` → surviving
    Heroes become `Wounded` (recovery timer can be a fixed placeholder
@@ -85,34 +89,25 @@ tests/test_combat_simulator.gd
 ```gdscript
 # CombatSimulator (autoload, stateless functions)
 func resolve_combat(party: PartyData, enemy_group: EnemyGroupResource,
-        seed: int, balancing: BalancingConfig) -> CombatResult
-
-# CombatResult (RefCounted)
-enum Outcome { VICTORY, DEFEAT, RETREAT }
-var outcome: Outcome
-var rounds: Array            # Array[CombatRoundLog]
-var final_hero_states: Dictionary   # { HeroData: { "hp": int, "status": HeroStatus } }
-
-# CombatRoundLog (RefCounted)
-var round_number: int
-var actions: Array           # Array[CombatActionLog]
-
-# CombatActionLog (RefCounted)
-var actor_name: String
-var action_name: String      # e.g. "Basic Attack", "Firebolt"
-var target_name: String
-var damage_or_heal: int
-var was_crit: bool
+        seed: int, balancing: BalancingConfig) -> Dictionary
+# {
+#   "outcome": "victory" | "defeat" | "retreat",
+#   "rounds": [{ "round_number": int, "actions": [{
+#       "actor_name": String, "action_name": String, "target_name": String,
+#       "damage_or_heal": int, "was_crit": bool
+#   }]}],
+#   "final_hero_states": { hero_id: { "hp": int, "status": int } }
+# }
 ```
 
-`ExpeditionStep.result` for a `COMBAT` kind stores a `CombatResult`
-directly (already resolved at Expedition-start time, consistent with
-Milestone 4's architecture).
+`ExpeditionStep.result` remains a `Dictionary` for every kind. A `COMBAT`
+result uses the nested plain-data shape above, with no `RefCounted` objects
+or object keys, so the active Expedition can be written directly to JSON.
 
 ## Testing requirements
 
 - Unit test: `resolve_combat` with a fixed seed, Party, and enemy group
-  produces an **exact** expected `CombatResult` (outcome + full log),
+  produces an **exact** expected result dictionary (outcome + full log),
   asserting the determinism guarantee from
   [plan §9](../../adventurers-march-implementation-plan.md#9-auto-combat-simulation-design).
 - Unit test: turn order respects Initiative with seeded tiebreaks
@@ -121,6 +116,8 @@ Milestone 4's architecture).
   attacks never target back row while front row has a living member).
 - Unit test: `MaxRounds` bound is respected (simulation always
   terminates).
+- Unit test: Defeat and Region-terminal Retreat truncate later steps and set
+  the terminal index/end timestamp; no later rewards are revealed.
 - Manual test: complete an Expedition in Green Hollow that includes a
   Combat step and verify the Expedition Report shows a correct, readable
   log matching the actual resolved outcome.
@@ -135,6 +132,8 @@ Milestone 4's architecture).
       one enemy group.
 - [ ] Combat outcomes correctly affect Hero status
       (Idle vs. Wounded) at Expedition finalization.
+- [ ] Terminal combat outcomes end reveal/finalization at the Combat step
+      and cannot grant rewards from later generated steps.
 - [ ] Expedition Report renders a readable combat log.
 
 ## Risks

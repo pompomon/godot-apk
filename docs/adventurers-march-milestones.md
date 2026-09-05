@@ -82,11 +82,16 @@ Detail: [01-technical-foundation.md](adventurers-march/milestones/01-technical-f
 - [ ] Build Hero Detail screen (attributes, traits, status, XP).
 - [ ] Seed a starting roster of 4 Heroes (one per class) on new-game
       creation.
+- [ ] Add deterministic gold-priced recruitment offers to the Company
+      Roster, including roster-cap checks and immediate persistence.
+- [ ] Implement versioned JSON save/load, atomic `.bak` rotation, and
+      round-trip/corruption-recovery tests for Milestone 2 state.
 
 **Definition of done:** a new game starts with 4 generated Heroes visible
 in the Company Roster screen; tapping a Hero opens Hero Detail showing
-correct attributes/traits/status; `HeroGenerator` has unit tests asserting
-deterministic output for a fixed seed.
+correct attributes/traits/status; the player can recruit an offered Hero and
+reload without losing it; `HeroGenerator` and `SaveManager` have deterministic
+generation and round-trip/recovery tests.
 
 Detail: [02-hero-roster.md](adventurers-march/milestones/02-hero-roster.md)
 
@@ -145,6 +150,8 @@ Detail: [04-first-expedition.md](adventurers-march/milestones/04-first-expeditio
 - [ ] Author 1–2 enemy-group data definitions for Green Hollow.
 - [ ] Wire Combat encounter steps into `ExpeditionManager`'s step
       generation/resolution.
+- [ ] Truncate generated steps at Defeat or a Region-terminal Retreat and
+      persist the terminal step/end timestamp.
 - [ ] Extend Expedition Report to render a readable combat log.
 - [ ] Add one active skill per class (Guard / Firebolt / Mend / basic
       Ranger attack variant).

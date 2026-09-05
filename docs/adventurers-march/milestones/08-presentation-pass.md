@@ -82,8 +82,8 @@ func set_muted(muted: bool) -> void
 ```
 
 No gameplay-facing data contracts change in this milestone — existing
-`HeroData`, `PartyData`, `ExpeditionData`, `CombatResult`, etc. interfaces
-from prior milestones remain stable.
+`HeroData`, `PartyData`, `ExpeditionData`, combat-result dictionary, etc.
+interfaces from prior milestones remain stable.
 
 ## Testing requirements
 

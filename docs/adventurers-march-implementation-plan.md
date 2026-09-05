@@ -119,6 +119,8 @@ and `README.md`). Adventurer's March continues on this foundation:
   four classes covering tank/physical-dps/magic-dps/support archetypes).
 - Hero generation with randomized name, class, attributes within class
   ranges, and 0–1 traits.
+- Deterministic recruitment offers that can be purchased with gold and are
+  persisted with the Company roster.
 - Party formation for up to 4 Heroes with a simple formation grid
   (front/back row) affecting who is targeted first.
 - 2–3 starter Regions, each with a linear sequence of travel steps and a
@@ -368,7 +370,9 @@ Expedition
       each Step:
         ├─ Kind (Travel | Encounter)
         ├─ EncounterPool reference (if Kind == Encounter)
-        └─ ResolvedResult (filled in once resolution reaches this step)
+        └─ ResolvedResult (computed and stored at Expedition start)
+ ├─ TerminalStepIndex (-1 unless Defeat or a Region-terminal Retreat occurs)
+ └─ EffectiveEndTimestamp (scheduled reveal time of the final stored step)
 ```
 
 ### Encounter types (MVP)
@@ -377,7 +381,7 @@ Expedition
   ([§9](#9-auto-combat-simulation-design)); outcomes: Victory, Retreat
   (Party takes damage but survives, Expedition may end early depending on
   Region rules), or Defeat (Party takes heavy damage, all surviving Heroes
-  become Wounded, Expedition ends immediately).
+  become Wounded, Expedition ends at that Combat step).
 - **Loot** — a straightforward reward step (gold/items), no risk.
 - **Event card** — a narrative choice or automatic flavor text with a
   small, table-driven outcome (e.g., "A merchant offers a trade" →
@@ -404,13 +408,17 @@ reproducible for testing and support/debugging. The approach:
    This means the entire Expedition's result is known immediately after
    confirming — what changes over real time is only how much of the
    already-computed travel journal has been "revealed" to the player.
-3. The Home/Status screen and Expedition Report simply compute
+3. Resolve steps in order. On Defeat, or on Retreat when the Region marks
+   Retreat as terminal, store that step as `TerminalStepIndex`, truncate all
+   later generated steps, and set `EffectiveEndTimestamp` to that step's
+   scheduled reveal time. No later rewards may exist or be revealed.
+4. The Home/Status screen and Expedition Report simply compute
    `elapsed = now - StartTimestamp`, map that to a step index using each
    step's fixed duration slice, and reveal the journal up to that index.
    This makes idle/offline progress trivial: **resolution never depends
    on wall-clock ticking while the app is closed** (see
    [§11](#11-idle--offline-progress)).
-4. This "resolve-at-start, reveal-over-time" design is the single most
+5. This "resolve-at-start, reveal-over-time" design is the single most
    important architectural decision in the plan — it eliminates an entire
    class of offline-catch-up bugs and background-processing/battery
    concerns, at the cost of not supporting player interrupts mid-Expedition
@@ -551,11 +559,14 @@ on_app_resume():
         revealed_step_index = min(len(expedition.Steps) - 1,
                                    floor(elapsed / expedition.StepDuration))
         if revealed_step_index > expedition.LastRevealedIndex:
-            # Show a consolidated "while you were away" summary covering
-            # every newly revealed step, then apply rewards/status changes.
-            apply_and_display(expedition.Steps[
-                expedition.LastRevealedIndex+1 .. revealed_step_index])
+            # Apply rewards/status changes and advance the cursor as one
+            # mutation, persist it, then present the consolidated summary.
+            newly_revealed = expedition.Steps[
+                expedition.LastRevealedIndex+1 .. revealed_step_index]
+            apply(newly_revealed)
             expedition.LastRevealedIndex = revealed_step_index
+            SaveManager.save()
+            display(newly_revealed)
         if revealed_step_index == len(expedition.Steps) - 1:
             finalize_expedition(expedition)  # move to Expedition Report
 ```
@@ -579,13 +590,15 @@ platform-specific background-execution APIs are required for MVP.
   players' progress. MVP ships with `save_version = 1` and an explicit
   (even if initially empty) migration entry point, so the pattern exists
   before it's needed.
-- **Contents:** Company roster (all Heroes + stats + status), inventory,
-  gold, unlocked Regions, active Expedition (including its pre-resolved
-  `Steps[]` and `LastRevealedIndex`), and RNG seed state for future
-  generation calls.
-- **Cadence:** autosave after any state-mutating action (Party formed,
-  Expedition started, Expedition Report acknowledged, item equipped) and on
-  app pause (`NOTIFICATION_APPLICATION_FOCUS_OUT` / `NOTIFICATION_WM_CLOSE_REQUEST`).
+- **Contents:** Company roster (all Heroes + stats + status), current
+  recruitment offers and their refresh seed, inventory, gold, unlocked
+  Regions, active Expedition (including its pre-resolved, JSON-safe
+  `Steps[]` dictionaries, `LastRevealedIndex`, `TerminalStepIndex`, and
+  `EffectiveEndTimestamp`), and RNG seed state for future generation calls.
+- **Cadence:** autosave after any state-mutating action (Hero recruited,
+  Party formed, Expedition started, each revealed reward batch and cursor
+  update, Expedition Report acknowledged, item equipped) and on app pause
+  (`NOTIFICATION_APPLICATION_FOCUS_OUT` / `NOTIFICATION_WM_CLOSE_REQUEST`).
   Avoid saving on a fixed timer only — mobile OSes may terminate a
   backgrounded app without further notice, so save-on-mutation is required,
   not optional.
@@ -825,8 +838,8 @@ classes, or polish:
 
 - 1 Region ("Green Hollow"), 1 Expedition duration option, ~5 travel steps.
 - 4 Hero classes, a starting roster of 4 pre-generated Heroes (one per
-  class) so Party formation can be exercised immediately without needing
-  recruitment UI yet.
+  class), plus deterministic gold-priced recruitment offers in the Company
+  Roster.
 - 1 Party of up to 4 Heroes, both formation rows usable.
 - Deterministic combat against 1–2 simple enemy-group definitions.
 - Full save/load of roster + one active/completed Expedition.
@@ -841,7 +854,7 @@ work last):
 1. **Technical foundation** — project structure, autoloads, base data
    Resource classes, empty screen scenes wired through `UIManager`.
 2. **Hero roster** — `HeroClassResource`/`HeroTraitResource` data, Hero
-   generation, Company Roster + Hero Detail screens.
+   generation/recruitment, save/load, Company Roster + Hero Detail screens.
 3. **Party formation** — formation UI, Party Power evaluation.
 4. **First expedition** — `RegionResource` for Green Hollow,
    `ExpeditionManager` start/resolve/reveal pipeline (non-combat steps

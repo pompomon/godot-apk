@@ -117,6 +117,7 @@ main.tscn (updated to boot through UIManager)
 # HeroClassResource
 @export var class_id: StringName
 @export var display_name: String
+@export_enum("FrontRowFirst", "AnySlot") var basic_attack_target_rule: String
 @export var base_attribute_ranges: Dictionary
 # { "MIG": Vector2i(min, max), "FOC": Vector2i(...), "GRT": Vector2i(...),
 #   "GUI": Vector2i(...), "FTH": Vector2i(...) }
@@ -146,7 +147,7 @@ main.tscn (updated to boot through UIManager)
 # EncounterEntryResource
 @export_enum("Loot", "Event", "Combat") var kind: String
 @export var content_id: StringName
-# Resolves through the kind-specific item/event/enemy-group registry.
+# Resolves through the kind-specific loot/event/enemy-group registry.
 @export_range(0.001, 1000000.0) var weight: float
 
 # LootResource; EncounterEntryResource.content_id resolves through the Loot registry
@@ -173,6 +174,7 @@ main.tscn (updated to boot through UIManager)
 @export var recommended_party_power: int
 @export var duration_options_seconds: Array[int]
 @export var travel_step_count: int
+# Positive; each Travel step is followed by exactly one encounter step.
 @export var encounter_pool: Array[EncounterEntryResource]
 @export var unlock_condition: Dictionary
 # { "kind": "always" | "gold" | "region_cleared",

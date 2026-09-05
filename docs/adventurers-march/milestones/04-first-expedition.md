@@ -48,7 +48,11 @@ should contain only Loot and Event-card entries.
 4. Implement `scripts/systems/expedition_generator.gd`: given a Region,
    Party, seed, and duration, produce the full `steps` array with each
    step's outcome **already resolved** (Loot gold amount rolled, Event
-   outcome rolled). Select an encounter by
+   outcome rolled). First construct exactly `travel_step_count` pairs of
+   `[TRAVEL, encounter]`, with no trigger roll or extra steps; thus
+   `candidate_step_count = 2 * travel_step_count`, independent of duration.
+   Reject nonpositive travel counts or pools with no positive-weight entries.
+   In pair order, select one encounter per pair, with replacement, by
    `EncounterEntryResource.weight *
    BalancingConfig.encounter_kind_weight_multipliers[kind]`, resolve
    `content_id` through the registry for that entry's kind, and select an
@@ -61,6 +65,7 @@ should contain only Loot and Event-card entries.
    outcome that could later truncate it, compute
    `step_duration_seconds = duration_seconds / candidate_step_count`.
    Persist this positive integer and never recompute it from `steps.size()`.
+   Only then resolve outcomes in step order using the same seeded RNG stream.
    Initialize `effective_end_timestamp` to
    `start_timestamp + duration_seconds`; Milestone 5 may shorten it using
    the stored step duration.
@@ -160,6 +165,11 @@ func get_active_expedition() -> ExpeditionData
 - Unit test: generation computes `step_duration_seconds` from the complete
   candidate count and rejects a zero count or a duration that does not divide
   into positive whole-second slices.
+- Unit test: `travel_step_count = 2` and a Loot-only pool produce exactly
+  `[TRAVEL, LOOT, TRAVEL, LOOT]`; a 40-second duration yields 10-second
+  slices. A fixed-seed mixed pool produces the exact expected encounter
+  sequence and outcomes, selecting with replacement before resolving outcomes.
+  Reject negative travel counts and pools with no positive-weight entries.
 - Unit test: after a reward batch is revealed, reloading and calling
   `reveal_progress` again does not grant the batch twice.
 - Unit test: an active Expedition save/load round trip preserves its Party

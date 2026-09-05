@@ -32,10 +32,15 @@ needed when equipment starts modifying them), additional Regions
 1. Implement `scripts/models/enemy_group_resource.gd`
    (`class_name EnemyGroupResource`): list of enemy stat blocks
    using the same combat-relevant derived-stat keys as Heroes and a unique,
-   stable authored combatant ID for each enemy. Enemy authoring may use a
+   stable authored combatant ID for each enemy, an authored formation row
+   (`Front`/`Back`), and `basic_attack_target_rule` (`FrontRowFirst`/`AnySlot`,
+   matching `HeroClassResource`). Enemy authoring may use a
    simplified "class"-like definition, but it must produce derived stats
    before simulation; enemies do not need the full Hero trait/generation
-   system.
+   system. Author the same target-rule field on all four Hero class resources:
+   Knight uses `FrontRowFirst`; Ranger, Wizard, and Cleric use `AnySlot`.
+   Copy the class field into each Hero's Party combat snapshot; enemy
+   snapshots copy their stat block's field. Never infer it from combatant IDs.
 2. Author 1–2 `.tres` enemy groups under `data/encounters/` for Green
    Hollow (e.g., "Bandit Skirmishers", "Forest Wolves").
 3. Implement one active skill per MVP class as simple data + resolution
@@ -53,9 +58,13 @@ needed when equipment starts modifying them), additional Regions
    (`VICTORY`/`DEFEAT`/`RETREAT`), round-by-round log, and final HP/status for
    every Party Hero keyed by the stable ID introduced in Milestone 2.
    - Turn order: sort by Initiative each round, seeded RNG tiebreak.
-   - Targeting: front-row-first for melee/short-range; any slot for
-     ranged/magic; lowest HP percentage among valid targets, then ascending
-     stable combatant ID (Hero ID or authored enemy ID) when percentages tie.
+   - Targeting: basic attacks read `basic_attack_target_rule` from the acting
+     combatant's snapshot. `FrontRowFirst` (melee/short-range) restricts targets
+     to living front-row opponents, falling back to living back-row opponents
+     only if none remain in front; `AnySlot` (ranged/magic) allows living
+     opponents in either row. Skills use their own authored target rule.
+     Choose lowest HP percentage among valid targets, then ascending stable
+     combatant ID (Hero ID or authored enemy ID) when percentages tie.
    - Hit/crit/damage/heal formulas use only derived stats and are exactly as
      specified in plan §9; in particular, defender `Evasion` reduces hit
      chance.
@@ -142,6 +151,11 @@ map.
 - Unit test: front-row targeting rule is enforced (melee/short-range
   attacks never target back row while front row has a living member), and
   equal-HP-percentage candidates select the ascending stable combatant ID.
+- Unit test: for both Hero and enemy basic attacks, changing only the authored
+  rule from `FrontRowFirst` to `AnySlot` allows a lower-HP-percentage back-row
+  opponent to be selected despite a living front row. `FrontRowFirst` falls
+  back to the back row once all front-row opponents are at 0 HP. Snapshot
+  creation preserves the authored rule regardless of class/enemy ID.
 - Unit test: `MaxRounds` bound is respected (simulation always
   terminates).
 - Unit test: Defeat and Region-terminal Retreat truncate later steps without

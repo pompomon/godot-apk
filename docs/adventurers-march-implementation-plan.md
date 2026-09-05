@@ -277,7 +277,11 @@ weights, so these equations have no implicit class-specific coefficients.
 | Cleric | Support / healer | Faith | Heals and cleanses debuffs, low damage |
 
 Each class defines base attribute ranges and per-level growth curves in a
-`HeroClassResource` (see [§13](#13-godot-project-architecture)). Post-MVP,
+`HeroClassResource` (see [§13](#13-godot-project-architecture)), plus an authored
+`basic_attack_target_rule`: `FrontRowFirst` for Knight, `AnySlot` for Ranger,
+Wizard, and Cleric. Enemy stat blocks author the same field and their formation
+row (`Front`/`Back`); both sides copy the rule into combat snapshots rather than
+inferring it from class/enemy IDs. Post-MVP,
 additional classes (Rogue, Beastmaster, etc., as brainstormed in the
 project's originating design conversation) can be added as new resources
 without engine code changes.
@@ -380,9 +384,10 @@ the first deterministic offer is immediately purchasable.
 ## 8. Expeditions: travel, encounters, outcomes, deterministic resolution
 
 An **Expedition** sends a Party into a **Region** for a chosen duration.
-Internally, an Expedition is modeled as an ordered list of **travel
-steps**; each step takes a fixed slice of the Expedition's total duration
-and has a chance to trigger an **encounter**.
+Internally, an Expedition is modeled as an ordered list of **travel** and
+**encounter** steps. For MVP, each of the Region's `travel_step_count` Travel
+steps is followed by exactly one encounter step, with no trigger roll or extra
+steps. Each step takes a fixed slice of the Expedition's total duration.
 
 ### Structure
 
@@ -426,9 +431,14 @@ Determinism is required so that (a) offline/idle progress can be computed
 by fast-forwarding without replaying real time, and (b) results are
 reproducible for testing and support/debugging. The approach:
 
-1. At Expedition **start**, generate the full sequence of steps and roll
-   *which* encounter occurs at each Encounter step, using a
-   `RandomNumberGenerator` seeded from a per-Expedition seed. Store the
+1. At Expedition **start**, construct `travel_step_count` ordered
+   `[Travel, encounter]` pairs, giving `2 * travel_step_count` candidate steps
+   regardless of duration. Reject nonpositive travel counts and pools with no
+   positive-weight entries. In pair order, roll *which* encounter occurs at
+   each encounter step, sampling with replacement from the weighted Region
+   pool using a `RandomNumberGenerator` seeded from a per-Expedition seed.
+   Complete all encounter selections before resolving outcomes in step order
+   using that same RNG stream. Store the
    seed and the generated step list in the save (not just the seed) so
    that changing the encounter-pool data later does not retroactively
    change an in-flight Expedition. Immediately after generating this full
@@ -495,8 +505,11 @@ the expedition-scoped state map. The formulas below are normative and never
 read raw Hero attributes directly:
 
 1. **Choose target** using the targeting rule from
-   [§7](#7-party-formation-and-evaluation) (front row first for
-   melee/short-range; any valid slot for ranged/magic), breaking ties by
+   [§7](#7-party-formation-and-evaluation): basic attacks read the snapshot's
+   `basic_attack_target_rule` (`FrontRowFirst` restricts targets to living
+   front-row opponents until none remain, then living back-row opponents;
+   `AnySlot` allows living opponents in either row). Skills use their own
+   authored target rule. Break ties by
    lowest current HP% among valid targets (finish off weak targets — a
    simple, legible AI policy for MVP), then by ascending stable combatant ID
    (Hero ID or authored enemy ID) when HP percentages tie.

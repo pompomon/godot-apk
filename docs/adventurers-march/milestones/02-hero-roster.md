@@ -68,6 +68,8 @@ exist and can be inspected, but cannot yet be sent anywhere.
     Regions, recruitment offers, the save-scoped `next_hero_id` counter, and
     RNG seed state. Serialize each immutable `hero_id`, `HeroData`, and
     Resource reference to plain JSON-safe values and restore them on load.
+    Constrain every seed/RNG-state value to `[0, 2^53 - 1]` so JSON number
+    serialization preserves it exactly.
 12. Add the version-to-migration dispatch entry point for version 1 and
     implement the crash-safe replacement sequence from
     [plan §12](../../adventurers-march-implementation-plan.md#12-save-system):
@@ -160,7 +162,7 @@ offer keeps that ID when recruited. Callers reserve the `hero_ids` passed to
   Roster; each opens a correct Hero Detail screen.
 - Unit test: a save/load round trip preserves the roster (including Hero
   IDs), gold, unlocked Regions, recruitment offers, `next_hero_id`, and RNG
-  seed state exactly.
+  seed state exactly, including the maximum seed `2^53 - 1`.
 - Unit test: a missing or invalid primary save falls back to the last valid
   `.bak` and restores the primary without changing that backup; an injected
   interruption immediately before primary replacement leaves the old primary

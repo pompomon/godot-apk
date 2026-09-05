@@ -49,12 +49,16 @@ Regions/content variety (Milestone 7).
 6. Build Equipment screen: per-Hero weapon/armor slot assignment from
    available inventory, showing before/after stat deltas prior to
    confirming.
-7. Implement the full Wounded/Resting recovery flow: a `Wounded` Hero
-   enters `Resting` with a recovery-duration timer (data-tunable, e.g., via
-   `BalancingConfig`), and `ExpeditionManager.reveal_progress` (or a
+7. Implement the full Wounded/Resting recovery flow: when Expedition
+   finalization applies a `Wounded` result to the roster, immediately
+   transition that Hero to `Resting`, assign
+   `resting_until_timestamp = now_utc + recovery_duration` (data-tunable,
+   e.g., via `BalancingConfig`), and persist the status and timestamp in that
+   same finalization mutation. `ExpeditionManager.reveal_progress` (or a
    similarly-invoked periodic check) transitions `Resting` Heroes back to
-   `Idle` once their timer elapses — reusing the same elapsed-time-based
-   pattern as Expedition reveal (no new polling architecture needed).
+   `Idle` once their timer elapses and saves that transition — reusing the
+   same elapsed-time-based pattern as Expedition reveal (no new polling
+   architecture needed).
 8. Extend Milestone 4's Loot result and reveal pipeline to roll/store item
    resource IDs from the new item pool and add revealed items to
    `GameState.inventory`. Keep its existing, tested gold application in
@@ -80,12 +84,12 @@ tests/test_recovery_flow.gd
 ## Interfaces / data contracts
 
 ```gdscript
-# ItemResource (Resource)
-enum ItemSlot { WEAPON, ARMOR }
-var item_name: String
-var slot: ItemSlot
-var rarity: StringName
-var stat_modifiers: Dictionary   # e.g. { "Attack": 5, "Defense": 2 }
+# ItemResource (Resource; extends the exact Milestone 1 schema)
+@export var item_id: StringName
+@export var display_name: String
+@export_enum("Weapon", "Armor") var slot: String
+@export var rarity: StringName
+@export var stat_modifiers: Dictionary   # e.g. { "Attack": 5, "Defense": 2 }
 
 # HeroData additions
 var equipped_weapon: ItemResource   # or null
@@ -103,9 +107,10 @@ static func grant_xp(hero: HeroData, amount: int) -> void
   changes derived stats per the class's growth curve.
 - Unit test: equipping/unequipping an item changes
   `compute_derived_stats` output by exactly the item's `stat_modifiers`.
-- Unit test: a `Wounded`→`Resting` Hero transitions back to `Idle` only
-  after `resting_until_timestamp` has elapsed (test with a simulated
-  "now" before and after the timestamp).
+- Unit test: finalization converts a `Wounded` result to `Resting`, assigns
+  and persists `resting_until_timestamp` in the same mutation, and the Hero
+  transitions back to `Idle` only after that timestamp has elapsed (test with
+  a simulated "now" before and after the timestamp).
 - Unit test: an item reward and reveal cursor persist in one save mutation;
   reloading cannot grant that item or its accompanying gold twice.
 - Manual test: complete an Expedition, verify XP/level/gold/items are

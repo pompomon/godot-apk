@@ -40,7 +40,8 @@ should contain only Loot and Event-card entries.
    (`class_name ExpeditionData`): Region reference, Party snapshot, seed,
    `start_timestamp`, duration, immutable `step_duration_seconds`,
    `steps: Array[ExpeditionStep]`, `last_revealed_index`,
-   `terminal_step_index` (default `-1`), and `effective_end_timestamp`.
+   `terminal_step_index` (default `-1`), `effective_end_timestamp`,
+   `last_observed_utc`, and `credited_elapsed_seconds`.
 4. Implement `scripts/systems/expedition_generator.gd`: given a Region,
    Party, seed, and duration, produce the full `steps` array with each
    step's outcome **already resolved** (Loot gold amount rolled, Event
@@ -87,8 +88,9 @@ should contain only Loot and Event-card entries.
 12. Extend `SaveManager`'s JSON-safe serializers/deserializers for
     `PartyData`, `ExpeditionData`, and every `ExpeditionStep.result`
     dictionary, including immutable `step_duration_seconds`, the reveal
-    cursor, and terminal/end fields. Add an active-Expedition round-trip
-    test.
+    cursor, terminal/end fields, and clock-accounting fields. Add an
+    active-Expedition round-trip test, including the maximum allowed seed
+    `2^53 - 1`.
 
 ## Expected files / scenes / scripts / data
 
@@ -123,6 +125,8 @@ var steps: Array             # Array[ExpeditionStep]
 var last_revealed_index: int
 var terminal_step_index: int # -1 when no generated step is terminal
 var effective_end_timestamp: int
+var last_observed_utc: int
+var credited_elapsed_seconds: int
 
 # ExpeditionManager (autoload)
 func start_expedition(region: RegionResource, party: PartyData,
@@ -149,7 +153,12 @@ func get_active_expedition() -> ExpeditionData
   `reveal_progress` again does not grant the batch twice.
 - Unit test: an active Expedition save/load round trip preserves its Party
   snapshot, JSON-safe step results, immutable `step_duration_seconds`, reveal
-  cursor, and terminal/end fields.
+  cursor, terminal/end fields, clock-accounting fields, and maximum seed
+  `2^53 - 1`.
+- Unit test: a negative observed UTC delta credits zero and a forward delta
+  above `BalancingConfig.max_offline_delta_seconds` credits only that maximum;
+  both update `last_observed_utc`, persist credited elapsed time, and never
+  reveal or grant the same step twice.
 - Manual test: full offline-progress check described in Task 11.
 
 ## Acceptance criteria
@@ -159,7 +168,8 @@ func get_active_expedition() -> ExpeditionData
       `OnExpedition`, fully resolves `steps` immediately, and persists the
       pre-truncation `step_duration_seconds`.
 - [ ] `reveal_progress` correctly reveals steps based on elapsed real
-      time, including across an app restart.
+      time, including across an app restart, with negative and excessive
+      clock deltas handled by the §11 policy.
 - [ ] Each reveal batch persists gold rewards and its cursor atomically before
       presentation and cannot be granted twice after restart.
 - [ ] Active Expedition state round-trips through the versioned save.
@@ -169,10 +179,11 @@ func get_active_expedition() -> ExpeditionData
 
 ## Risks
 
-- **Clock/timezone edge cases:** use UTC unix timestamps consistently;
-  never use local device time for elapsed-time math. Mitigation: covered
-  explicitly by [plan §11](../../adventurers-march-implementation-plan.md#11-idle--offline-progress)
-  and this milestone's manual test.
+- **Clock/timezone edge cases:** the device UTC clock is not trusted across
+  restarts. Mitigation: persist credited elapsed time and clamp each observed
+  delta as specified by
+  [plan §11](../../adventurers-march-implementation-plan.md#11-idle--offline-progress)
+  and this milestone's tests.
 - **Forgetting to leave `COMBAT` as a defined-but-unused step kind** would
   force a data-model migration in Milestone 5. Mitigation: Task 4
   explicitly calls this out.

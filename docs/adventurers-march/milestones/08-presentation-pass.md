@@ -45,8 +45,10 @@ scoping PRs and code review).
    scale across all screens (Home, Roster, Hero Detail, Equipment, Party
    Formation, Region Select, Expedition Report, Settings).
 6. Perform a touch-target audit: verify every interactive control meets
-   the ≥40x40dp guidance from
-   [plan §2](../../adventurers-march-implementation-plan.md#2-target-platform-and-mobile-ux-constraints).
+   the ≥48x48dp guidance from
+   [plan §2](../../adventurers-march-implementation-plan.md#2-target-platform-and-mobile-ux-constraints)
+   by measuring effective touch areas on exported Android builds at target
+   device densities, not by converting project viewport pixels.
 7. Perform a color-contrast/accessibility audit: verify status
    effects/class colors are paired with icon or text (not color alone),
    per plan §2 and

@@ -43,8 +43,8 @@ state (`project.godot`, `main.tscn`, Android export preset, CI workflow).
    Each should exist as a real script with class-level doc comments
    describing its responsibility (per plan §13) even if method bodies are
    placeholders (e.g., `push_warning("not yet implemented")`).
-3. Define base `Resource` subclasses (empty/minimal exported fields for
-   now, to be filled out starting Milestone 2):
+3. Define base `Resource` subclasses with the typed exported fields in the
+   contracts below:
    - `scripts/models/hero_class_resource.gd` (`class_name HeroClassResource`)
    - `scripts/models/hero_trait_resource.gd` (`class_name HeroTraitResource`)
    - `scripts/models/item_resource.gd` (`class_name ItemResource`)
@@ -58,10 +58,13 @@ state (`project.godot`, `main.tscn`, Android export preset, CI workflow).
    under `tests/test_smoke.gd`.
 6. Update `.gitignore` if the chosen test addon generates local-only
    artifacts.
-7. Confirm the existing Android debug export
+7. Set `display/window/handheld/orientation=1` (`Portrait`) in
+   `project.godot`, then confirm the existing Android debug export
    (`.github/workflows/android-apk.yml`) still succeeds with the
    restructured project (no gameplay change expected, but autoload
-   registration and folder moves can break exports if misconfigured).
+   registration and folder moves can break exports if misconfigured). Install
+   that exported APK on a device/emulator with auto-rotate enabled and verify
+   rotating the device does not rotate the game into landscape.
 
 ## Expected files / scenes / scripts / data
 
@@ -96,10 +99,53 @@ main.tscn (updated to boot through UIManager)
   this milestone so the autoload parses before `HeroData` and `ItemData`
   exist; change them to `Array[HeroData]` in Milestone 2 and
   `Array[ItemData]` in Milestone 6 when those classes are defined.
-- Each base `Resource` subclass declares its exported fields exactly as
-  named in [plan §6](../../adventurers-march-implementation-plan.md#6-heroes-classes-attributes-traits-status-generation)
-  and [plan §10](../../adventurers-march-implementation-plan.md#10-events-regions-equipment-progression)
-  so Milestone 2+ can author `.tres` data against a stable schema.
+- Base resources use these exact exported property identifiers and types;
+  nested dictionaries have the stated shapes:
+
+```gdscript
+# HeroClassResource
+@export var class_id: StringName
+@export var display_name: String
+@export var base_attribute_ranges: Dictionary
+# { "MIG": Vector2i(min, max), "FOC": Vector2i(...), "GRT": Vector2i(...),
+#   "GUI": Vector2i(...), "FTH": Vector2i(...) }
+@export var per_level_growth: Dictionary
+# { "MIG": float, "FOC": float, "GRT": float, "GUI": float, "FTH": float }
+
+# HeroTraitResource
+@export var trait_id: StringName
+@export var display_name: String
+@export_multiline var description: String
+@export var stat_modifiers: Dictionary       # { derived_stat_name: float }
+@export var flags: Array[StringName]
+
+# ItemResource
+@export var item_id: StringName
+@export var display_name: String
+@export_enum("Weapon", "Armor") var slot: String
+@export var rarity: StringName
+@export var stat_modifiers: Dictionary       # { derived_stat_name: float }
+
+# RegionResource
+@export var region_id: StringName
+@export var display_name: String
+@export var recommended_party_power: int
+@export var duration_options_seconds: Array[int]
+@export var travel_step_count: int
+@export var encounter_pool: Dictionary       # { resource_id: positive_weight }
+@export var unlock_condition: Dictionary
+# { "kind": "always" | "gold" | "region_cleared",
+#   "value": int, "region_id": StringName }
+@export var retreat_ends_expedition: bool
+
+# BalancingConfig
+@export var party_power_coefficients: Dictionary # { stat_name: float }
+@export var missing_front_row_factor: float
+@export var max_combat_rounds: int
+@export var base_recovery_seconds: int
+@export var max_offline_delta_seconds: int
+@export var recruitment_cost: int
+```
 
 ## Testing requirements
 
@@ -110,6 +156,8 @@ main.tscn (updated to boot through UIManager)
   Godot output panel.
 - CI check: existing Android debug export workflow still succeeds after
   the restructuring.
+- Manual exported-device check: with auto-rotate enabled, rotating the device
+  leaves the game locked in portrait.
 
 ## Acceptance criteria
 
@@ -119,6 +167,7 @@ main.tscn (updated to boot through UIManager)
 - [ ] App boots to an empty Home screen via `UIManager`.
 - [ ] Headless test framework runs with ≥1 passing test.
 - [ ] Android debug export CI workflow still passes.
+- [ ] Exported Android app remains portrait while the device rotates.
 
 ## Risks
 

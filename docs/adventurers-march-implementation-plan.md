@@ -84,17 +84,19 @@ preset (`export_presets.cfg`, package id `com.example.helloworld`) using the
 `gl_compatibility` renderer for broad device support (see `project.godot`
 and `README.md`). Adventurer's March continues on this foundation:
 
-- **Primary platform:** Android (phones), portrait orientation. The existing
-  project already configures a portrait viewport
-  (`window/size/viewport_width=720`, `window/size/viewport_height=1280`)
-  with `canvas_items` stretch mode — reuse this configuration.
+- **Primary platform:** Android (phones), portrait orientation. Keep the
+  portrait viewport (`window/size/viewport_width=720`,
+  `window/size/viewport_height=1280`) and `canvas_items` stretch mode, and
+  explicitly set `display/window/handheld/orientation=1` (`Portrait`) so an
+  exported Android app does not rotate to landscape.
 - **Renderer:** keep `gl_compatibility` for the widest device compatibility
   and lowest battery/thermal impact, which matters for a game that may run
   simulation ticks while the app is foregrounded for long idle sessions.
-- **Input:** touch-first. Every interactive control must have a touch target
-  of at least 40x40 dp (roughly 72x72 px at the project's base 720p
-  design resolution). No control should require multi-touch gestures,
-  precise drag timing, or hover states (mobile has no hover).
+- **Input:** touch-first. Every interactive control must have an effective
+  touch target of at least 48x48 dp on exported Android builds. Do not infer
+  dp size from project viewport pixels; verify it on target-density devices.
+  No control should require multi-touch gestures, precise drag timing, or
+  hover states (mobile has no hover).
 - **Session shape:** support both short sessions (30–60 seconds: check
   Expedition, collect rewards, requeue) and longer sessions (several
   minutes: manage roster, equipment, Region selection). No screen should
@@ -375,7 +377,8 @@ and has a chance to trigger an **encounter**.
 Expedition
  ├─ Region reference
  ├─ Party reference (snapshot of stable Hero IDs and derived stats at start)
- ├─ Seed (u64) — derived from save-level RNG state at confirm time
+ ├─ Seed (nonnegative 53-bit integer) — derived from save-level RNG state
+ │  at confirm time
  ├─ StartTimestamp (unix time, UTC)
  ├─ Duration (seconds; selected by player from Region's offered options)
  ├─ StepDurationSeconds (immutable positive integer; see below)
@@ -396,12 +399,13 @@ Expedition
   Region rules), or Defeat (Party takes heavy damage, all surviving Heroes
   become Wounded, Expedition ends at that Combat step).
 - **Loot** — a straightforward reward step (gold/items), no risk.
-- **Event card** — a narrative choice or automatic flavor text with a
-  small, table-driven outcome (e.g., "A merchant offers a trade" →
-  gold-for-item swap), resolved by rolling against the event's outcome
-  table. Event cards exist to add narrative texture without requiring new
-  gameplay systems; keep MVP event tables small (5–10 events per Region)
-  and expand as content post-MVP.
+- **Event card** — automatic narrative flavor with a small, table-driven
+  outcome (e.g., finding a hidden cache grants gold or an item), resolved by
+  rolling against the event's outcome table at Expedition start. MVP events
+  never prompt during an Expedition or spend player resources. Any event
+  choice must instead be made during Expedition setup; interrupting choices
+  are post-MVP. Keep MVP event tables small (5–10 events per Region) and
+  expand as content post-MVP.
 
 ### Deterministic resolution
 
@@ -420,6 +424,10 @@ reproducible for testing and support/debugging. The approach:
    and step-count data must make this a positive integer. This value is
    immutable and must never be recomputed from the possibly truncated
    `Steps[]` array, including after load.
+   Every seed and saved RNG-state value is constrained to the inclusive range
+   `[0, 2^53 - 1]` before use or persistence. This keeps JSON number
+   round-trips exact; seed advancement must remain within that range rather
+   than persisting arbitrary 64-bit integers.
 2. Do **not** wait for real-time ticks to "roll" outcomes; instead, each
    step's outcome (e.g., a combat's full round-by-round log) is *also*
    computed at start time, deterministically, from the same seed stream.
@@ -490,19 +498,21 @@ read raw Hero attributes directly:
    ```
    BaseDamage = Attacker.Attack * SkillMultiplier
    Mitigated  = max(1, BaseDamage - Defender.Defense)
-   FinalDamage = Mitigated * (Attacker.rolled_crit ? 1.5 : 1.0)
+   FinalDamage = max(1, floor(Mitigated * (Attacker.rolled_crit ? 1.5 : 1.0)))
    ```
 5. **Damage (magic example, e.g. Wizard spell):**
    ```
    BaseDamage = Attacker.MagicPower * SkillMultiplier
    Mitigated  = max(1, BaseDamage - Defender.Defense)
-   FinalDamage = Mitigated * (Attacker.rolled_crit ? 1.5 : 1.0)
+   FinalDamage = max(1, floor(Mitigated * (Attacker.rolled_crit ? 1.5 : 1.0)))
    ```
 6. **Healing (e.g. Cleric skill):**
    ```
-   HealAmount = Attacker.MagicPower * SkillMultiplier
+   HealAmount = max(0, floor(Attacker.MagicPower * SkillMultiplier))
    ```
-7. Apply `FinalDamage`/`HealAmount`, clamp HP to `[0, MaxHP]`, apply any
+7. Floor damage or healing exactly once, after all multipliers and mitigation
+   and before applying it to HP, as shown above. Record that integer in
+   `damage_or_heal`, apply it, clamp HP to `[0, MaxHP]`, and apply any
    deterministic status effects carried by the skill. MVP has no separate
    raw-attribute resistance roll.
 8. A combatant at `HP == 0` is removed from turn order for the remainder of
@@ -580,13 +590,24 @@ stacking limits needed at MVP scale). Crafting/enchanting are post-MVP
 
 Because Expedition outcomes are fully resolved at start time
 ([§8](#8-expeditions-travel-encounters-outcomes-deterministic-resolution)),
-"offline progress" requires no simulation catch-up loop — it is a pure
-function of elapsed wall-clock time:
+"offline progress" requires no simulation catch-up loop. Because a local
+device has no trusted clock across restarts, each active Expedition persists
+`LastObservedUtc` and `CreditedElapsedSeconds`. `BalancingConfig` defines
+`MaxOfflineDeltaSeconds`, the maximum progress credited by one observation:
 
 ```
 on_app_resume():
     for each active Expedition:
-        elapsed = now_utc() - expedition.StartTimestamp
+        observed_now = now_utc()
+        raw_delta = observed_now - expedition.LastObservedUtc
+        safe_delta = clamp(raw_delta, 0, BalancingConfig.MaxOfflineDeltaSeconds)
+        expedition.LastObservedUtc = observed_now
+        expedition.CreditedElapsedSeconds = min(
+            expedition.CreditedElapsedSeconds + safe_delta,
+            expedition.Duration)
+        elapsed = expedition.CreditedElapsedSeconds
+        newly_revealed = []
+        is_complete = false
         revealed_step_index = clamp(
             floor(elapsed / expedition.StepDurationSeconds) - 1,
             -1,
@@ -602,11 +623,20 @@ on_app_resume():
             is_complete = revealed_step_index == len(expedition.Steps) - 1
             if is_complete:
                 finalize_expedition_state(expedition)
-            SaveManager.save()
+        # Persist the clock observation even when it revealed no new step.
+        SaveManager.save()
+        if not newly_revealed.is_empty():
             display(newly_revealed)
             if is_complete:
                 show_expedition_report()
 ```
+
+A negative clock delta credits zero; a large forward delta credits at most
+`MaxOfflineDeltaSeconds`. The new observation and credited elapsed time are
+saved in the same mutation as any reveal cursor/rewards, including when no new
+step is revealed. Repeated clock tampering cannot be fully prevented in an
+offline-only game and is an accepted local limitation, but these rules prevent
+a single clock jump or rollback from duplicating rewards.
 
 This runs both on normal app resume (`NOTIFICATION_APPLICATION_FOCUS_IN` /
 `_notification` in Godot, or simply on `_ready()` of the Home screen) and
@@ -632,8 +662,10 @@ platform-specific background-execution APIs are required for MVP.
   stable Hero IDs), current recruitment offers and their refresh seed,
   inventory, gold, unlocked Regions, active Expedition (including its
   pre-resolved, JSON-safe `Steps[]` dictionaries, immutable
-  `StepDurationSeconds`, `LastRevealedIndex`, `TerminalStepIndex`, and
-  `EffectiveEndTimestamp`), and RNG seed state for future generation calls.
+  `StepDurationSeconds`, `LastRevealedIndex`, `TerminalStepIndex`,
+  `EffectiveEndTimestamp`, `LastObservedUtc`, and
+  `CreditedElapsedSeconds`), and RNG seed state for future generation calls.
+  Every persisted seed/RNG-state number is in `[0, 2^53 - 1]`.
 - **Cadence:** autosave after any state-mutating action (Hero recruited,
   Party formed, Expedition started, each revealed reward batch and cursor
   update, Expedition Report acknowledged, item equipped) and on app pause
@@ -859,7 +891,7 @@ consideration, once the core loop is validated:
 |---|---|---|
 | Combat feels "unwatchable"/opaque since it's pre-resolved | Player disengagement | Present a clear, well-formatted travel journal/combat log (§14); keep formulas simple and consistent so outcomes feel fair |
 | Balancing drift as content grows | Regions become trivial or unfair | Centralize coefficients in `BalancingConfig`; use scripted balance simulations (§16) before adding new Regions |
-| Offline-progress edge cases (clock changes, long absences) | Incorrect rewards, exploits | Clamp `elapsed` to a sane maximum when computing revealed steps; use monotonic-safe UTC timestamps; cover with tests (§19) |
+| Offline-progress edge cases (clock changes, long absences) | Incorrect rewards, exploits | Persist credited elapsed time; clamp each observed UTC delta to `[0, MaxOfflineDeltaSeconds]`; accept that repeated local clock tampering cannot be prevented without a server; cover negative/large deltas with tests (§19) |
 | Scope creep beyond MVP (factions, crafting, procedural regions) | Delayed first playable | Explicit non-goals list (§3); milestones checklist enforces order |
 | Save corruption / data loss on device | Player frustration, poor reviews | `.bak` fallback, versioned migrations (§12) |
 | Godot mobile export/build regressions | Broken releases | Keep relying on the existing CI workflow (`.github/workflows/android-apk.yml`) and its debug-export smoke test; extend it to run headless unit tests before export |

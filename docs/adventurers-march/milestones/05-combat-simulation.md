@@ -132,7 +132,9 @@ map.
   (same inputs → same order across runs).
 - Unit test: hand-computed hit/crit/physical-damage/magic-damage/heal cases
   use the §9 derived stats; increasing defender `Evasion` lowers hit chance
-  without changing raw attributes.
+  without changing raw attributes. Include fractional multiplier cases and
+  assert damage/healing is floored once to the logged integer before HP is
+  changed.
 - Unit test: front-row targeting rule is enforced (melee/short-range
   attacks never target back row while front row has a living member).
 - Unit test: `MaxRounds` bound is respected (simulation always

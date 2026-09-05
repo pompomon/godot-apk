@@ -71,13 +71,15 @@ exist and can be inspected, but cannot yet be sent anywhere.
     Constrain every seed/RNG-state value to `[0, 2^53 - 1]` so JSON number
     serialization preserves it exactly.
 12. Add the version-to-migration dispatch entry point for version 1 and
-    implement the crash-safe replacement sequence from
+    implement the best-effort replacement sequence from
     [plan §12](../../adventurers-march-implementation-plan.md#12-save-system):
-    durably write and validate same-directory temporary files, copy a valid
-    primary to the backup without removing it, then atomically replace the
-    backup and primary. Never delete or rename the primary before replacing
-    it. If the primary is missing or invalid, load the valid backup with a
-    warning and restore the primary without overwriting that backup.
+    write, flush/close, reopen, and validate same-directory temporary files;
+    copy a valid primary to the backup without first removing it; then replace
+    the backup and primary through `DirAccess`. Do not claim OS-level
+    durability or cross-platform atomic replacement: GDScript exposes no
+    `fsync` or parent-directory sync. If the primary is missing or invalid,
+    load the valid backup with a warning and restore the primary without
+    overwriting that backup.
 
 ## Expected files / scenes / scripts / data
 
@@ -185,8 +187,8 @@ offer keeps that ID when recruited. Callers reserve the `hero_ids` passed to
       IDs.
 - [ ] A new game starts with 100 gold; the player can immediately recruit one
       deterministic 100-gold offer, and the purchase survives reload.
-- [ ] Versioned save/load round-trips all Milestone 2 state, uses durable
-      atomic replacement without first removing the primary, and recovers
+- [ ] Versioned save/load round-trips all Milestone 2 state, validates
+      flushed temporary files before best-effort replacement, and recovers
       from a missing or invalid primary via `.bak` before restoring the
       primary.
 

@@ -35,7 +35,8 @@ should contain only Loot and Event-card entries.
    weighted encounter pool (Loot/Event entries only for this milestone),
    unlock condition.
 2. Author `data/regions/green_hollow.tres` and a small
-   `data/encounters/green_hollow_events.tres` event table (5–10 entries).
+   set of `EventResource` entries under `data/encounters/` (5–10 total),
+   each with a weighted automatic outcome table.
 3. Implement `scripts/models/expedition_data.gd`
    (`class_name ExpeditionData`): Region reference, Party snapshot, seed,
    `start_timestamp`, duration, immutable `step_duration_seconds`,
@@ -45,7 +46,11 @@ should contain only Loot and Event-card entries.
 4. Implement `scripts/systems/expedition_generator.gd`: given a Region,
    Party, seed, and duration, produce the full `steps` array with each
    step's outcome **already resolved** (Loot gold amount rolled, Event
-   outcome rolled) — per
+   outcome rolled). Select an encounter by
+   `EncounterEntryResource.weight *
+   BalancingConfig.encounter_kind_weight_multipliers[kind]`, resolve
+   `content_id` through the registry for that entry's kind, and select an
+   Event outcome by its `EventOutcomeResource.weight` — per
    [plan §8](../../adventurers-march-implementation-plan.md#8-expeditions-travel-encounters-outcomes-deterministic-resolution).
    After generating the full candidate step list but before resolving any
    outcome that could later truncate it, compute
@@ -96,7 +101,7 @@ should contain only Loot and Event-card entries.
 
 ```
 data/regions/green_hollow.tres
-data/encounters/green_hollow_events.tres
+data/encounters/green_hollow_<event_id>.tres
 scripts/models/expedition_data.gd
 scripts/models/expedition_step.gd
 scripts/systems/expedition_generator.gd

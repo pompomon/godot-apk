@@ -40,10 +40,9 @@ Regions/content variety (Milestone 7).
    stat modifiers) and author a small starter item pool under
    `data/items/` (e.g., 2–3 weapons, 2–3 armor pieces, spanning Common/
    Uncommon rarity).
-4. Implement inventory storage on `GameState` (`Array[ItemData]` — actual
-   item instances, referencing an `ItemResource` template plus any
-   per-instance state if needed, though MVP items can be stateless
-   references to their resource).
+4. Implement inventory storage on `GameState` as `Array[ItemResource]`.
+   MVP items are stateless resource references; moving one between inventory
+   and equipment preserves that same resource reference.
 5. Extend `HeroData`/`compute_derived_stats` to apply equipped item stat
    modifiers on top of base/leveled stats.
 6. Build Equipment screen: per-Hero weapon/armor slot assignment from
@@ -60,9 +59,10 @@ Regions/content variety (Milestone 7).
    same elapsed-time-based pattern as Expedition reveal (no new polling
    architecture needed).
 8. Extend Milestone 4's Loot result and reveal pipeline to roll/store item
-   resource IDs from the new item pool and add revealed items to
-   `GameState.inventory`. Keep its existing, tested gold application in
-   place; Milestone 6 does not introduce a second reward handler.
+   resource IDs from the new item pool, resolve them to `ItemResource`
+   references, and add those references to `GameState.inventory`. Keep its
+   existing, tested gold application in place; Milestone 6 does not introduce
+   a second reward handler.
 
 ## Expected files / scenes / scripts / data
 
@@ -73,7 +73,6 @@ data/items/apprentice_staff.tres
 data/items/leather_armor.tres
 data/items/chainmail.tres
 data/items/robes.tres
-scripts/models/item_data.gd
 scripts/systems/leveling.gd
 scenes/ui/equipment/equipment_screen.tscn
 tests/test_leveling.gd

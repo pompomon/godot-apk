@@ -673,16 +673,18 @@ platform-specific background-execution APIs are required for MVP.
   Avoid saving on a fixed timer only — mobile OSes may terminate a
   backgrounded app without further notice, so save-on-mutation is required,
   not optional.
-- **Crash-safe replacement:** serialize to `save.json.tmp` in the same
-  directory, durably flush/sync and close it, then reopen, parse, and validate
-  it. If the current primary is valid, copy it to `save.json.bak.tmp`,
-  durably flush/sync and validate that copy, and atomically replace
-  `save.json.bak`, then sync the parent directory; never move or delete the
-  primary to make the backup. Then atomically replace the primary with the
-  validated `save.json.tmp` without deleting the destination first and sync
-  the parent directory again before reporting success. Thus a crash leaves
-  either the complete old primary or the complete new primary, never an
-  intentional no-primary window.
+- **Best-effort replacement within Godot's APIs:** serialize to
+  `save.json.tmp` in the same directory, call `FileAccess.flush()`, close it,
+  then reopen, parse, and validate it. If the current primary is valid, copy
+  it to `save.json.bak.tmp`, flush/close and validate that copy, then replace
+  `save.json.bak`. Finally replace the primary with the validated
+  `save.json.tmp`, without intentionally deleting or moving the primary
+  first. GDScript exposes neither OS `fsync` nor parent-directory sync, and
+  `DirAccess.rename_absolute()` replacement atomicity is platform-dependent,
+  so MVP guarantees validation and backup recovery at Godot API boundaries,
+  not durability across arbitrary power loss. Interruption tests simulate
+  failures after temporary-file validation, backup creation, and primary
+  replacement and verify that load selects a valid primary or backup.
 - **Corruption handling:** if the primary is missing, fails validation/parsing,
   or cannot migrate, validate and load `.bak`, log a warning (surface a small
   non-blocking toast), and restore the primary through the same safe-write
@@ -717,8 +719,8 @@ res://
 │   └── balancing/                 # BalancingConfig (formula coefficients, §16)
 ├── scripts/
 │   ├── models/                    # plain data classes: HeroData, PartyData,
-│   │                              #   ExpeditionData, ItemData (RefCounted,
-│   │                              #   not Node — easy to serialize/test)
+│   │                              #   ExpeditionData (RefCounted, not Node
+│   │                              #   — easy to serialize/test)
 │   └── systems/                   # HeroGenerator, PartyEvaluator,
 │                                   #   RegionUnlockRules, etc. — pure logic
 │                                   #   operating on models + data resources

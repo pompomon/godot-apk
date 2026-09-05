@@ -48,6 +48,11 @@ state (`project.godot`, `main.tscn`, Android export preset, CI workflow).
    - `scripts/models/hero_class_resource.gd` (`class_name HeroClassResource`)
    - `scripts/models/hero_trait_resource.gd` (`class_name HeroTraitResource`)
    - `scripts/models/item_resource.gd` (`class_name ItemResource`)
+   - `scripts/models/encounter_entry_resource.gd`
+     (`class_name EncounterEntryResource`)
+   - `scripts/models/event_resource.gd` (`class_name EventResource`)
+   - `scripts/models/event_outcome_resource.gd`
+     (`class_name EventOutcomeResource`)
    - `scripts/models/region_resource.gd` (`class_name RegionResource`)
    - `scripts/models/balancing_config.gd` (`class_name BalancingConfig`)
 4. Create an empty Home screen scene (`scenes/ui/home/home_screen.tscn`)
@@ -77,6 +82,9 @@ autoload/UIManager.gd
 scripts/models/hero_class_resource.gd
 scripts/models/hero_trait_resource.gd
 scripts/models/item_resource.gd
+scripts/models/encounter_entry_resource.gd
+scripts/models/event_resource.gd
+scripts/models/event_outcome_resource.gd
 scripts/models/region_resource.gd
 scripts/models/balancing_config.gd
 scenes/ui/home/home_screen.tscn
@@ -96,9 +104,9 @@ main.tscn (updated to boot through UIManager)
   and Milestone 4 (Expedition state).
 - `GameState` exposes `roster: Array`, `gold: int`, `inventory: Array`, and
   `unlocked_regions: Array[StringName]`. Keep the model arrays untyped in
-  this milestone so the autoload parses before `HeroData` and `ItemData`
-  exist; change them to `Array[HeroData]` in Milestone 2 and
-  `Array[ItemData]` in Milestone 6 when those classes are defined.
+  this milestone so the autoload parses before `HeroData` exists; change
+  `roster` to `Array[HeroData]` in Milestone 2 and `inventory` to
+  `Array[ItemResource]` in Milestone 6.
 - Base resources use these exact exported property identifiers and types;
   nested dictionaries have the stated shapes:
 
@@ -126,22 +134,56 @@ main.tscn (updated to boot through UIManager)
 @export var rarity: StringName
 @export var stat_modifiers: Dictionary       # { derived_stat_name: float }
 
+# EncounterEntryResource
+@export_enum("Loot", "Event", "Combat") var kind: String
+@export var content_id: StringName
+# Resolves through the kind-specific item/event/enemy-group registry.
+@export_range(0.001, 1000000.0) var weight: float
+
+# EventOutcomeResource
+@export var outcome_id: StringName
+@export_multiline var journal_text: String
+@export_range(0.001, 1000000.0) var weight: float
+@export var result: Dictionary
+# JSON-safe reward payload: { "gold": int, "item_ids": Array[StringName] }
+
+# EventResource
+@export var event_id: StringName
+@export var display_name: String
+@export_multiline var description: String
+@export var outcomes: Array[EventOutcomeResource]
+
 # RegionResource
 @export var region_id: StringName
 @export var display_name: String
 @export var recommended_party_power: int
 @export var duration_options_seconds: Array[int]
 @export var travel_step_count: int
-@export var encounter_pool: Dictionary       # { resource_id: positive_weight }
+@export var encounter_pool: Array[EncounterEntryResource]
 @export var unlock_condition: Dictionary
 # { "kind": "always" | "gold" | "region_cleared",
 #   "value": int, "region_id": StringName }
 @export var retreat_ends_expedition: bool
 
 # BalancingConfig
-@export var party_power_coefficients: Dictionary # { stat_name: float }
+@export var party_power_level_weight: float
+@export var party_power_stat_weights: Dictionary # { derived_stat_name: float }
 @export var missing_front_row_factor: float
+@export var party_size_divisor: float
+@export var base_hit_chance: float
+@export var min_hit_chance: float
+@export var max_hit_chance: float
+@export var max_crit_chance: float
+@export var basic_attack_damage_multiplier: float
+@export var skill_damage_multipliers: Dictionary # { skill_id: float }
+@export var critical_damage_multiplier: float
 @export var max_combat_rounds: int
+@export var xp_award_coefficients: Dictionary
+# { "region_difficulty": float, "duration_seconds": float }
+@export var xp_threshold_curve: Dictionary
+# { "base": int, "growth_factor": float }
+@export var encounter_kind_weight_multipliers: Dictionary
+# { "Loot": float, "Event": float, "Combat": float }
 @export var base_recovery_seconds: int
 @export var max_offline_delta_seconds: int
 @export var recruitment_cost: int

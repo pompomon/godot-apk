@@ -85,9 +85,9 @@ Detail: [01-technical-foundation.md](adventurers-march/milestones/01-technical-f
       gold on new-game creation.
 - [ ] Add deterministic 100-gold recruitment offers to the Company Roster,
       including roster-cap checks and immediate persistence.
-- [ ] Implement versioned JSON save/load with durable same-directory
-      temporary writes, atomic replacement that never first removes the
-      primary, and recovery from a missing or invalid primary via `.bak`.
+- [ ] Implement versioned JSON save/load with validated same-directory
+      temporary writes, best-effort replacement through Godot APIs, and
+      recovery from a missing or invalid primary via `.bak`.
 
 **Definition of done:** a new game starts with 4 generated Heroes visible
 in the Company Roster screen; tapping a Hero opens Hero Detail showing

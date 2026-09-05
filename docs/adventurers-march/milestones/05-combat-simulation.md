@@ -41,8 +41,10 @@ needed when equipment starts modifying them), additional Regions
    logic (Knight: Guard, Ranger: Aimed Shot or similar, Wizard: Firebolt,
    Cleric: Mend), per
    [plan §9](../../adventurers-march-implementation-plan.md#9-auto-combat-simulation-design).
-   A simple `SkillResource` (name, target rule, multiplier, cooldown) is
-   sufficient; AI policy: use skill if off cooldown, else basic attack.
+   A simple `SkillResource` (name, target rule, multiplier ID, cooldown) is
+   sufficient; resolve the multiplier ID through
+   `BalancingConfig.skill_damage_multipliers`. AI policy: use skill if off
+   cooldown, else basic attack.
 4. Implement `CombatSimulator` (fill in the `autoload/CombatSimulator.gd`
    stub from Milestone 1) as **pure/stateless**: given a Party snapshot, the
    current per-Hero HP/status map, an `EnemyGroupResource`, and a seed, return

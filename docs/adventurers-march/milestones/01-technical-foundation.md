@@ -50,6 +50,7 @@ state (`project.godot`, `main.tscn`, Android export preset, CI workflow).
    - `scripts/models/item_resource.gd` (`class_name ItemResource`)
    - `scripts/models/encounter_entry_resource.gd`
      (`class_name EncounterEntryResource`)
+   - `scripts/models/loot_resource.gd` (`class_name LootResource`)
    - `scripts/models/event_resource.gd` (`class_name EventResource`)
    - `scripts/models/event_outcome_resource.gd`
      (`class_name EventOutcomeResource`)
@@ -83,10 +84,12 @@ scripts/models/hero_class_resource.gd
 scripts/models/hero_trait_resource.gd
 scripts/models/item_resource.gd
 scripts/models/encounter_entry_resource.gd
+scripts/models/loot_resource.gd
 scripts/models/event_resource.gd
 scripts/models/event_outcome_resource.gd
 scripts/models/region_resource.gd
 scripts/models/balancing_config.gd
+data/balancing/default_balancing.tres
 scenes/ui/home/home_screen.tscn
 addons/<gut-or-gdunit4>/...
 tests/test_smoke.gd
@@ -119,6 +122,12 @@ main.tscn (updated to boot through UIManager)
 #   "GUI": Vector2i(...), "FTH": Vector2i(...) }
 @export var per_level_growth: Dictionary
 # { "MIG": float, "FOC": float, "GRT": float, "GUI": float, "FTH": float }
+@export var derived_stat_bases: Dictionary
+# { "MaxHP": float, "Attack": float, "MagicPower": float, "Defense": float,
+#   "Evasion": float, "Initiative": float, "CritChance": float }
+@export var derived_stat_attribute_weights: Dictionary
+# { derived_stat_name: { "MIG": float, "FOC": float, "GRT": float,
+#                        "GUI": float, "FTH": float } }
 
 # HeroTraitResource
 @export var trait_id: StringName
@@ -139,6 +148,11 @@ main.tscn (updated to boot through UIManager)
 @export var content_id: StringName
 # Resolves through the kind-specific item/event/enemy-group registry.
 @export_range(0.001, 1000000.0) var weight: float
+
+# LootResource; EncounterEntryResource.content_id resolves through the Loot registry
+@export var loot_id: StringName
+@export var min_gold: int
+@export var max_gold: int
 
 # EventOutcomeResource
 @export var outcome_id: StringName
@@ -179,7 +193,7 @@ main.tscn (updated to boot through UIManager)
 @export var critical_damage_multiplier: float
 @export var max_combat_rounds: int
 @export var xp_award_coefficients: Dictionary
-# { "region_difficulty": float, "duration_seconds": float }
+# { "recommended_party_power": float, "duration_seconds": float }
 @export var xp_threshold_curve: Dictionary
 # { "base": int, "growth_factor": float }
 @export var encounter_kind_weight_multipliers: Dictionary
@@ -188,6 +202,10 @@ main.tscn (updated to boot through UIManager)
 @export var max_offline_delta_seconds: int
 @export var recruitment_cost: int
 ```
+
+Create `data/balancing/default_balancing.tres` with
+`recruitment_cost = 100`; gameplay reads this resource rather than defining a
+second recruitment-price constant.
 
 ## Testing requirements
 

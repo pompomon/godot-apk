@@ -31,9 +31,10 @@ needed when equipment starts modifying them), additional Regions
 
 1. Implement `scripts/models/enemy_group_resource.gd`
    (`class_name EnemyGroupResource`): list of enemy stat blocks
-   using the same combat-relevant derived-stat keys as Heroes. Enemy authoring
-   may use a simplified "class"-like definition, but it must produce derived
-   stats before simulation; enemies do not need the full Hero trait/generation
+   using the same combat-relevant derived-stat keys as Heroes and a unique,
+   stable authored combatant ID for each enemy. Enemy authoring may use a
+   simplified "class"-like definition, but it must produce derived stats
+   before simulation; enemies do not need the full Hero trait/generation
    system.
 2. Author 1–2 `.tres` enemy groups under `data/encounters/` for Green
    Hollow (e.g., "Bandit Skirmishers", "Forest Wolves").
@@ -53,7 +54,8 @@ needed when equipment starts modifying them), additional Regions
    every Party Hero keyed by the stable ID introduced in Milestone 2.
    - Turn order: sort by Initiative each round, seeded RNG tiebreak.
    - Targeting: front-row-first for melee/short-range; any slot for
-     ranged/magic; lowest-HP%-among-valid-targets tiebreak.
+     ranged/magic; lowest HP percentage among valid targets, then ascending
+     stable combatant ID (Hero ID or authored enemy ID) when percentages tie.
    - Hit/crit/damage/heal formulas use only derived stats and are exactly as
      specified in plan §9; in particular, defender `Evasion` reduces hit
      chance.
@@ -108,7 +110,7 @@ func resolve_combat(party: PartyData, current_hero_states: Dictionary,
         enemy_group: EnemyGroupResource, seed: int,
         balancing: BalancingConfig) -> Dictionary
 # {
-#   "outcome": "victory" | "defeat" | "retreat",
+#   "outcome": "VICTORY" | "DEFEAT" | "RETREAT",
 #   "rounds": [{ "round_number": int, "actions": [{
 #       "actor_name": String, "action_name": String, "target_name": String,
 #       "damage_or_heal": int, "was_crit": bool
@@ -138,7 +140,8 @@ map.
   assert damage/healing is floored once to the logged integer before HP is
   changed.
 - Unit test: front-row targeting rule is enforced (melee/short-range
-  attacks never target back row while front row has a living member).
+  attacks never target back row while front row has a living member), and
+  equal-HP-percentage candidates select the ascending stable combatant ID.
 - Unit test: `MaxRounds` bound is respected (simulation always
   terminates).
 - Unit test: Defeat and Region-terminal Retreat truncate later steps without

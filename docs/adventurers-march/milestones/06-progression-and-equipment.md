@@ -29,8 +29,11 @@ Regions/content variety (Milestone 7).
 ## Tasks
 
 1. Implement XP gain at Expedition finalization: compute one award
-   proportional to Region difficulty and Expedition duration, then grant it
-   exactly once to each participating Hero, per
+   from the existing `RegionResource.recommended_party_power` and Expedition
+   duration: `floor(recommended_party_power *
+   xp_award_coefficients["recommended_party_power"] + duration_seconds *
+   xp_award_coefficients["duration_seconds"])`, clamped to a minimum of 0.
+   Grant it exactly once to each participating Hero, per
    [plan §10](../../adventurers-march-implementation-plan.md#10-events-regions-equipment-progression).
 2. Implement leveling: when a Hero's XP crosses their level's threshold,
    increment level and reapply the class's growth curve to recompute
@@ -45,6 +48,9 @@ Regions/content variety (Milestone 7).
    and equipment preserves that same resource reference.
 5. Extend `HeroData`/`compute_derived_stats` to apply equipped item stat
    modifiers on top of base/leveled stats.
+   Extend `SaveManager` to encode inventory entries and both equipped slots
+   as `ItemResource.item_id` values and resolve those IDs through the item
+   registry on load.
 6. Build Equipment screen: per-Hero weapon/armor slot assignment from
    available inventory, showing before/after stat deltas prior to
    confirming.
@@ -106,6 +112,8 @@ static func grant_xp(hero: HeroData, amount: int) -> void
   changes derived stats per the class's growth curve.
 - Unit test: equipping/unequipping an item changes
   `compute_derived_stats` output by exactly the item's `stat_modifiers`.
+- Unit test: a save/load round trip preserves every inventory item and each
+  Hero's equipped weapon and armor by resource ID.
 - Unit test: finalization converts a `Wounded` result to `Resting`, assigns
   and persists `resting_until_timestamp` in the same mutation, and the Hero
   transitions back to `Idle` only after that timestamp has elapsed (test with

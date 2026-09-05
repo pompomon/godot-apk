@@ -228,7 +228,7 @@ Home / Status  ──────────────┬──────�
 - **Expedition Report** — the "travel journal": a scrollable log of travel
   steps and encounters resolved, final outcome, loot/XP/gold gained, and
   any Hero injuries or deaths.
-- **Settings** — audio toggle, save management (export/reset), credits.
+- **Settings** — mute and volume controls.
 
 Navigation should use a single persistent UI root (an autoloaded scene
 manager, see [§13](#13-godot-project-architecture)) that swaps the active
@@ -255,6 +255,17 @@ Derived stats (computed from attributes + class + equipment + level):
 `[0.0, 1.0]`, including their base chance and all modifiers. Combat consumes
 only these derived stats; raw attributes are inputs to `HeroStats`, not a
 second set of combat inputs.
+
+Each `HeroClassResource` supplies a base and an attribute-weight map for every
+derived stat. For attribute `a`, first compute
+`leveled[a] = generated[a] + floor((level - 1) * per_level_growth[a])`.
+Then compute each raw derived stat `s` as
+`derived_stat_bases[s] + Σ(leveled[a] * derived_stat_attribute_weights[s][a])`
+and add active trait and equipment modifiers. Floor integral stats once after
+all additions (`MaxHP` has a minimum of 1; other integral stats have a minimum
+of 0); clamp `Evasion` and `CritChance` to `[0.0, 1.0]` without rounding.
+Class resources must define every base and weight explicitly, including zero
+weights, so these equations have no implicit class-specific coefficients.
 
 ### Classes (MVP set)
 
@@ -309,7 +320,9 @@ generate_hero(hero_id, seed, class_pool, trait_pool, level = 1) -> HeroData
   rng := RandomNumberGenerator seeded with `seed`
   class := pick from class_pool using rng
   name := pick from name table using rng
-  attributes := class.base_attributes + rng-rolled variance within class range
+  attributes := for each attribute, rng.randi_range(
+                  class.base_attribute_ranges[attribute].x,
+                  class.base_attribute_ranges[attribute].y)
   traits := roll 0..1 traits from trait_pool using rng, filtered to valid
             combinations for this class
   return HeroData(hero_id, name, class, level, attributes, traits, equipment = none)
@@ -485,7 +498,8 @@ read raw Hero attributes directly:
    [§7](#7-party-formation-and-evaluation) (front row first for
    melee/short-range; any valid slot for ranged/magic), breaking ties by
    lowest current HP% among valid targets (finish off weak targets — a
-   simple, legible AI policy for MVP).
+   simple, legible AI policy for MVP), then by ascending stable combatant ID
+   (Hero ID or authored enemy ID) when HP percentages tie.
 2. **Hit chance:**
    ```
    HitChance = clamp(0.90 - Defender.Evasion, 0.50, 0.99)
@@ -657,8 +671,9 @@ platform-specific background-execution APIs are required for MVP.
   players' progress. MVP ships with `save_version = 1` and an explicit
   (even if initially empty) migration entry point, so the pattern exists
   before it's needed.
-- **Contents:** Company roster (each Hero's immutable ID, stats, and status),
-  the `next_hero_id` counter, current Party (formation slots referencing
+- **Contents:** Company roster (each Hero's immutable ID, stats, status, and
+  equipped-item resource IDs), roster capacity, the `next_hero_id` counter,
+  current Party (formation slots referencing
   stable Hero IDs), current recruitment offers and their refresh seed,
   inventory, gold, unlocked Regions, active Expedition (including its
   pre-resolved, JSON-safe `Steps[]` dictionaries, immutable

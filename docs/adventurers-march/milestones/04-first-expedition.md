@@ -36,7 +36,9 @@ should contain only Loot and Event-card entries.
    unlock condition.
 2. Author `data/regions/green_hollow.tres` and a small
    set of `EventResource` entries under `data/encounters/` (5–10 total),
-   each with a weighted automatic outcome table.
+   each with a weighted automatic outcome table. Also author one or more
+   `LootResource` entries in the Loot registry under `data/encounters/`;
+   each defines an inclusive `min_gold`/`max_gold` range keyed by `loot_id`.
 3. Implement `scripts/models/expedition_data.gd`
    (`class_name ExpeditionData`): Region reference, Party snapshot, seed,
    `start_timestamp`, duration, immutable `step_duration_seconds`,
@@ -52,6 +54,9 @@ should contain only Loot and Event-card entries.
    `content_id` through the registry for that entry's kind, and select an
    Event outcome by its `EventOutcomeResource.weight` — per
    [plan §8](../../adventurers-march-implementation-plan.md#8-expeditions-travel-encounters-outcomes-deterministic-resolution).
+   For Loot, resolve `content_id` through the Loot registry and roll
+   `rng.randi_range(min_gold, max_gold)` into the stored `{ "gold": int }`
+   result.
    After generating the full candidate step list but before resolving any
    outcome that could later truncate it, compute
    `step_duration_seconds = duration_seconds / candidate_step_count`.
@@ -101,6 +106,7 @@ should contain only Loot and Event-card entries.
 
 ```
 data/regions/green_hollow.tres
+data/encounters/green_hollow_loot.tres
 data/encounters/green_hollow_<event_id>.tres
 scripts/models/expedition_data.gd
 scripts/models/expedition_step.gd

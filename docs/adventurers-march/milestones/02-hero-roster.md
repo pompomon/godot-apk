@@ -42,11 +42,15 @@ exist and can be inspected, but cannot yet be sent anywhere.
 5. Implement `scripts/systems/hero_generator.gd`
    (`class_name HeroGenerator`) with a pure `generate_hero(hero_id, seed,
    class_pool, trait_pool, level = 1) -> HeroData` function per the plan's
-   pseudocode.
+   pseudocode. Roll each attribute independently and uniformly with
+   `rng.randi_range(min, max)` from the selected class's inclusive
+   `base_attribute_ranges`; there is no separate `base_attributes` field.
 6. Implement derived-stat calculation (`MaxHP`, `Attack`, `MagicPower`,
    `Defense`, `Evasion`, `Initiative`, `CritChance`) as a pure function
    taking a `HeroData` and returning a stats struct/dictionary, reusable by
-   later combat/evaluation code.
+   later combat/evaluation code. Implement the exact level-growth,
+   class-base, attribute-weight, modifier, flooring, and clamping order from
+   plan §6; author all bases and weights on each class resource.
 7. Build Company Roster screen: list/grid of Heroes with class icon
    (placeholder OK), level, and status badge; tapping navigates to Hero
    Detail via `UIManager.show_screen`.
@@ -54,20 +58,23 @@ exist and can be inspected, but cannot yet be sent anywhere.
    (equipment section can be a stub pointing to Milestone 6).
 9. On new-game creation (`SaveManager.load_or_create()` when no save
    exists), initialize `GameState.gold` to **100**, then generate and store
-   4 Heroes (one per class) into `GameState.roster`.
+   4 Heroes (one per class) into `GameState.roster`, and initialize
+   `GameState.roster_capacity` to **12**.
 10. Implement deterministic recruitment offers from the save-level RNG seed
     and caller-reserved Hero IDs.
-    The MVP price is **100 gold**, so a fresh save can buy one offer
+    Read the price from `BalancingConfig.recruitment_cost` (the default
+    resource sets it to **100 gold**), so a fresh save can buy one offer
     immediately. Show the current offers and cost on the Company Roster
     screen; a successful recruit deducts gold, adds the same Hero ID that
     was assigned to the offer, advances/replaces the offer, and saves
     immediately. Disable recruitment when funds are insufficient or the
     roster cap is reached.
 11. Implement `SaveManager.load_or_create()` and `save()` for the state
-    available in this milestone: save version, roster, gold, unlocked
-    Regions, recruitment offers, the save-scoped `next_hero_id` counter, and
-    RNG seed state. Serialize each immutable `hero_id`, `HeroData`, and
-    Resource reference to plain JSON-safe values and restore them on load.
+    available in this milestone: save version, roster, roster capacity, gold,
+    unlocked Regions, recruitment offers, the save-scoped `next_hero_id`
+    counter, and RNG seed state. Serialize each immutable `hero_id`,
+    `HeroData`, and Resource reference to plain JSON-safe values and restore
+    them on load.
     Constrain every seed/RNG-state value to `[0, 2^53 - 1]` so JSON number
     serialization preserves it exactly.
 12. Add the version-to-migration dispatch entry point for version 1 and
@@ -122,6 +129,7 @@ var status: HeroStatus       # enum: IDLE, ASSIGNED, ON_EXPEDITION, RESTING, WOU
 
 # GameState addition; increment whenever an ID is reserved
 var next_hero_id: int = 1
+var roster_capacity: int = 12
 
 # derived stats
 static func compute_derived_stats(hero: HeroData) -> Dictionary
@@ -131,11 +139,11 @@ static func compute_derived_stats(hero: HeroData) -> Dictionary
 
 ```gdscript
 # RecruitmentService
-const RECRUIT_COST: int = 100
 static func generate_offers(seed: int, hero_ids: Array[String],
         class_pool: Array[HeroClassResource],
         trait_pool: Array[HeroTraitResource]) -> Array[HeroData]
-static func recruit(hero: HeroData) -> bool
+static func recruit(hero: HeroData, balancing: BalancingConfig) -> bool
+# affordability and deduction both use balancing.recruitment_cost
 ```
 
 `HeroStatus` should be declared once (e.g., in `hero_data.gd` or a shared
@@ -158,13 +166,15 @@ offer keeps that ID when recruited. Callers reserve the `hero_ids` passed to
 - Unit test: starting-roster and offer IDs are unique, remain unchanged when
   an offer is recruited, and survive save/load.
 - Unit test: `compute_derived_stats` produces expected values for at least
-  one hand-computed example Hero per class, with total `Evasion` and
+  one hand-computed example Hero per class, including fractional intermediate
+  values and the specified modifier/flooring order, with total `Evasion` and
   `CritChance` values in `[0.0, 1.0]`.
 - Manual test: new game shows exactly 4 Heroes (one per class) in Company
   Roster; each opens a correct Hero Detail screen.
 - Unit test: a save/load round trip preserves the roster (including Hero
-  IDs), gold, unlocked Regions, recruitment offers, `next_hero_id`, and RNG
-  seed state exactly, including the maximum seed `2^53 - 1`.
+  IDs), roster capacity, gold, unlocked Regions, recruitment offers,
+  `next_hero_id`, and RNG seed state exactly, including the maximum seed
+  `2^53 - 1`.
 - Unit test: a missing or invalid primary save falls back to the last valid
   `.bak` and restores the primary without changing that backup; an injected
   interruption immediately before primary replacement leaves the old primary

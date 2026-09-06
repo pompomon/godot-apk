@@ -18,8 +18,10 @@ combat log rendering in Expedition Report.
 
 **Out of scope:** equipment stat contributions (Milestone 6 — the
 simulator should read whatever derived stats it's given, so no rework is
-needed when equipment starts modifying them), additional Regions
-(Milestone 7).
+needed when equipment starts modifying them), XP/progression and the full
+Wounded/Resting recovery system (Milestone 6), and additional Regions
+(Milestone 7). Limit recovery work here to the agreed placeholder/handoff
+described below; do not expand it into the next milestone.
 
 ## Prerequisites / dependencies
 
@@ -29,6 +31,147 @@ needed when equipment starts modifying them), additional Regions
 - Milestone 4's `ExpeditionPartySnapshot` provides detached formation members,
   stable Hero IDs, derived stats, and authored targeting rules. Consume those
   frozen values, not live roster Heroes or recomputed class statistics.
+
+## Bounded delivery and integration gates
+
+Follow the [shared agent guidelines](../../../AGENTS.md). Deliver the slices
+below as independently validated tasks or PRs, in dependency order; the
+numbered tasks later in this document describe the complete milestone, not
+one mandatory all-in-one session. Each slice must preserve usable existing
+gameplay. Do not activate Combat in production content before persistence,
+orchestration, and presentation are ready.
+
+On resumption, inspect the last published checkpoint and remaining diff before
+choosing a slice. Do not assume an earlier session's unpushed work exists.
+Record evidence in this milestone and the task/PR handoff rather than creating
+another instruction file.
+
+### Slice 1 — Contracts and decisions
+
+**Depends on:** the existing First Expedition interfaces and baseline evidence.
+
+Resolve and record the following decisions before dependent code or parallel
+work begins. The interface and formulas below remain normative; unresolved
+details are not permission to replace them with worker-specific assumptions.
+
+- [ ] **Frozen input and state:** reconcile the stale `PartyData` reference in
+      the Combat autoload stub with the `ExpeditionPartySnapshot` signature.
+      The existing `hero_states()` helper supplies HP only; specify where the
+      complete per-Hero HP/status map is constructed and what its statuses
+      mean. Define which skill values must be detached at dispatch and retained
+      for historical results, without consulting live roster state on reload.
+- [ ] **Skill semantics:** agree Guard activation/expiry, cooldown decrement
+      timing, skill availability when no valid target exists, and whether
+      cooldown/effect state resets between Combats. Keep multipliers and any
+      new global coefficients in the existing balancing asset.
+- [ ] **Result and errors:** settle compatibility between Combat's documented
+      result dictionary and generic consumers currently reading `result.gold`.
+      Specify required keys, numeric encodings, invalid-input signaling, and
+      nonmutation guarantees. An empty dictionary is not a combat outcome;
+      do not silently accept invalid data or weaken noncombat validation.
+- [ ] **Terminal metadata and presentation:** agree the frozen data needed to
+      validate truncated runs and display progress without revealing future
+      defeat/retreat. Keep step duration based on the full candidate list;
+      neither loading nor UI may reconstruct historical rules from live content.
+- [ ] **Recovery boundary:** define the limited Wounded placeholder and
+      Milestone 6 handoff. If mutable recovery fields are introduced, cover
+      their persistence, initialization, migration, and rollback together.
+- [ ] **Compatibility and bounds:** decide whether a schema change requires a
+      version bump, how valid legacy saves remain loadable, and how complete
+      combat logs fit `SaveManager.MAX_SAVE_BYTES`. Cover bounded rounds,
+      combatants, actions/text, finite numbers, and rejected oversized saves.
+      Never silently truncate required logs or discard an existing save.
+
+Map the contract across these existing owners before assigning file ownership:
+
+| Boundary | Producers, validators, and consumers to account for |
+|---|---|
+| Content and simulation | Hero class/skill/enemy Resources, balancing, content catalogs, snapshot capture, and `CombatSimulator` |
+| Saved results | `ExpeditionStep`, `ExpeditionData` construction/serialization/validation, `SaveManager` schema/migration/size checks |
+| Orchestration | `ExpeditionGenerator`, `ExpeditionManager` dispatch/reveal/finalization, `GameState` checkpoints and Hero fields |
+| Presentation | Home progress, Expedition Report, roster/detail status, and Party availability |
+| Regression fixtures | Combat tests plus existing generator, manager, persistence, formation, and UI suites |
+
+**Gate:** agreed decisions and affected consumers/tests are documented; each
+shared integration file has one writer. Use the agreed contract for every
+worker handoff. This documentation-only slice does not claim working combat.
+
+### Slice 2 — Pure combat and authored models
+
+**Depends on:** Slice 1.
+
+Implement detached simulation, enemy/skill models and authored assets, and
+required balancing validation. Add exact-output determinism, input
+nonmutation, targeting, formula/rounding, skill-policy, and round-bound tests
+from the testing requirements below. Wire complete input maps at the agreed
+boundary; do not depend on scene-tree or live singleton state.
+
+**Gate:** focused combat tests and the existing regression suite pass under
+the documented validation sequence. Keep the live Green Hollow encounter
+pool noncombat; authoring an enemy asset does not activate it.
+
+### Slice 3 — Persistence compatibility
+
+**Depends on:** Slices 1–2.
+
+Support the agreed frozen combat payload in constructors, serializers, and
+strict validators; adapt all generic result readers consistently. Implement
+applicable migrations and checkpoint coverage for new mutable fields.
+Test exact round trips, malformed data, save-size boundaries, old noncombat
+saves, and pre-commit rollback versus post-commit warnings. Loading a saved
+Expedition must not rerun combat or recompute it from retuned content.
+
+**Gate:** valid supported legacy saves and new combat snapshots survive
+save/load, and failed writes preserve prior state. Keep live Combat disabled
+until the remaining integration slices are complete.
+
+### Slice 4 — Expedition integration
+
+**Depends on:** Slices 2–3.
+
+Connect combat resolution to two-pass generation using controlled encounter
+fixtures. Carry complete Hero state between Combats, apply terminal truncation
+with the original step duration, merge final states in order, and commit final
+statuses with rewards/cursor/clock state. Cover Defeat, terminal and nonterminal
+Retreat, zero-HP Heroes, multiple Combats, reload, and save retries.
+
+**Gate:** integration tests prove no later rewards after termination, no
+implicit healing, and exactly-once finalization/rewards, including offline
+observations. Existing noncombat behavior still passes; production activation
+remains deferred.
+
+### Slice 5 — Presentation and activation
+
+**Depends on:** Slices 2–4.
+
+Render only revealed combat logs and committed statuses. Keep future terminal
+outcomes hidden in progress displays. Activate authored Combat encounters in
+Green Hollow only with the completed presentation and persistence pipeline.
+Use controlled noncombat fixtures to retain earlier tests' intended coverage
+instead of weakening exact selection, ten-step, or normal-completion assertions
+indiscriminately. Add separate combat-aware UI and content expectations.
+
+**Gate:** clean import, focused checks, full integrated GUT suite, and Android
+debug export with a nonempty artifact are evidenced by the validation owner.
+Record the manual readable-report and device/lifecycle checks separately;
+unperformed or approval-blocked checks remain pending.
+
+### Delivery evidence and guideline pilot
+
+For each delivered slice, record its published revision/task or PR, scope,
+agreed decisions, validation commands and actual results, blockers, and next
+bounded action. Verify publication and obtain stopped-writer acknowledgments
+before declaring a handoff complete. Reuse that evidence on resumption instead
+of repeating an identical review/validation cycle.
+
+The first bounded gameplay implementation slice using these guidelines is the
+pilot: record its actual validation and whether it finished with a verified
+checkpoint or an explicit incomplete handoff without relying on timeout recovery.
+Keep the pilot pending through documentation-only deliveries, including Slice 1.
+This remains a follow-up validation of the workflow, not evidence supplied by
+adding these guidelines. Keep the milestone's overall acceptance pending until
+all required behavior and checks are complete; slice completion alone does not
+close the milestone.
 
 ## Tasks
 
@@ -206,7 +349,8 @@ map.
 - **`CombatSimulator` accidentally depending on Node/scene-tree state**
   would break the "pure/stateless, unit-testable without a running scene"
   guarantee from plan §13. Mitigation: keep it operating only on plain
-  data models (`PartyData`, `EnemyGroupResource`, primitives).
+  detached inputs (`ExpeditionPartySnapshot`, current-Hero-state map,
+  `EnemyGroupResource`, balancing, and primitives).
 
 ## Next-milestone handoff
 

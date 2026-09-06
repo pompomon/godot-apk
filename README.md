@@ -7,6 +7,10 @@ application/package name and APK artifact retain their original **Hello World**
 identifiers. Combat, equipment management, and
 XP progression remain future milestones.
 
+Contributors and coding agents: start with the
+[agent implementation guidelines](AGENTS.md) for bounded scope, integration
+gates, validation ownership, and verified handoffs.
+
 ## Run locally
 
 1. Install [Godot 4.7.2](https://godotengine.org/download/archive/4.7.2-stable/).

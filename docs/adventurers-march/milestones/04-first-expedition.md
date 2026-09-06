@@ -330,6 +330,10 @@ overall milestone unchecked until the following evidence is recorded:
   catch-up saves. Completion routing ignores outgoing Home screens; leaving-state
   guards prevent canceled screens from dispatching or acknowledging through
   queued callbacks.
+- **Security/review checks:** changed-file secret scanning found no secrets.
+  The final read-only review found no significant remaining issues. CodeQL was
+  invoked, but performed no analysis because the changed source languages are
+  unsupported; this is not a clean CodeQL security-analysis result.
 - **Android export:** the existing debug preset exported successfully.
   Expedition scripts/content are included and tests remain excluded. The
   missing-icon and unavailable-ADB diagnostics did not prevent export; no

@@ -54,29 +54,29 @@ Resolve and record the following decisions before dependent code or parallel
 work begins. The interface and formulas below remain normative; unresolved
 details are not permission to replace them with worker-specific assumptions.
 
-- [ ] **Frozen input and state:** reconcile the stale `PartyData` reference in
+- [x] **Frozen input and state:** reconcile the stale `PartyData` reference in
       the Combat autoload stub with the `ExpeditionPartySnapshot` signature.
       The existing `hero_states()` helper supplies HP only; specify where the
       complete per-Hero HP/status map is constructed and what its statuses
       mean. Define which skill values must be detached at dispatch and retained
       for historical results, without consulting live roster state on reload.
-- [ ] **Skill semantics:** agree Guard activation/expiry, cooldown decrement
+- [x] **Skill semantics:** agree Guard activation/expiry, cooldown decrement
       timing, skill availability when no valid target exists, and whether
       cooldown/effect state resets between Combats. Keep multipliers and any
       new global coefficients in the existing balancing asset.
-- [ ] **Result and errors:** settle compatibility between Combat's documented
+- [x] **Result and errors:** settle compatibility between Combat's documented
       result dictionary and generic consumers currently reading `result.gold`.
       Specify required keys, numeric encodings, invalid-input signaling, and
       nonmutation guarantees. An empty dictionary is not a combat outcome;
       do not silently accept invalid data or weaken noncombat validation.
-- [ ] **Terminal metadata and presentation:** agree the frozen data needed to
+- [x] **Terminal metadata and presentation:** agree the frozen data needed to
       validate truncated runs and display progress without revealing future
       defeat/retreat. Keep step duration based on the full candidate list;
       neither loading nor UI may reconstruct historical rules from live content.
-- [ ] **Recovery boundary:** define the limited Wounded placeholder and
+- [x] **Recovery boundary:** define the limited Wounded placeholder and
       Milestone 6 handoff. If mutable recovery fields are introduced, cover
       their persistence, initialization, migration, and rollback together.
-- [ ] **Compatibility and bounds:** decide whether a schema change requires a
+- [x] **Compatibility and bounds:** decide whether a schema change requires a
       version bump, how valid legacy saves remain loadable, and how complete
       combat logs fit `SaveManager.MAX_SAVE_BYTES`. Cover bounded rounds,
       combatants, actions/text, finite numbers, and rejected oversized saves.
@@ -109,6 +109,83 @@ boundary; do not depend on scene-tree or live singleton state.
 **Gate:** focused combat tests and the existing regression suite pass under
 the documented validation sequence. Keep the live Green Hollow encounter
 pool noncombat; authoring an enemy asset does not activate it.
+
+### Implementation decisions (2026-09-06)
+
+These decisions refine the normative interface below. Implementation proceeds
+through the numbered slices, not by enabling encounters before their consumers
+are ready.
+
+- **Inputs:** the autoload delegates to a pure `CombatEngine`. It accepts an
+  `ExpeditionPartySnapshot`, complete current Hero states, an
+  `EnemyGroupResource`, a seed, and `BalancingConfig`. No inputs are mutated.
+  `hero_states()` supplies `{hp, status}` for every stable Hero ID: positive HP
+  starts `IDLE` (0), zero HP is `WOUNDED` (4). These are simulation/finalization
+  statuses, not changes to the live roster's `ON_EXPEDITION` status.
+- **Skills:** each class references one `SkillResource` with `skill_id`,
+  `display_name`, `effect` (`Physical`, `Magic`, `Heal`, `Guard`), `target_rule`
+  (`FrontRowFirst`, `AnySlot`, `LowestHPAlly`, `Self`), and `cooldown_turns`.
+  Combat snapshots detach this definition into `active_skill`; legacy
+  noncombat snapshots need no skill. Multipliers come from the supplied
+  balancing asset during dispatch; saved logs never consult that asset again.
+- **Skill timing:** skills start ready and reset between encounters. A skill
+  sets its cooldown to the authored number of intervening actor turns; each
+  subsequent turn with positive cooldown decrements it and uses a basic
+  attack. Mend selects living injured allies only, including self; if none
+  exists, use a basic attack without consuming the skill cooldown. Guard
+  affects incoming damage immediately until the beginning of the guarding
+  actor's next turn. Its multiplier is applied after mitigation/crit and before
+  the single final floor. Guard cannot reduce successful damage below one.
+  Basic attacks are physical; Firebolt uses MagicPower.
+- **Ordering:** canonical stable-ID order precedes RNG tiebreak assignment
+  each round; descending Initiative, seeded tiebreak, then stable ID determine
+  action order. Target ties use HP percentage then stable ID. Enemies have
+  unique authored IDs, explicit rows/rules, and no active skills in this slice.
+- **Results:** success has exactly `gold` (zero for Combat), `outcome`, `rounds`,
+  `final_hero_states`, and `enemy_states`. Final Hero states cover every input
+  Hero, with zero-HP Heroes Wounded, all Heroes Wounded on Defeat, and other
+  survivors Idle. Frozen `enemy_states` maps each enemy ID to
+  `{name, max_hp, hp, row}` for validation and historical presentation.
+  Each action retains the documented name/amount/crit fields and adds
+  `actor_id`, `target_id`, `effect`, and `hit`. Misses log zero; Heal/Guard
+  always hit and never crit. Amounts are the calculated integers before HP
+  clamping, not the clamped difference. Invalid inputs return only an `error`
+  string; callers abort dispatch, never treat that dictionary as an outcome.
+- **Numbers and bounds:** HP, statuses, rounds, cooldowns, and logged amounts
+  are bounded JSON-safe integers; finite probabilities/multipliers are
+  validated before use. Keep the existing eight-byte hexadecimal encoding of
+  snapshot Evasion/CritChance. Limit enemies to four, rounds to at most 100
+  (authored default 20), and actions to at most eight per round. Bound strings
+  and nested collections; check complete serialized saves against the existing
+  1 MiB limit. Stress the authored five-encounter/20-round case before activation.
+  Reject oversized dispatch without altering the previous save; never remove
+  log entries to make a save fit.
+- **Persistence:** new saves use version 4. Validate supported original schemas
+  before migration; preserve historical noncombat results and exact snapshot
+  doubles. Freeze `planned_step_count` and `retreat_ends_expedition` in new
+  Expedition records; legacy noncombat runs migrate with their full saved step
+  count and nonterminal Retreat. Do not consult today's Region rules on load.
+- **Terminal behavior:** selection still completes before any resolution.
+  A Combat seed is drawn from that same Expedition RNG during ordered
+  resolution. Defeat always terminates; Retreat terminates only under the
+  frozen Region rule. Retain the original slice duration and calculate the
+  effective end from the terminal index. Running UI uses the planned count
+  and duration, concealing early termination until it is revealed.
+- **Recovery boundary:** add only a fixed UTC recovery deadline
+  `recovery_ready_at` to Hero persistence/checkpoints, zero when inactive.
+  Newly Wounded Heroes recover after `base_recovery_seconds` (60 initially)
+  from the observation that commits finalization. Recovery is observed and
+  saved transactionally through ExpeditionManager's existing lifecycle path,
+  including when no Expedition is running. Legacy Heroes migrate with zero;
+  pre-existing reserved Wounded states with no deadline are not reinterpreted.
+  No Resting phase, XP, equipment, injuries, or recovery modifiers are added.
+  Milestone 6 replaces this deliberately limited placeholder.
+
+**Ownership:** one combat writer owns simulation, enemy/skill Resources and
+assets, class skill references, snapshot capture, balancing, and focused combat
+tests. The integration owner owns saved Expedition validation, SaveManager,
+Hero recovery/checkpoints, generation, orchestration, UI, and their regression
+tests. One validation owner runs each integrated revision's existing gates.
 
 ### Slice 3 — Persistence compatibility
 

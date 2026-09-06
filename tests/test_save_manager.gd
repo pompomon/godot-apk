@@ -52,7 +52,7 @@ func test_autoload_construction_and_capture_are_io_free() -> void:
 	assert_false(SaveManager.last_error.is_empty())
 
 
-func test_version_three_round_trip_every_field_and_maximum_seed() -> void:
+func test_version_four_round_trip_every_field_and_maximum_seed() -> void:
 	_boot()
 	GameState.recruitment_seed = HeroCatalog.MAX_SAFE_INT
 	GameState.recruitment_sequence = HeroCatalog.MAX_SAFE_INT
@@ -68,6 +68,7 @@ func test_version_three_round_trip_every_field_and_maximum_seed() -> void:
 		hero.status = index as HeroData.HeroStatus
 		if hero.status == HeroData.HeroStatus.ON_EXPEDITION:
 			hero.status = HeroData.HeroStatus.WOUNDED
+			hero.recovery_ready_at = HeroCatalog.MAX_SAFE_INT
 		hero.traits.assign([HeroCatalog.traits()[index]])
 		index += 1
 	GameState.current_party = PartyData.new()
@@ -144,7 +145,7 @@ func test_original_rolls_survive_range_tuning_while_new_heroes_use_current_range
 
 func test_migration_rejects_unknown_versions_and_types() -> void:
 	var snapshot := _boot()
-	for version in [null, true, "1", -1, 0, 1.5, 4, HeroCatalog.MAX_SAFE_INT]:
+	for version in [null, true, "1", -1, 0, 1.5, 5, HeroCatalog.MAX_SAFE_INT]:
 		var invalid := snapshot.duplicate(true)
 		invalid.save_version = version
 		assert_eq(SaveManager.migrate(invalid), {}, str(version))
@@ -155,7 +156,7 @@ func test_migration_rejects_unknown_versions_and_types() -> void:
 func test_root_validation_rejects_bad_types_bounds_and_missing_fields() -> void:
 	var snapshot := _boot()
 	var changes := [
-		["save_version", "1"], ["save_version", 1], ["save_version", 4], ["save_version", true],
+		["save_version", "1"], ["save_version", 1], ["save_version", 5], ["save_version", true],
 		["gold", -1], ["gold", 1.1], ["gold", true], ["gold", "100"],
 		["gold", INF], ["gold", NAN], ["gold", HeroCatalog.MAX_SAFE_INT + 1],
 		["roster_capacity", 0], ["roster_capacity", 13], ["roster_capacity", 3],
@@ -193,6 +194,9 @@ func test_hero_validation_rejects_unknown_resources_ids_attributes_and_equipment
 		["level", 0], ["level", 1.5], ["level", HeroCatalog.MAX_LEVEL + 1],
 		["xp", -1], ["xp", 2.3], ["xp", true], ["xp", HeroCatalog.MAX_SAFE_INT + 1],
 		["status", "FAKE"], ["status", 1], ["equipped_weapon", {}], ["equipped_armor", "item-1"],
+		["recovery_ready_at", -1], ["recovery_ready_at", 0.5], ["recovery_ready_at", true],
+		["recovery_ready_at", "0"], ["recovery_ready_at", INF], ["recovery_ready_at", NAN],
+		["recovery_ready_at", HeroCatalog.MAX_SAFE_INT + 1], ["recovery_ready_at", 1],
 		["trait_ids", ["unknown"]], ["trait_ids", ["res://data/traits/hearty.tres"]],
 		["trait_ids", [HeroCatalog.HEARTY.trait_id, HeroCatalog.HEARTY.trait_id]],
 		["trait_ids", [null]], ["traits", []], ["attributes", []],
@@ -224,6 +228,48 @@ func test_ids_are_unique_across_roster_and_offers_and_counter_is_ahead() -> void
 	var invalid := snapshot.duplicate(true)
 	invalid.recruitment_offers[0].status = "ASSIGNED"
 	assert_false(SaveManager.validate_snapshot(invalid))
+
+
+func test_recovery_deadline_requires_wounded_but_legacy_wounded_can_remain_inactive() -> void:
+	var original := _boot()
+	for status in HeroData.HeroStatus.keys():
+		var snapshot := original.duplicate(true)
+		snapshot.roster[0].status = status
+		snapshot.roster[0].recovery_ready_at = HeroCatalog.MAX_SAFE_INT
+		assert_eq(SaveManager.validate_snapshot(snapshot), status == "WOUNDED", status)
+	GameState.roster[0].status = HeroData.HeroStatus.WOUNDED
+	for deadline in [0, 1060, HeroCatalog.MAX_SAFE_INT]:
+		GameState.roster[0].recovery_ready_at = deadline
+		SaveManager.save()
+		assert_true(SaveManager.last_committed, SaveManager.last_error)
+		var expected := SaveManager.capture_state()
+		SaveManager.load_or_create()
+		assert_eq(SaveManager.capture_state(), expected)
+		assert_eq(GameState.roster[0].recovery_ready_at, deadline)
+
+
+func test_checkpoint_restores_recovery_and_canonical_hero_and_party_identity() -> void:
+	_boot()
+	var hero: HeroData = GameState.roster[0]
+	var offer: HeroData = GameState.recruitment_offers[0]
+	hero.status = HeroData.HeroStatus.ASSIGNED
+	GameState.current_party = PartyData.new()
+	GameState.current_party.place_hero(0, hero)
+	var party: PartyData = GameState.current_party
+	var checkpoint := GameState.checkpoint()
+	hero.status = HeroData.HeroStatus.WOUNDED
+	hero.recovery_ready_at = 1060
+	offer.recovery_ready_at = 2000
+	GameState.current_party = null
+	GameState.roster.clear()
+	GameState.restore_checkpoint(checkpoint)
+	assert_same(GameState.roster[0], hero)
+	assert_same(GameState.recruitment_offers[0], offer)
+	assert_same(GameState.current_party, party)
+	assert_same(GameState.current_party.slots[0], hero)
+	assert_eq(hero.status, HeroData.HeroStatus.ASSIGNED)
+	assert_eq(hero.recovery_ready_at, 0)
+	assert_eq(offer.recovery_ready_at, 0)
 
 
 func test_validation_does_not_partially_mutate_live_state() -> void:

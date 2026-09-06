@@ -190,10 +190,13 @@ Detail: [04-first-expedition.md](adventurers-march/milestones/04-first-expeditio
 - [x] Add one active skill per class (Guard / Firebolt / Mend / basic
       Ranger attack variant).
 
-**Status:** contracts and pure combat are implemented, with 36 focused combat
-tests and all 219 tests passing locally, plus a successful Android debug export.
-Enemy/skill assets are authored but the live encounter pool remains noncombat
-until persistence, orchestration, and presentation integration are validated.
+**Status:** delivery slices 1–3 (contracts, pure combat, and persistence) are
+implemented. Version-4 saves validate frozen combat logs and migrate versions
+1–3; recovery deadlines are persisted/checkpointed but not yet observed.
+All 236 tests pass locally, with a successful Android debug export.
+The live encounter pool remains noncombat: slice 4 orchestration and slice 5
+presentation/activation are still pending. See the detail file for the tested
+checkpoints, CI approval blocker, and next bounded action.
 
 **Definition of done:** Combat steps in Green Hollow resolve
 deterministically via `CombatSimulator`, produce a correct

@@ -85,9 +85,9 @@ static func _validation_error(
 			return "Invalid current Hero state."
 		if not ExpeditionCatalog.integer(state.hp, 0, int(member.derived_stats.MaxHP)):
 			return "Current Hero HP is outside its bounds."
-		if not ExpeditionCatalog.integer(state.status) or state.status not in [HeroData.HeroStatus.IDLE, HeroData.HeroStatus.WOUNDED]:
+		if not ExpeditionCatalog.integer(state.status) or int(state.status) not in [HeroData.HeroStatus.IDLE, HeroData.HeroStatus.WOUNDED]:
 			return "Invalid simulation Hero status."
-		if state.hp == 0 and state.status != HeroData.HeroStatus.WOUNDED:
+		if state.hp == 0 and int(state.status) != HeroData.HeroStatus.WOUNDED:
 			return "Zero-HP Heroes must be Wounded."
 	for enemy in group.enemies:
 		if enemy.combatant_id in ids:

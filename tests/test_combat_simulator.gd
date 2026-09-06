@@ -499,6 +499,25 @@ func test_seed_is_a_nonnegative_safe_integer() -> void:
 	assert_eq(states, party.hero_states())
 
 
+func test_current_states_accept_json_integer_floats_but_not_invalid_status_types() -> void:
+	var party: ExpeditionPartySnapshot = _party([_member("living"), _member("fallen")])
+	var states: Dictionary = {"living": {"hp": 100, "status": 0}, "fallen": {"hp": 0, "status": 4}}
+	var parsed: Dictionary = JSON.parse_string(JSON.stringify(states))
+	var before: Dictionary = parsed.duplicate(true)
+	assert_typeof(parsed.living.status, TYPE_FLOAT)
+	assert_typeof(parsed.fallen.status, TYPE_FLOAT)
+	var enemies: EnemyGroupResource = _group()
+	var balancing: BalancingConfig = _balancing()
+	var expected: Dictionary = CombatEngine.resolve_combat(party, states, enemies, 1234, balancing)
+	assert_false(expected.has("error"))
+	assert_eq(CombatEngine.resolve_combat(party, parsed, enemies, 1234, balancing), expected)
+	assert_eq(parsed, before)
+	for invalid_status in [0.5, 4.5, true, false, "0", "4"]:
+		var invalid: Dictionary = states.duplicate(true)
+		invalid.living.status = invalid_status
+		_assert_error(CombatEngine.resolve_combat(party, invalid, enemies, 1234, balancing))
+
+
 func test_malformed_snapshot_and_skill_shapes_are_errors() -> void:
 	_assert_error(CombatEngine.resolve_combat(null, {}, _group(), 1, _balancing()))
 	_assert_error(CombatEngine.resolve_combat(ExpeditionPartySnapshot.new(), {}, _group(), 1, _balancing()))

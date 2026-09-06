@@ -1,6 +1,6 @@
 class_name ExpeditionStep
 extends RefCounted
-## Detached, resolved journal entry. Reserved combat payloads are not accepted yet.
+## Detached, resolved journal entry with strict kind-specific frozen payloads.
 
 enum StepKind { TRAVEL, LOOT, EVENT, COMBAT }
 
@@ -24,19 +24,29 @@ var result: Dictionary:
 
 func _init(data: Dictionary = {}) -> void:
 	_data = data.duplicate(true)
+	if ExpeditionCatalog.integer(_data.get("kind")):
+		_data.kind = int(_data.kind)
+	if _data.get("result") is Dictionary:
+		_data.result = CombatResult.normalize_integers(_data.result)
 
 
 func serialize() -> Dictionary:
 	return _data.duplicate(true)
 
 
-static func valid(data: Variant, index: int) -> bool:
+static func valid(data: Variant, index: int, snapshot: Variant = null, current_hero_states: Variant = null) -> bool:
 	if not data is Dictionary or not HeroCatalog.has_exact_keys(
 			data, ["kind", "content_id", "title", "journal_text", "outcome_id", "result"]):
 		return false
-	if not ExpeditionCatalog.integer(data.kind, 0, StepKind.EVENT) or not data.content_id is String or not data.outcome_id is String:
+	if not ExpeditionCatalog.integer(data.kind, 0, StepKind.COMBAT) or not data.content_id is String or not data.outcome_id is String:
 		return false
-	if not ExpeditionCatalog.text(data.title) or not ExpeditionCatalog.text(data.journal_text, 4096) or not ExpeditionCatalog.gold_payload(data.result):
+	if not ExpeditionCatalog.text(data.title) or not ExpeditionCatalog.text(data.journal_text, 4096):
+		return false
+	if int(data.kind) == StepKind.COMBAT:
+		if index % 2 == 0 or not ExpeditionCatalog.text(data.content_id) or CombatCatalog.enemy_group_by_id(data.content_id) == null:
+			return false
+		return CombatResult.valid(data.result, snapshot, current_hero_states) and data.outcome_id == data.result.outcome
+	if not ExpeditionCatalog.gold_payload(data.result):
 		return false
 	if index % 2 == 0:
 		return int(data.kind) == StepKind.TRAVEL and data.content_id == "" and data.outcome_id == "" and data.result.gold == 0

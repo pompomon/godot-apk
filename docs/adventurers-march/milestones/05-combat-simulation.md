@@ -257,6 +257,61 @@ Read-only review reported no significant issues. This is the bounded gameplay
 pilot checkpoint; it does not claim complete combat integration or device
 acceptance. Next bounded action: Slice 3 persistence compatibility.
 
+**Publication confirmed:** Slice 2 was committed and pushed as `b13600d`, with
+the writer stopped and validation complete before publication. This completes
+the bounded gameplay guideline pilot without timeout recovery.
+The [Android workflow for that checkpoint](https://github.com/pompomon/godot-apk/actions/runs/34063450150)
+is `action_required`, with zero jobs reported by the logs endpoint; CI approval
+is pending, not a test failure or a passed CI run. No physical-device checks
+were performed.
+
+**Slice 3 validation (2026-09-06, changes based on `b13600d`):** both writers
+explicitly stopped before the integrated checks. Godot 4.7.2 clean import
+exited 0. Focused tests passed: Combat **37 / 1,412 assertions**, Combat
+persistence **12 / 390**, Expedition persistence **11 / 343**, and SaveManager
+**22 / 330**. The full GUT suite passed **236 tests / 19,226 assertions** across
+20 scripts, exit 0, with both standard hooks enabled. Android debug export
+exited 0 and produced a nonempty **28,444,351-byte** APK. The existing README
+commands were used, with `-gselect=<test filename>` for focused runs.
+
+Coverage includes exact combat round trips; v1/v2/v3 original-schema validation
+and migration; frozen terminal clocks; ordered HP-log validation; malformed
+payloads; five complete 20-round/eight-combatant encounters below 1 MiB; exact
+save-size boundary acceptance and oversized-write preservation; and recovery
+deadline checkpoint rollback across every save fault boundary. New tests exposed
+an integral-JSON-float enum-membership bug; both result validation and the pure
+engine now validate integrality before converting statuses to integers. Parser
+issues in new test fixtures were also resolved. No existing baseline failure
+was hidden or unrelated assertion relaxed. Read-only review found no significant
+issues; these results are local validation, not CI or device acceptance.
+
+### Remaining implementation handoff
+
+This session deliberately stops after Slice 3 to preserve a verified checkpoint.
+**Milestone 5 is not complete, and production Green Hollow remains noncombat.**
+No Slice 4/5 production or UI files were edited.
+
+1. **Next bounded action — Slice 4:** extend `ExpeditionCatalog` to validate
+   Combat entries and terminal Retreat; call `CombatEngine.resolve_combat`
+   from the generator's second pass using a seed drawn from the same RNG.
+   Capture optional skills only for Combat runs, carry HP/status maps between
+   encounters, and freeze the planned count and Region terminal rule explicitly.
+2. Wire terminal truncation and effective-duration clock caps through
+   `ExpeditionManager`. Its current finalization still returns everyone Idle;
+   replace that with the ordered `ExpeditionData.final_hero_states()` result.
+   Commit Wounded statuses and `recovery_ready_at` with rewards/cursor/clock,
+   and observe the limited recovery deadline even without a running Expedition.
+   `GameState` already checkpoints these deadlines while preserving Hero identity.
+3. Validate that slice with controlled encounters, offline/retry/fault cases,
+   the full existing GUT suite, and Android export **before** enabling Combat.
+4. **Then Slice 5:** Home/Report should use `display_step_count()` and
+   `seconds_remaining()` to hide future terminal outcomes. Render only revealed
+   logs, refresh committed recovery/Party availability, and add combat-aware UI
+   tests. Preserve old noncombat regression coverage with isolated fixtures.
+   Only then activate the authored enemy groups in Green Hollow.
+5. Keep exported-device readability/lifecycle acceptance and workflow approval
+   separate and pending until actually performed.
+
 For each delivered slice, record its published revision/task or PR, scope,
 agreed decisions, validation commands and actual results, blockers, and next
 bounded action. Verify publication and obtain stopped-writer acknowledgments
@@ -369,13 +424,20 @@ func resolve_combat(party: ExpeditionPartySnapshot, current_hero_states: Diction
         enemy_group: EnemyGroupResource, seed: int,
         balancing: BalancingConfig) -> Dictionary
 # {
+#   "gold": 0,
 #   "outcome": "VICTORY" | "DEFEAT" | "RETREAT",
 #   "rounds": [{ "round_number": int, "actions": [{
 #       "actor_name": String, "action_name": String, "target_name": String,
-#       "damage_or_heal": int, "was_crit": bool
+#       "actor_id": String, "target_id": String,
+#       "effect": "Physical" | "Magic" | "Heal" | "Guard",
+#       "damage_or_heal": int, "was_crit": bool, "hit": bool
 #   }]}],
-#   "final_hero_states": { hero_id: { "hp": int, "status": int } }
+#   "final_hero_states": { hero_id: { "hp": int, "status": int } },
+#   "enemy_states": { enemy_id: {
+#       "name": String, "max_hp": int, "hp": int, "row": "Front" | "Back"
+#   } }
 # }
+# Invalid input returns only { "error": String }; this is not an outcome.
 ```
 
 `ExpeditionStep.result` remains a `Dictionary` for every kind. A `COMBAT`
@@ -383,7 +445,12 @@ result uses the nested plain-data shape above, with no `RefCounted` objects
 or object keys, so the active Expedition can be written directly to JSON.
 Both `current_hero_states` and `final_hero_states` use Hero ID strings as
 keys and contain every Party Hero; `resolve_combat` must not mutate its input
-map.
+map. A Combat step's `outcome_id` equals its saved `result.outcome`.
+`CombatResult.valid(result, snapshot, current_hero_states)` validates complete
+rounds and chronological HP provenance without rerolling outcomes or reading
+current enemy statistics, skill assets, or balancing. JSON integer-valued floats
+are validated before normalization; Boolean, string, fractional, and unsafe
+integer encodings are rejected.
 
 ## Testing requirements
 

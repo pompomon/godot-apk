@@ -14,7 +14,7 @@ var VersionConversion = load("res://addons/gut/version_conversion.gd")
 @warning_ignore("inferred_declaration")
 func _init() -> void:
 	if(VersionConversion.error_if_not_all_classes_imported()):
-		quit(0)
+		quit(1)
 		return
 
 	var max_iter := 20
@@ -30,7 +30,7 @@ func _init() -> void:
 
 	if(Engine.get_main_loop() == null):
 		push_error('Main loop did not start in time.')
-		quit(0)
+		quit(1)
 		return
 
 	var cli : Node = load('res://addons/gut/cli/gut_cli.gd').new()

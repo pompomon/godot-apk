@@ -1,9 +1,9 @@
-# Adventurer's March — Hero Roster
+# Adventurer's March — Party Formation
 
 A Godot 4.7.2 portrait Android game with a generated Company roster, Hero
-inspection, deterministic recruitment, and local JSON saves. The
+inspection, deterministic recruitment, Party formation, and local JSON saves. The
 application/package name and APK artifact retain their original **Hello World**
-identifiers. Party formation, Expeditions, combat, equipment management, and
+identifiers. Expeditions, combat, equipment management, and
 XP progression remain future milestones.
 
 ## Run locally
@@ -18,7 +18,8 @@ XP progression remain future milestones.
 3. Press **F5** or click **Run Project**. The configured `main.tscn` scene
    binds the persistent screen root, calls `SaveManager.load_or_create()`,
    and displays Home with the Company's gold and roster count. Open
-   **Company Roster** to inspect or recruit Heroes.
+   **Company Roster** to inspect or recruit Heroes, or **Form Party** to
+   assemble a formation.
 
 You can also run the project directly:
 
@@ -41,9 +42,9 @@ godot --path .
   XP. The XP bar is inactive until progression is implemented in Milestone 6;
   weapon and armor slots are empty placeholders.
 - Saves live in Godot's app-private user-data directory as `save.json`.
-  New-game creation and recruitment save immediately; initialized state is
-  also saved on application pause/close. A failed purchase save is reported
-  rather than spending gold only in memory.
+  New-game creation, recruitment, and confirmed Party changes save immediately;
+  initialized state is also saved on application pause/close. Failed
+  pre-commit purchases and Party changes roll back and show retry feedback.
 - Versioned saves validate the complete state and known content IDs. Writes
   flush, close, reopen, and validate a same-directory temporary file before
   replacing the primary. The previous valid primary is retained as `.bak`.
@@ -53,6 +54,30 @@ godot --path .
 - This is best-effort replacement using Godot APIs, **not** a guarantee of
   atomic replacement or durability across arbitrary power loss. Do not delete
   a player's save to troubleshoot; copy the primary and backup elsewhere first.
+
+## Forming a Party
+
+- Open **Form Party** from Home or Company Roster. Tap one of the four named
+  front/back slots, then an available Hero to place them. Remove or move
+  members explicitly; occupied slots are never silently overwritten.
+- Only `Idle` roster Heroes may be newly added. Heroes already in your
+  confirmed Party remain editable while `Assigned`.
+- Slot edits are a local draft. Heroes disappear from the available pool when
+  selected, but their statuses and saved formation do not change until
+  **Confirm**. Confirming a Party returns Home and exposes **Edit Party**.
+- **Cancel/Back** discards edits and preserves any previously confirmed
+  Party. **Disband Party** explicitly clears that Party and returns its members
+  to `Idle`. Backgrounding or closing saves committed state only.
+- Parties may contain 1–4 Heroes. Power updates live from the shared derived
+  stats and balancing asset: member-count scaling applies below four Heroes,
+  and an additional 0.85 factor applies without a front-row Hero. These
+  formations are allowed; the UI explains the penalties. Empty drafts cannot
+  be confirmed. Power is an estimate, not a combat result.
+- Version-2 saves store named formation slots referencing stable roster IDs.
+  Version-1 saves migrate without regenerating Heroes or losing Company
+  progress; legacy `Assigned` statuses become `Idle` because that version did
+  not store a Party. Other statuses are preserved.
+- Region selection and expedition execution remain deferred to Milestone 4.
 
 ## Run the tests
 
@@ -76,9 +101,9 @@ Negative navigation and save-recovery tests deliberately emit Godot warnings;
 normal startup with healthy storage does not.
 
 The suite covers content, deterministic generation, derived stats, recruitment,
-save validation/recovery, and roster/detail navigation alongside the foundation
-autoload, Resource, bootstrap, and mobile-setting regressions. No test reads or
-writes a player save.
+Party models/evaluation/transactions, save validation/migration/recovery, and
+formation/roster/detail navigation alongside the foundation autoload, Resource,
+bootstrap, and mobile-setting regressions. No test reads or writes a player save.
 Persistence must derive primary, backup, and temporary paths from
 `SaveManager.get_save_path()`, never hard-code `user://save.json`. Autoload
 initialization must remain I/O-free. Persistence and bootstrap cases use fresh
@@ -98,8 +123,9 @@ excluded from the Android APK.
 
 ## Architecture boundaries
 
-- `GameState` owns the typed Hero roster and offers, gold, roster capacity,
-  ID/seed state, inventory, and unlocked Region IDs. Inventory and unlocked
+- `GameState` owns the typed Hero roster and offers, nullable confirmed
+  `current_party`, gold, roster capacity, ID/seed state, inventory, and unlocked
+  Region IDs. Inventory and unlocked
   Regions remain empty until their owning milestones.
 - `HeroData` is a `RefCounted` runtime model. Generation and derived-stat
   calculation are pure; generated attributes are not overwritten by growth.
@@ -107,6 +133,15 @@ excluded from the Android APK.
 - `SaveManager` owns validation, migration dispatch, serialization, and backup
   recovery. Recruitment saves its gold, Hero, offer, ID, and seed changes
   together and rolls back a failed pre-commit purchase.
+- `PartyData` is a `RefCounted` four-slot model referencing canonical roster
+  Heroes. Drafts copy only its mapping; deterministic slot order is front-left,
+  front-right, back-left, back-right. `PartyEvaluator` is pure and consumes
+  `HeroStats`, so future equipment effects need no duplicate Power formula.
+- `PartyFormationService` validates and commits Party/status changes together.
+  `GameState` checkpoints retain Hero identity while restoring mutable
+  statuses and the previous formation on pre-commit failure. A post-commit
+  warning never undoes saved changes. Version-2 validation rejects orphan
+  `Assigned` statuses and Party members not belonging to the roster.
 - `ExpeditionManager` and `CombatSimulator` remain documented stubs;
   start/resolve calls warn rather than fabricate success.
 - `ExpeditionManager` is the sole future owner of the active Expedition.
@@ -118,9 +153,10 @@ excluded from the Android APK.
   root that has exited are discarded. Hero Detail receives a stable Hero ID
   through request-specific navigation context, not a roster index. Await a
   process frame before inspecting the resulting screen in tests.
-- Content Resource scripts and `HeroData` live under `scripts/models/`.
-  Runtime Party/Expedition models do not exist yet; their stub parameters
-  remain `Variant`, and inventory remains untyped until Milestone 6.
+- Content Resource scripts, `HeroData`, and `PartyData` live under
+  `scripts/models/`. `ExpeditionManager.start_expedition` accepts `PartyData`
+  but remains a stub; the Expedition model and combat types remain deferred,
+  and inventory remains untyped until Milestone 6.
 - `data/balancing/default_balancing.tres` is the single balancing asset. It
   defines the 100-gold recruitment price, design §7 Party Power baseline
   (including divisor 4 and no-front-row factor 0.85), and §9 combat defaults
@@ -164,6 +200,8 @@ Hero Roster's implementation is complete, but final OS-temp-isolated CI
 verification requires workflow approval and exported-device acceptance remains
 pending. See the [milestone evidence](docs/adventurers-march/milestones/02-hero-roster.md#implementation-and-validation-evidence)
 for the tested revision, local results, and remaining checks.
+Party Formation's validation evidence and separate exported-device checklist
+are tracked in its [milestone detail](docs/adventurers-march/milestones/03-party-formation.md).
 
 ## Adventurer's March design & implementation docs
 

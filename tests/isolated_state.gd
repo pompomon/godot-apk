@@ -6,6 +6,7 @@ var _temporary_directory: DirAccess
 var _state: Dictionary
 var _manager: Dictionary
 var _recruitment_error: String
+var _formation_error: String
 
 
 func begin() -> bool:
@@ -18,6 +19,7 @@ func begin() -> bool:
 		"fault_injector": SaveManager.fault_injector,
 	}
 	_recruitment_error = RecruitmentService.last_error
+	_formation_error = PartyFormationService.last_error
 	_temporary_directory = DirAccess.create_temp("godot-apk-case")
 	if _temporary_directory == null:
 		return false
@@ -30,6 +32,7 @@ func begin() -> bool:
 	SaveManager.last_error = ""
 	SaveManager.last_warning = ""
 	RecruitmentService.last_error = ""
+	PartyFormationService.last_error = ""
 	GameState.reset()
 	return true
 
@@ -39,4 +42,5 @@ func finish() -> void:
 	for key in _manager:
 		SaveManager.set(key, _manager[key])
 	RecruitmentService.last_error = _recruitment_error
+	PartyFormationService.last_error = _formation_error
 	_temporary_directory = null

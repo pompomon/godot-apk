@@ -73,3 +73,10 @@ func _show_screen(
 func _on_screen_root_exiting() -> void:
 	_current_screen = null
 	_screen_root = null
+
+
+func cancel_screen_draft() -> bool:
+	if is_instance_valid(_current_screen) and _current_screen.has_method("cancel_draft"):
+		_current_screen.call("cancel_draft")
+		return true
+	return false

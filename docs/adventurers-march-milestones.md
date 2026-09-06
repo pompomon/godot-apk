@@ -112,18 +112,26 @@ Detail: [02-hero-roster.md](adventurers-march/milestones/02-hero-roster.md)
 
 **Depends on:** 2 (Hero roster).
 
-- [ ] Implement `PartyData` model (up to 4 Heroes + formation slots).
-- [ ] Implement `PartyEvaluator` (Party Power formula per
+- [x] Implement `PartyData` model (up to 4 Heroes + formation slots).
+- [x] Implement `PartyEvaluator` (Party Power formula per
       [plan §7](adventurers-march-implementation-plan.md#7-party-formation-and-evaluation)).
-- [ ] Build Party Formation screen: select idle Heroes, assign front/back
+- [x] Build Party Formation screen: select idle Heroes, assign front/back
       slots, display computed Party Power.
-- [ ] Enforce Hero status transitions (`Idle` → `Assigned`) when added to
-      a Party.
+- [x] Enforce Hero status transitions (`Idle` → `Assigned`) on confirmation;
+      persist Party edits/disbanding together with their statuses.
+- [x] Migrate version-1 saves and validate version-2 Party references.
+
+**Status:** implemented with draft-only editing, explicit disbanding,
+transactional Party/status persistence, migration, and automated coverage.
+The overall milestone remains unchecked pending exported-device acceptance;
+see the detail file for validation evidence and the remaining checks.
 
 **Definition of done:** the player can select up to 4 idle Heroes, place
 them in front/back slots, see a live-updating Party Power value, and only
-idle Heroes are selectable; `PartyEvaluator` has unit tests covering full,
-partial, and no-front-row Parties.
+idle Heroes may be newly added (existing Party members remain editable);
+canceling preserves the confirmed Party, explicit disbanding releases its
+Heroes, and committed state survives reload. `PartyEvaluator` has unit tests
+covering full, partial, and no-front-row Parties.
 
 Detail: [03-party-formation.md](adventurers-march/milestones/03-party-formation.md)
 

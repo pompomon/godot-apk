@@ -3,6 +3,7 @@ extends Control
 const HeroUI = preload("res://scenes/ui/hero_ui.gd")
 const HOME_SCREEN := "res://scenes/ui/home/home_screen.tscn"
 const DETAIL_SCREEN := "res://scenes/ui/hero_detail/hero_detail_screen.tscn"
+const PARTY_SCREEN := "res://scenes/ui/party_formation/party_formation_screen.tscn"
 const BALANCING: BalancingConfig = preload("res://data/balancing/default_balancing.tres")
 
 var _feedback_message: String = ""
@@ -17,6 +18,7 @@ var _feedback_message: String = ""
 func _ready() -> void:
 	HeroUI.apply_theme(self)
 	%BackButton.pressed.connect(_go_home)
+	%FormationButton.pressed.connect(_open_formation)
 	_refresh()
 
 
@@ -26,6 +28,8 @@ func _notification(what: int) -> void:
 
 
 func _refresh() -> void:
+	%FormationButton.text = "Form Party" if GameState.current_party == null else "Edit Party"
+	%FormationButton.disabled = not PartyFormationService.editing_error().is_empty()
 	_gold_label.text = "Gold: %d" % GameState.gold
 	_roster_count_label.text = "Roster: %d / %d" % [
 		GameState.roster.size(), GameState.roster_capacity
@@ -109,3 +113,7 @@ func _open_detail(hero_id: String) -> void:
 
 func _go_home() -> void:
 	UIManager.show_screen(HOME_SCREEN)
+
+
+func _open_formation() -> void:
+	UIManager.show_screen(PARTY_SCREEN, {"origin": "roster"})

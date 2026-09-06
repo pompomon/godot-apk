@@ -2,13 +2,14 @@ extends Node
 ## Versioned, validated snapshots and best-effort same-directory replacement.
 ## No fsync or cross-platform atomicity guarantees are available through these APIs.
 
-const SAVE_VERSION := 1
+const SAVE_VERSION := 2
 const MAX_SAVE_BYTES := 1048576
-const ROOT_KEYS := [
+const LEGACY_ROOT_KEYS := [
 	"save_version", "roster", "recruitment_offers", "gold", "inventory",
 	"unlocked_regions", "roster_capacity", "next_hero_id", "recruitment_seed",
 	"recruitment_sequence", "offer_seeds",
 ]
+const ROOT_KEYS := LEGACY_ROOT_KEYS + ["current_party"]
 const HERO_KEYS := [
 	"hero_id", "hero_name", "class_id", "level", "xp", "attributes", "trait_ids",
 	"status", "equipped_weapon", "equipped_armor",
@@ -82,11 +83,21 @@ func _clear_result() -> void:
 	last_warning = ""
 
 
-## Migration dispatch deliberately recognizes only the shipped schema.
+## Validate the original schema before normalizing; never repair malformed saves.
 func migrate(data: Variant) -> Dictionary:
 	if not data is Dictionary or not _integer(data.get("save_version"), 1, HeroCatalog.MAX_SAFE_INT):
 		return {}
 	match int(data.save_version):
+		1:
+			if not _validate_schema(data, 1, LEGACY_ROOT_KEYS):
+				return {}
+			var migrated: Dictionary = data.duplicate(true)
+			migrated.save_version = SAVE_VERSION
+			migrated.current_party = null
+			for hero in migrated.roster:
+				if hero.status == "ASSIGNED":
+					hero.status = "IDLE"
+			return migrated
 		SAVE_VERSION:
 			return data
 		_:
@@ -110,7 +121,22 @@ func capture_state() -> Dictionary:
 		"next_hero_id": GameState.next_hero_id, "recruitment_seed": GameState.recruitment_seed,
 		"recruitment_sequence": GameState.recruitment_sequence,
 		"offer_seeds": GameState.offer_seeds.duplicate(),
+		"current_party": _serialize_party(GameState.current_party),
 	}
+
+
+func _serialize_party(party: PartyData) -> Variant:
+	if party == null:
+		return null
+	if not party.validation_error(true).is_empty():
+		return {}
+	var result := {}
+	for slot in PartyData.SLOT_ORDER:
+		var hero: HeroData = party.slots[slot]
+		if hero != null and GameState.find_hero(hero.hero_id) != hero:
+			return {}
+		result[PartyData.SLOT_NAMES[slot]] = hero.hero_id if hero != null else null
+	return result
 
 
 func _serialize_hero(hero: HeroData) -> Dictionary:
@@ -135,9 +161,15 @@ func _serialize_hero(hero: HeroData) -> Dictionary:
 
 
 func validate_snapshot(data: Variant) -> bool:
-	if not data is Dictionary or not HeroCatalog.has_exact_keys(data, ROOT_KEYS):
+	if not _validate_schema(data, SAVE_VERSION, ROOT_KEYS):
 		return false
-	if not _integer(data.save_version, SAVE_VERSION, SAVE_VERSION):
+	return _validate_party(data)
+
+
+func _validate_schema(data: Variant, version: int, keys: Array) -> bool:
+	if not data is Dictionary or not HeroCatalog.has_exact_keys(data, keys):
+		return false
+	if not _integer(data.save_version, version, version):
 		return false
 	if not HeroCatalog.validate_catalog(HeroCatalog.classes(), HeroCatalog.traits()):
 		return false
@@ -175,6 +207,32 @@ func validate_snapshot(data: Variant) -> bool:
 		ids[hero.hero_id] = true
 	for hero in data.recruitment_offers:
 		if hero.status != "IDLE":
+			return false
+	return true
+
+
+func _validate_party(data: Dictionary) -> bool:
+	var members := {}
+	var roster_by_id := {}
+	for hero in data.roster:
+		roster_by_id[hero.hero_id] = hero
+	if data.current_party != null:
+		if not data.current_party is Dictionary or not HeroCatalog.has_exact_keys(
+				data.current_party, PartyData.SLOT_NAMES):
+			return false
+		for slot in PartyData.SLOT_NAMES:
+			var id: Variant = data.current_party[slot]
+			if id == null:
+				continue
+			if not id is String or not roster_by_id.has(id) or members.has(id):
+				return false
+			if roster_by_id[id].status != "ASSIGNED":
+				return false
+			members[id] = true
+		if members.is_empty():
+			return false
+	for hero in data.roster:
+		if hero.status == "ASSIGNED" and not members.has(hero.hero_id):
 			return false
 	return true
 
@@ -242,6 +300,13 @@ func _apply_validated(data: Dictionary) -> void:
 		offers.append(_deserialize_hero(hero))
 	GameState.roster = roster
 	GameState.recruitment_offers = offers
+	GameState.current_party = null
+	if data.current_party != null:
+		GameState.current_party = PartyData.new()
+		for slot in PartyData.SLOT_ORDER:
+			var id: Variant = data.current_party[PartyData.SLOT_NAMES[slot]]
+			if id != null:
+				GameState.current_party.slots[slot] = GameState.find_hero(id)
 	GameState.gold = int(data.gold)
 	GameState.roster_capacity = int(data.roster_capacity)
 	GameState.next_hero_id = int(data.next_hero_id)

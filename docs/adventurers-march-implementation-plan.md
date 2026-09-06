@@ -353,10 +353,16 @@ the first deterministic offer is immediately purchasable.
   first (front row must be empty before back row can be targeted); ranged
   and magic attacks may target any slot. This gives front-row Knights a
   clear tanking role.
-- Only Heroes with status `Idle` may be added to a Party. Adding a Hero sets
-  their status to `Assigned`; forming/confirming the Party does not yet
-  start an Expedition (formation and Region selection are separate steps,
-  matching the [screen plan](#5-screen-and-navigation-plan)).
+- Only Heroes with status `Idle` may be newly added to a Party. The formation
+  screen edits a local draft: placing, moving, or removing a Hero changes
+  neither their status nor the saved Party. Confirming saves the Party and
+  marks its members `Assigned` together; existing members may be retained or
+  rearranged when editing that Party. Removed members return to `Idle`.
+  Cancel/Back discards draft edits but preserves the previously confirmed
+  Party. An explicit **Disband Party** action releases its members and saves
+  the cleared Party. Pause/restart preserves only committed formation state.
+  Confirmation does not start an Expedition: formation and Region selection
+  are separate steps (see the [screen plan](#5-screen-and-navigation-plan)).
 - **Party Power** is a single legible number shown to the player to help
   judge readiness against a Region's recommended Power. Recommended
   baseline formula:
@@ -371,11 +377,16 @@ the first deterministic offer is immediately purchasable.
   ) * FormationFactor
   ```
 
-  where `FormationFactor` is 1.0 for a full 4-Hero Party with at least one
-  front-row Hero, and a data-tunable penalty (e.g., 0.85) for Parties
-  missing a front-row Hero (to reflect fragility), and scales down linearly
-  for Parties smaller than 4. Exact coefficients live in a single
+  where `FormationFactor` is occupied-slot count divided by
+  `party_size_divisor` (default 4), multiplied by `missing_front_row_factor`
+  (default 0.85) only when no front-row Hero is present. Thus a full Party
+  with a front row has factor 1.0; partial and back-row-only Parties are
+  allowed, with their penalties explained in the UI. An empty draft scores
+  zero but cannot be confirmed. Exact coefficients live in a single
   `BalancingConfig` resource ([§16](#16-balancing)), not hard-coded.
+  The evaluator consumes `HeroStats` output, retains floating-point precision,
+  and rejects invalid statistics or coefficients rather than showing a
+  misleading fallback estimate.
 - Party Power is an *estimate* for player decision-making, not the value
   used internally by combat resolution — actual outcomes still run the full
   deterministic simulation ([§9](#9-auto-combat-simulation-design)), so
@@ -692,9 +703,12 @@ platform-specific background-execution APIs are required for MVP.
 - **Versioning:** every save includes a `save_version` integer. A
   `SaveManager` autoload owns a migration table (`version -> migration
   function`) so future saves can upgrade old data instead of resetting
-  players' progress. MVP ships with `save_version = 1` and an explicit
-  (even if initially empty) migration entry point, so the pattern exists
-  before it's needed.
+  players' progress. Hero Roster introduced version 1; Party Formation adds
+  version 2 with a nullable `current_party` mapping of named formation slots
+  to stable roster Hero IDs. Version 1 is validated before migration; its
+  unassociated `Assigned` Heroes become `Idle` because it stored no formation.
+  Other Hero data and Company progress are preserved. Version 2 requires
+  Party membership and `Assigned` statuses to agree, with no orphan assignments.
 - **Contents:** Company roster (each Hero's immutable ID, stats, status, and
   equipped-item resource IDs), roster capacity, the `next_hero_id` counter,
   current Party (formation slots referencing
@@ -705,13 +719,15 @@ platform-specific background-execution APIs are required for MVP.
   `EffectiveEndTimestamp`, `LastObservedUtc`, and
   `CreditedElapsedSeconds`), and RNG seed state for future generation calls.
   Every persisted seed/RNG-state number is in `[0, 2^53 - 1]`.
-- **Cadence:** autosave after any state-mutating action (Hero recruited,
-  Party formed, Expedition started, each revealed reward batch and cursor
+- **Cadence:** autosave after any committed state-mutating action (Hero recruited,
+  Party confirmed/changed/disbanded, Expedition started, each revealed reward batch and cursor
   update, Expedition Report acknowledged, item equipped) and on app pause
   (`NOTIFICATION_APPLICATION_FOCUS_OUT` / `NOTIFICATION_WM_CLOSE_REQUEST`).
   Avoid saving on a fixed timer only — mobile OSes may terminate a
   backgrounded app without further notice, so save-on-mutation is required,
-  not optional.
+  not optional. Formation drafts are presentation-local and excluded from
+  lifecycle saves; a failed pre-commit Party mutation restores both the prior
+  slot mapping and mutable Hero statuses without replacing Hero identity.
 - **Best-effort replacement within Godot's APIs:** serialize to
   `save.json.tmp` in the same directory, call `FileAccess.flush()`, close it,
   then reopen, parse, and validate it. If the current primary is valid, copy

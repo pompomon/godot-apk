@@ -1,0 +1,168 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/ui/party_formation/party_formation_screen.gd" id="1_party"]
+
+[node name="PartyFormationScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_party")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.055, 0.075, 0.115, 1)
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 24
+
+[node name="Layout" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Margin/Layout"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 44
+text = "Party Formation"
+autowrap_mode = 3
+
+[node name="Scroll" type="ScrollContainer" parent="Margin/Layout"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+follow_focus = true
+
+[node name="Content" type="VBoxContainer" parent="Margin/Layout/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Help" type="Label" parent="Margin/Layout/Scroll/Content"]
+layout_mode = 2
+mouse_filter = 2
+text = "Select a slot, then tap a Hero. Changes stay in this draft until Confirm. Cancel keeps your previously confirmed Party."
+autowrap_mode = 3
+
+[node name="MemberCountLabel" type="Label" parent="Margin/Layout/Scroll/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 34
+autowrap_mode = 3
+
+[node name="PowerLabel" type="Label" parent="Margin/Layout/Scroll/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 34
+autowrap_mode = 3
+
+[node name="PenaltyLabel" type="Label" parent="Margin/Layout/Scroll/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+autowrap_mode = 3
+
+[node name="EstimateHelp" type="Label" parent="Margin/Layout/Scroll/Content"]
+layout_mode = 2
+mouse_filter = 2
+text = "Power is an estimate, not a combat outcome. Confirm returns Home; Expeditions are not available yet."
+autowrap_mode = 3
+
+[node name="SlotGrid" type="GridContainer" parent="Margin/Layout/Scroll/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 2
+
+[node name="SelectionLabel" type="Label" parent="Margin/Layout/Scroll/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+autowrap_mode = 3
+
+[node name="MoveButton" type="Button" parent="Margin/Layout/Scroll/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+mouse_filter = 1
+text = "Move selected Hero"
+
+[node name="RemoveButton" type="Button" parent="Margin/Layout/Scroll/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+mouse_filter = 1
+text = "Remove selected Hero"
+
+[node name="MembersLabel" type="Label" parent="Margin/Layout/Scroll/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+autowrap_mode = 3
+
+[node name="AvailableHeading" type="Label" parent="Margin/Layout/Scroll/Content"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 34
+text = "Available Heroes"
+autowrap_mode = 3
+
+[node name="AvailableHelp" type="Label" parent="Margin/Layout/Scroll/Content"]
+layout_mode = 2
+mouse_filter = 2
+text = "Idle roster Heroes and retained members of your confirmed Party only. Selected Heroes are excluded. Inspect Hero details in Company Roster."
+autowrap_mode = 3
+
+[node name="NoAvailableLabel" type="Label" parent="Margin/Layout/Scroll/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "No available Heroes. Remove a draft member, or return to Company Roster to inspect or recruit Heroes."
+autowrap_mode = 3
+
+[node name="AvailableList" type="VBoxContainer" parent="Margin/Layout/Scroll/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="DisbandButton" type="Button" parent="Margin/Layout/Scroll/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+mouse_filter = 1
+text = "Disband confirmed Party"
+
+[node name="FeedbackLabel" type="Label" parent="Margin/Layout"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 24
+autowrap_mode = 3
+
+[node name="ConfirmButton" type="Button" parent="Margin/Layout"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+text = "Confirm Party"
+
+[node name="CancelButton" type="Button" parent="Margin/Layout"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+text = "Cancel / Back"

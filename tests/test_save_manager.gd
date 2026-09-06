@@ -52,7 +52,7 @@ func test_autoload_construction_and_capture_are_io_free() -> void:
 	assert_false(SaveManager.last_error.is_empty())
 
 
-func test_version_one_round_trip_every_field_and_maximum_seed() -> void:
+func test_version_two_round_trip_every_field_and_maximum_seed() -> void:
 	_boot()
 	GameState.recruitment_seed = HeroCatalog.MAX_SAFE_INT
 	GameState.recruitment_sequence = HeroCatalog.MAX_SAFE_INT
@@ -68,6 +68,8 @@ func test_version_one_round_trip_every_field_and_maximum_seed() -> void:
 		hero.status = index as HeroData.HeroStatus
 		hero.traits.assign([HeroCatalog.traits()[index]])
 		index += 1
+	GameState.current_party = PartyData.new()
+	GameState.current_party.place_hero(0, GameState.roster[1])
 	var expected := SaveManager.capture_state()
 	var original_attributes := GameState.roster[0].attributes.duplicate()
 	SaveManager.save()
@@ -90,7 +92,11 @@ func test_version_one_round_trip_every_field_and_maximum_seed() -> void:
 func test_all_statuses_are_valid_and_round_trip() -> void:
 	_boot()
 	for status in HeroData.HeroStatus.values():
+		GameState.current_party = null
 		GameState.roster[0].status = status as HeroData.HeroStatus
+		if status == HeroData.HeroStatus.ASSIGNED:
+			GameState.current_party = PartyData.new()
+			GameState.current_party.place_hero(0, GameState.roster[0])
 		SaveManager.save()
 		assert_true(SaveManager.last_success)
 		SaveManager.load_or_create()
@@ -134,7 +140,7 @@ func test_original_rolls_survive_range_tuning_while_new_heroes_use_current_range
 
 func test_migration_rejects_unknown_versions_and_types() -> void:
 	var snapshot := _boot()
-	for version in [null, true, "1", -1, 0, 1.5, 2, HeroCatalog.MAX_SAFE_INT]:
+	for version in [null, true, "1", -1, 0, 1.5, 3, HeroCatalog.MAX_SAFE_INT]:
 		var invalid := snapshot.duplicate(true)
 		invalid.save_version = version
 		assert_eq(SaveManager.migrate(invalid), {}, str(version))
@@ -145,7 +151,7 @@ func test_migration_rejects_unknown_versions_and_types() -> void:
 func test_root_validation_rejects_bad_types_bounds_and_missing_fields() -> void:
 	var snapshot := _boot()
 	var changes := [
-		["save_version", "1"], ["save_version", 2], ["save_version", true],
+		["save_version", "1"], ["save_version", 1], ["save_version", 3], ["save_version", true],
 		["gold", -1], ["gold", 1.1], ["gold", true], ["gold", "100"],
 		["gold", INF], ["gold", NAN], ["gold", HeroCatalog.MAX_SAFE_INT + 1],
 		["roster_capacity", 0], ["roster_capacity", 13], ["roster_capacity", 3],

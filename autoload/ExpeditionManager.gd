@@ -4,9 +4,9 @@ extends Node
 ## Milestone 4 uses GameState, CombatSimulator, and SaveManager.
 
 
-## party becomes PartyData in Milestone 3. No outcomes or rewards are generated.
+## No outcomes or rewards are generated until Milestone 4.
 func start_expedition(
-		_region: RegionResource, _party: Variant, _duration_seconds: int) -> void:
+		_region: RegionResource, _party: PartyData, _duration_seconds: int) -> void:
 	push_warning("ExpeditionManager.start_expedition is not implemented until Milestone 4.")
 
 

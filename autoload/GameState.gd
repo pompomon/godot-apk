@@ -1,7 +1,8 @@
 extends Node
-## Company state only; party and expedition ownership belong to later milestones.
+## Company and committed Party state; ExpeditionManager owns active Expeditions.
 
 var roster: Array[HeroData] = []
+var current_party: PartyData = null
 var recruitment_offers: Array[HeroData] = []
 var gold: int = 0
 var inventory: Array = []
@@ -16,7 +17,7 @@ var initialized: bool = false
 
 func find_hero(hero_id: String) -> HeroData:
 	for hero in roster:
-		if hero.hero_id == hero_id:
+		if hero != null and hero.hero_id == hero_id:
 			return hero
 	return null
 
@@ -29,8 +30,12 @@ func reserve_hero_id() -> String:
 	return result
 
 
-## Runtime checkpoint retains hero identity when a purchase has to roll back.
+## Retain Hero identity while snapshotting mutable statuses and formation slots.
 func checkpoint() -> Dictionary:
+	var statuses := {}
+	for hero in roster + recruitment_offers:
+		if hero != null:
+			statuses[hero] = hero.status
 	return {
 		"roster": roster.duplicate(), "recruitment_offers": recruitment_offers.duplicate(),
 		"gold": gold, "inventory": inventory.duplicate(),
@@ -38,12 +43,20 @@ func checkpoint() -> Dictionary:
 		"next_hero_id": next_hero_id, "recruitment_seed": recruitment_seed,
 		"recruitment_sequence": recruitment_sequence, "offer_seeds": offer_seeds.duplicate(),
 		"initialized": initialized,
+		"hero_statuses": statuses,
+		"party_slots": current_party.slots.duplicate() if current_party != null else null,
 	}
 
 
 func restore_checkpoint(state: Dictionary) -> void:
 	roster.assign(state.roster)
 	recruitment_offers.assign(state.recruitment_offers)
+	for hero in state.hero_statuses:
+		hero.status = state.hero_statuses[hero]
+	current_party = null
+	if state.party_slots != null:
+		current_party = PartyData.new()
+		current_party.slots = state.party_slots.duplicate()
 	gold = state.gold
 	inventory = state.inventory.duplicate()
 	unlocked_regions.assign(state.unlocked_regions)
@@ -57,6 +70,7 @@ func restore_checkpoint(state: Dictionary) -> void:
 
 func reset() -> void:
 	roster.clear()
+	current_party = null
 	recruitment_offers.clear()
 	gold = 0
 	inventory.clear()

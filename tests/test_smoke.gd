@@ -80,6 +80,7 @@ func test_real_main_scene_boots_to_home() -> void:
 func test_mobile_project_settings_are_preserved() -> void:
 	var expected := {
 		"application/run/main_scene": "res://main.tscn",
+		"application/config/quit_on_go_back": false,
 		"display/window/size/viewport_width": 720,
 		"display/window/size/viewport_height": 1280,
 		"display/window/size/window_width_override": 360,

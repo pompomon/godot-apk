@@ -10,8 +10,10 @@ func _ready() -> void:
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_CLOSE_REQUEST:
+	if what == NOTIFICATION_WM_GO_BACK_REQUEST and UIManager.cancel_screen_draft():
+		return
+	if what in [NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_WM_CLOSE_REQUEST, NOTIFICATION_WM_GO_BACK_REQUEST]:
 		if GameState.initialized:
 			SaveManager.save()
-		if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		if what != NOTIFICATION_APPLICATION_PAUSED:
 			get_tree().quit()

@@ -48,18 +48,23 @@ Milestones 6–9 build out full MVP scope and release readiness.
 
 **Depends on:** none (starting point).
 
-- [ ] Restructure the project into the recommended folder layout
+- [x] Restructure the project into the recommended folder layout
       (`autoload/`, `data/`, `scripts/models/`, `scripts/systems/`,
       `scenes/ui/`, `tests/`).
-- [ ] Add `GameState`, `SaveManager`, `ExpeditionManager`,
+- [x] Add `GameState`, `SaveManager`, `ExpeditionManager`,
       `CombatSimulator`, `UIManager` autoloads (can be near-empty stubs
       with correct responsibilities/interfaces defined).
-- [ ] Define base `Resource` script classes for content
+- [x] Define base `Resource` script classes for content
       (`HeroClassResource`, `HeroTraitResource`, `ItemResource`,
       `RegionResource`, `BalancingConfig`) with typed exported fields.
-- [ ] Wire an empty Home screen through `UIManager` so the app boots to it.
-- [ ] Set up a headless test framework (GUT or GdUnit4) under `tests/`
+- [x] Wire an empty Home screen through `UIManager` so the app boots to it.
+- [x] Set up a headless test framework (GUT or GdUnit4) under `tests/`
       with one passing smoke test.
+
+**Status:** implementation and local test/export validation are complete.
+The top-level milestone remains unchecked pending an approved, passing Android
+workflow run and an exported-device portrait-rotation check; see the detail
+file's validation evidence.
 
 **Definition of done:** the project builds/exports via the existing
 Android workflow, boots to an empty Home screen through `UIManager`, all

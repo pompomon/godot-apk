@@ -1,7 +1,9 @@
-# Hello World for Godot
+# Adventurer's March — Technical Foundation
 
-A minimal Godot 4.7.2 project that displays **Hello World** and exports a
-debug Android APK.
+A Godot 4.7.2 foundation that boots to an empty Home screen through `UIManager`
+and exports a portrait-only debug Android APK. Gameplay and persistence remain
+unimplemented; the application/package name and APK artifact retain their
+original **Hello World** identifiers.
 
 ## Run locally
 
@@ -13,13 +15,65 @@ debug Android APK.
    ```
 
 3. Press **F5** or click **Run Project**. The configured `main.tscn` scene
-   displays `Hello World`.
+   binds the persistent screen root, calls the placeholder
+   `SaveManager.load_or_create()`, and displays the empty Home screen.
 
 You can also run the project directly:
 
 ```sh
 godot --path .
 ```
+
+## Run the foundation tests
+
+Run these commands from the repository root with Godot 4.7.2:
+
+```sh
+godot --headless --path . --editor --import
+godot --headless --path . -s addons/gut/gut_cmdln.gd
+```
+
+The import step is required on a clean checkout to discover global Resource and
+GUT classes. There is no separate test wrapper. `.gutconfig.json` discovers
+`test_*.gd` recursively under `tests/` and exits automatically. GUT reports
+assertion failures with a nonzero exit code; the standard post-run hook also
+fails empty discovery and GUT warnings/errors (including skipped test scripts).
+Navigation rejection tests deliberately emit Godot warnings; normal app startup
+does not.
+
+The suite covers autoloads, Resource schemas/Inspector hints, the default
+balancing asset, real main-scene bootstrap, screen replacement and invalid
+navigation, and mobile settings. No test reads or writes a player save.
+
+**Pinned dependency:** [GUT 9.7.1](https://github.com/bitwes/Gut/tree/v9.7.1),
+the upstream Godot 4.7.x release, vendored unchanged from commit
+`aeb5d4f3f7f0a6c9b5e178876d6c99b791fda605` under `addons/gut/`.
+Its [MIT license](addons/gut/LICENSE.md) and upstream notices are preserved.
+To update it, replace only the addon directory from a reviewed upstream release,
+update this pin, and repeat clean-import, test, and export checks.
+
+The CLI does not require enabling the optional GUT editor plugin. Godot's import
+cache is already ignored under `.godot/`; GUT's editor scratch files live under
+`user://gut_temp_directory/`, outside the checkout. Tests and the GUT addon are
+excluded from the Android APK.
+
+## Foundation boundaries
+
+- `GameState` owns empty roster/inventory arrays, zero gold, and unlocked Region
+  IDs. Milestone 2 introduces starting Heroes/gold and persistence.
+- `SaveManager`, `ExpeditionManager`, and `CombatSimulator` expose documented
+  stubs; save/start/resolve calls warn rather than fabricate success.
+- `UIManager.bind_screen_root()` is bootstrap-only; screens navigate using
+  `UIManager.show_screen()`. Navigation before binding is rejected, not queued.
+  Requests from screen lifecycle callbacks are deferred until the active
+  transition finishes.
+- Nine content Resource scripts live under `scripts/models/`. Runtime Hero,
+  Party, and Expedition models do not exist yet, so their stub parameters use
+  `Variant` and the roster/inventory model arrays remain untyped.
+- `data/balancing/default_balancing.tres` is the single balancing asset. It
+  defines the 100-gold recruitment price and the published combat defaults from
+  design §9. Other fields remain unconfigured placeholders until their owning
+  milestones; later work must extend this asset rather than replace it.
 
 ## Build the Android APK
 
@@ -46,7 +100,8 @@ Godot and its matching export templates, performs the debug export, and uploads
 the APK as the `hello-world-android-apk` workflow artifact.
 
 The workflow intentionally does not use GitHub Actions cache or dependency
-caching; every job performs a clean build.
+caching; every job performs a clean build. Headless tests currently run locally;
+mandatory test-before-export CI gating remains scheduled for Milestone 9.
 
 ## Adventurer's March design & implementation docs
 

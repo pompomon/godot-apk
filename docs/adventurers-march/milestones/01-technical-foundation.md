@@ -223,13 +223,57 @@ second recruitment-price constant.
 
 ## Acceptance criteria
 
-- [ ] Folder structure matches [plan §13](../../adventurers-march-implementation-plan.md#13-godot-project-architecture).
-- [ ] All five autoloads are registered and load without errors.
-- [ ] Base Resource classes exist with documented, stable field names.
-- [ ] App boots to an empty Home screen via `UIManager`.
-- [ ] Headless test framework runs with ≥1 passing test.
+- [x] Folder structure matches [plan §13](../../adventurers-march-implementation-plan.md#13-godot-project-architecture).
+- [x] All five autoloads are registered and load without errors.
+- [x] Base Resource classes exist with documented, stable field names.
+- [x] App boots to an empty Home screen via `UIManager`.
+- [x] Headless test framework runs with ≥1 passing test.
 - [ ] Android debug export CI workflow still passes.
 - [ ] Exported Android app remains portrait while the device rotates.
+
+## Implementation and validation evidence
+
+Implemented the foundation only; the overall milestone remains **pending**
+until CI and the exported-device check above are complete.
+
+- **Resources and structure:** all nine Resource contracts are implemented,
+  including typed nested arrays and Inspector hints. Empty future-content/screen
+  directories are tracked without dummy gameplay content.
+- **Balancing:** the one default resource sets recruitment cost to 100 and
+  includes the published §9 combat defaults. Party Power, skills, XP, recovery,
+  encounter multipliers, and offline limits remain unconfigured until their
+  owning milestones. Milestone 3 must extend, not recreate, this resource.
+- **Autoloads:** initialization order is GameState, SaveManager,
+  CombatSimulator, ExpeditionManager, UIManager. Startup performs no save I/O
+  or content seeding. Stub operations warn and never fabricate gameplay results.
+- **Navigation:** main binds its ready, empty screen container through
+  `UIManager.bind_screen_root()` before loading/showing Home. This is
+  bootstrap-only; `show_screen()` remains the public navigation entry point.
+  Pre-binding calls are rejected rather than queued; invalid resources preserve
+  the current screen. Screen replacement releases the previous instance;
+  navigation requested from screen lifecycle callbacks is deferred until the
+  current transition finishes.
+- **Tests:** GUT 9.7.1 is vendored unchanged at upstream commit
+  `aeb5d4f3f7f0a6c9b5e178876d6c99b791fda605`, with its MIT license. The standard
+  CLI and `.gutconfig.json` discover the foundation suite. A standard post-run
+  hook rejects empty discovery and GUT errors/warnings, including skipped
+  scripts. See the root README for commands.
+- **Local evidence (2026-09-06):** Godot 4.7.2 clean-cache import and headless
+  Home launch succeeded. All 17 foundation tests passed (150 assertions).
+  Negative controls for empty discovery, a failed assertion, and an unparseable
+  test each exited 1. Desktop launch under Xvfb also succeeded with the
+  compatibility renderer and dummy audio (the software driver warns that V-Sync
+  cannot be configured). Local Android debug export succeeded and produced a
+  signed, nonempty ARM64 APK. APK inspection confirms package
+  `com.example.helloworld` and portrait orientation (`screenOrientation=1`);
+  neither test nor GUT assets are packaged.
+- **CI pending:** [the branch workflow run](https://github.com/pompomon/godot-apk/actions/runs/34008601071)
+  reports `action_required`, with zero jobs/logs available until approval.
+  Local export does not substitute for a passing workflow run.
+- **Device check pending:** no Android device or compatible emulator is
+  connected. Install the exported ARM64 APK, enable auto-rotate, cold-launch
+  Home, and rotate the device. Manifest inspection alone does not complete this
+  acceptance check.
 
 ## Risks
 
@@ -248,5 +292,12 @@ Milestone 2 (Hero roster) will fill in `HeroClassResource`/
 `HeroTraitResource` field data, implement `HeroData` and `HeroGenerator`
 against the stable schema defined here, and build the first real screens
 (Company Roster, Hero Detail) using `UIManager.show_screen`.
+
+`SaveManager.load_or_create()` is a no-op until then; `save()` only warns.
+`GameState.roster` becomes `Array[HeroData]` in Milestone 2 and inventory becomes
+`Array[ItemResource]` in Milestone 6. Expedition/combat parameters and return
+values that need not-yet-existing runtime types currently use `Variant`, with
+their intended types documented in the stubs. Do not introduce duplicate state,
+recruitment constants, or another balancing resource when filling them in.
 
 → Next: [02-hero-roster.md](02-hero-roster.md)

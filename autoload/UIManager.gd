@@ -4,6 +4,7 @@ extends Node
 
 var _screen_root: Control
 var _current_screen: Control
+var _is_switching: bool = false
 
 
 ## Bind an empty, ready screen container. Reject a second live UI root.
@@ -28,6 +29,10 @@ func show_screen(scene_path: String) -> void:
 	if not is_instance_valid(_screen_root):
 		push_warning("UIManager cannot navigate before the screen root is ready.")
 		return
+	if _is_switching:
+		# Lifecycle callbacks cannot mutate the root while add/remove is in progress.
+		show_screen.call_deferred(scene_path)
+		return
 	if not scene_path.begins_with("res://") or not ResourceLoader.exists(scene_path):
 		push_warning("UIManager screen does not exist: %s" % scene_path)
 		return
@@ -35,18 +40,23 @@ func show_screen(scene_path: String) -> void:
 	if scene == null or not scene.can_instantiate():
 		push_warning("UIManager requires a PackedScene: %s" % scene_path)
 		return
+	_is_switching = true
 	var next_screen := scene.instantiate()
 	if not next_screen is Control:
-		next_screen.free()
+		if is_instance_valid(next_screen):
+			next_screen.free()
+		_is_switching = false
 		push_warning("UIManager requires a Control screen: %s" % scene_path)
 		return
 
-	if is_instance_valid(_current_screen):
-		_screen_root.remove_child(_current_screen)
-		_current_screen.queue_free()
+	var previous_screen := _current_screen
+	if is_instance_valid(previous_screen):
+		_screen_root.remove_child(previous_screen)
+		previous_screen.queue_free()
 	_current_screen = next_screen
 	_screen_root.add_child(_current_screen)
 	_current_screen.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_is_switching = false
 
 
 func _on_screen_root_exiting() -> void:

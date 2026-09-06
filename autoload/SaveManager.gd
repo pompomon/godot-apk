@@ -2,7 +2,7 @@ extends Node
 ## Versioned, validated snapshots and best-effort same-directory replacement.
 ## No fsync or cross-platform atomicity guarantees are available through these APIs.
 
-const SAVE_VERSION := 3
+const SAVE_VERSION := 4
 const MAX_SAVE_BYTES := 1048576
 const LEGACY_ROOT_KEYS := [
 	"save_version", "roster", "recruitment_offers", "gold", "inventory",
@@ -11,10 +11,12 @@ const LEGACY_ROOT_KEYS := [
 ]
 const V2_ROOT_KEYS := LEGACY_ROOT_KEYS + ["current_party"]
 const ROOT_KEYS := V2_ROOT_KEYS + ["expedition_seed", "expedition_sequence", "expedition"]
-const HERO_KEYS := [
+const LEGACY_HERO_KEYS := [
 	"hero_id", "hero_name", "class_id", "level", "xp", "attributes", "trait_ids",
 	"status", "equipped_weapon", "equipped_armor",
 ]
+## v4 adds a persisted Wounded recovery deadline per Hero.
+const HERO_KEYS := LEGACY_HERO_KEYS + ["wounded_until"]
 
 ## Keep initialization I/O-free so tests can bind isolated storage before bootstrap.
 var storage_directory: String = OS.get_user_data_dir()
@@ -38,6 +40,7 @@ func load_or_create() -> void:
 		_apply_validated(primary)
 		last_success = true
 		ExpeditionManager.reveal_progress()
+		ExpeditionManager.recover_wounded()
 		return
 	var backup := _read_validated(get_save_path() + ".bak")
 	if not backup.is_empty():
@@ -50,6 +53,7 @@ func load_or_create() -> void:
 		push_warning(last_warning)
 		recovery_warning = last_warning
 		ExpeditionManager.reveal_progress()
+		ExpeditionManager.recover_wounded()
 		retain_warning(recovery_warning)
 		return
 	var had_files := FileAccess.file_exists(get_save_path()) or FileAccess.file_exists(
@@ -105,7 +109,7 @@ func migrate(data: Variant) -> Dictionary:
 	match int(data.save_version):
 		1, 2:
 			var version := int(data.save_version)
-			if not _validate_schema(data, version, LEGACY_ROOT_KEYS if version == 1 else V2_ROOT_KEYS):
+			if not _validate_schema(data, version, LEGACY_ROOT_KEYS if version == 1 else V2_ROOT_KEYS, LEGACY_HERO_KEYS):
 				return {}
 			if version == 2 and not _validate_party(data):
 				return {}
@@ -119,6 +123,25 @@ func migrate(data: Variant) -> Dictionary:
 			for hero in migrated.roster:
 				if hero.status == "ON_EXPEDITION" or (version == 1 and hero.status == "ASSIGNED"):
 					hero.status = "IDLE"
+			for hero in migrated.roster + migrated.recruitment_offers:
+				hero.wounded_until = 0
+			return migrated
+		3:
+			# Validate the untouched v3 schema, then add exactly the additive v4
+			# fields (Wounded timers, frozen expedition policy, null skills).
+			if not _validate_snapshot_versioned(data, 3, LEGACY_HERO_KEYS, false):
+				return {}
+			var migrated: Dictionary = data.duplicate(true)
+			migrated.save_version = SAVE_VERSION
+			for hero in migrated.roster + migrated.recruitment_offers:
+				hero.wounded_until = 0
+			if migrated.expedition != null:
+				migrated.expedition.candidate_step_count = migrated.expedition.steps.size()
+				migrated.expedition.retreat_is_terminal = false
+				migrated.expedition.recovery_seconds = 0
+				for member in migrated.expedition.party_snapshot.values():
+					if member != null:
+						member.skill = null
 			return migrated
 		SAVE_VERSION:
 			return data if validate_snapshot(data) else {}
@@ -181,22 +204,28 @@ func _serialize_hero(hero: HeroData) -> Dictionary:
 		"status": statuses[hero.status],
 		"equipped_weapon": null if hero.equipped_weapon == null else "unsupported",
 		"equipped_armor": null if hero.equipped_armor == null else "unsupported",
+		"wounded_until": hero.wounded_until,
 	}
 
 
 func validate_snapshot(data: Variant) -> bool:
-	if not _validate_schema(data, SAVE_VERSION, ROOT_KEYS):
+	return _validate_snapshot_versioned(data, SAVE_VERSION, HERO_KEYS, true)
+
+
+func _validate_snapshot_versioned(data: Variant, version: int, hero_keys: Array, v4_expedition: bool) -> bool:
+	if not _validate_schema(data, version, ROOT_KEYS, hero_keys):
 		return false
 	if not _integer(data.expedition_seed) or not _integer(data.expedition_sequence) or not _validate_party(data):
 		return false
-	return _validate_expedition_relations(data)
+	return _validate_expedition_relations(data, v4_expedition)
 
 
-func _validate_expedition_relations(data: Dictionary) -> bool:
+func _validate_expedition_relations(data: Dictionary, v4_expedition: bool) -> bool:
 	var participants := {}
 	var running := false
 	if data.expedition != null:
-		if not ExpeditionData.valid(data.expedition):
+		var expedition_valid := ExpeditionData.valid(data.expedition) if v4_expedition else ExpeditionData.valid_v3(data.expedition)
+		if not expedition_valid:
 			return false
 		running = int(data.expedition.status) == ExpeditionData.Status.RUNNING
 		if running and data.current_party != null:
@@ -218,7 +247,7 @@ func _validate_expedition_relations(data: Dictionary) -> bool:
 	return true
 
 
-func _validate_schema(data: Variant, version: int, keys: Array) -> bool:
+func _validate_schema(data: Variant, version: int, keys: Array, hero_keys: Array) -> bool:
 	if not data is Dictionary or not HeroCatalog.has_exact_keys(data, keys):
 		return false
 	if not _integer(data.save_version, version, version):
@@ -251,7 +280,7 @@ func _validate_schema(data: Variant, version: int, keys: Array) -> bool:
 			return false
 	var ids := {}
 	for hero in data.roster + data.recruitment_offers:
-		if not _validate_hero(hero):
+		if not _validate_hero(hero, hero_keys):
 			return false
 		var number := _hero_number(hero.hero_id)
 		if number < 1 or number >= int(data.next_hero_id) or ids.has(hero.hero_id):
@@ -289,8 +318,8 @@ func _validate_party(data: Dictionary) -> bool:
 	return true
 
 
-func _validate_hero(data: Variant) -> bool:
-	if not data is Dictionary or not HeroCatalog.has_exact_keys(data, HERO_KEYS):
+func _validate_hero(data: Variant, hero_keys: Array) -> bool:
+	if not data is Dictionary or not HeroCatalog.has_exact_keys(data, hero_keys):
 		return false
 	if not _text(data.hero_id) or not _text(data.hero_name) or not _text(data.class_id):
 		return false
@@ -301,6 +330,12 @@ func _validate_hero(data: Variant) -> bool:
 		return false
 	if not data.status is String or data.status not in HeroData.HeroStatus.keys():
 		return false
+	# A recovery deadline only accompanies a Wounded Hero; other statuses carry 0.
+	if data.has("wounded_until"):
+		if not _integer(data.wounded_until):
+			return false
+		if int(data.wounded_until) > 0 and data.status != "WOUNDED":
+			return false
 	if data.equipped_weapon != null or data.equipped_armor != null:
 		return false
 	if not data.attributes is Dictionary or not HeroCatalog.has_exact_keys(data.attributes, HeroCatalog.ATTRIBUTES):
@@ -388,6 +423,7 @@ func _deserialize_hero(data: Dictionary) -> HeroData:
 	for id in data.trait_ids:
 		hero.traits.append(HeroCatalog.trait_by_id(id))
 	hero.status = HeroData.HeroStatus.keys().find(data.status) as HeroData.HeroStatus
+	hero.wounded_until = int(data.get("wounded_until", 0))
 	return hero
 
 

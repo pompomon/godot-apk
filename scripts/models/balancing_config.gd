@@ -24,5 +24,8 @@ extends Resource
 ## { "Loot": float, "Event": float, "Combat": float }
 @export var encounter_kind_weight_multipliers: Dictionary = {}
 @export var base_recovery_seconds: int
+## Frozen into an Expedition at start; a Wounded Hero recovers to Idle after this
+## many seconds. A placeholder until the full Wounded/Resting flow in Milestone 6.
+@export var combat_recovery_seconds: int
 @export var max_offline_delta_seconds: int
 @export var recruitment_cost: int

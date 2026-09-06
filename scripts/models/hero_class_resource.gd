@@ -5,6 +5,8 @@ extends Resource
 @export var class_id: StringName
 @export var display_name: String
 @export_enum("FrontRowFirst", "AnySlot") var basic_attack_target_rule: String = "FrontRowFirst"
+## The class's one authored active skill, resolved through the skill registry.
+@export var skill_id: StringName
 ## { "MIG": Vector2i(min, max), "FOC": Vector2i, "GRT": Vector2i,
 ##   "GUI": Vector2i, "FTH": Vector2i }; ranges are inclusive.
 @export var base_attribute_ranges: Dictionary = {}

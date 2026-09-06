@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="SkillResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/models/skill_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+skill_id = &"aimed_shot"
+display_name = "Aimed Shot"
+class_id = &"ranger"
+kind = "Physical"
+target_rule = "AnySlot"
+multiplier_id = &"aimed_shot"
+cooldown = 2

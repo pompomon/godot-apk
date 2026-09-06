@@ -37,6 +37,9 @@ func _legacy() -> Dictionary:
 	data.erase("current_party")
 	for key in ["expedition", "expedition_seed", "expedition_sequence"]:
 		data.erase(key)
+	# Legacy v1 saves predate the persisted Wounded recovery deadline.
+	for hero in data.roster + data.recruitment_offers:
+		hero.erase("wounded_until")
 	data.save_version = 1
 	return data
 
@@ -57,7 +60,7 @@ func test_null_partial_back_row_and_full_parties_round_trip_with_exact_roster_id
 		if not mapping.is_empty():
 			assert_true(PartyFormationService.confirm(party, BALANCING))
 		var expected := SaveManager.capture_state()
-		assert_eq(expected.save_version, 3)
+		assert_eq(expected.save_version, 4)
 		assert_true(SaveManager.validate_snapshot(expected))
 		GameState.reset()
 		SaveManager.load_or_create()
@@ -148,13 +151,15 @@ func test_version_one_migration_preserves_all_old_data_except_orphan_assigned() 
 	var untouched := legacy.duplicate(true)
 	var migrated := SaveManager.migrate(legacy)
 	var expected := untouched.duplicate(true)
-	expected.save_version = 3
+	expected.save_version = 4
 	expected.current_party = null
 	expected.expedition = null
 	expected.expedition_seed = expected.recruitment_seed
 	expected.expedition_sequence = 0
 	expected.roster[1].status = "IDLE"
 	expected.roster[2].status = "IDLE"
+	for hero in expected.roster + expected.recruitment_offers:
+		hero.wounded_until = 0
 	assert_eq(migrated, expected)
 	assert_eq(legacy, untouched)
 	assert_true(SaveManager.validate_snapshot(migrated))

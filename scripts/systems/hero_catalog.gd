@@ -47,6 +47,8 @@ static func validate_class(resource: HeroClassResource) -> bool:
 		return false
 	if resource.basic_attack_target_rule not in ["FrontRowFirst", "AnySlot"]:
 		return false
+	if String(resource.skill_id).strip_edges().is_empty():
+		return false
 	if not has_exact_keys(resource.base_attribute_ranges, ATTRIBUTES):
 		return false
 	if not has_exact_keys(resource.per_level_growth, ATTRIBUTES):

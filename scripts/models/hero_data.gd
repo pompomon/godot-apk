@@ -20,6 +20,10 @@ var traits: Array[HeroTraitResource] = []
 var equipped_weapon: ItemResource = null
 var equipped_armor: ItemResource = null
 var status: HeroStatus = HeroStatus.IDLE
+## Wall-clock second at which a WOUNDED Hero recovers to IDLE. 0 while not
+## wounded; frozen from the Expedition at finalization so later balance tuning
+## cannot extend or shorten an in-flight recovery.
+var wounded_until: int = 0
 
 
 func _init(id: String = "") -> void:

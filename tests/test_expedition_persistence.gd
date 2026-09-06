@@ -143,13 +143,24 @@ func test_rejects_malformed_numbers_timing_cursors_state_and_unknown_fields() ->
 func test_rejects_bad_step_payloads_unknown_ids_and_overflowing_total_gold() -> void:
 	var original := _start()
 	for change in [["kind", 3], ["kind", 99], ["kind", 1.5], ["kind", 0], ["content_id", "missing"],
-			["content_id", ""], ["title", ""], ["journal_text", ""], ["outcome_id", "unexpected"],
+			["content_id", ""], ["title", ""], ["journal_text", ""],
 			["result", {}], ["result", {"gold": -1}], ["result", {"gold": 1.5}],
 			["result", {"gold": true}], ["result", {"gold": INF}], ["result", {"gold": NAN}],
 			["result", {"gold": HeroCatalog.MAX_SAFE_INT + 1}], ["result", {"gold": 0, "items": []}]]:
 		var bad := original.duplicate(true)
 		bad.expedition.steps[1][change[0]] = change[1]
 		assert_false(SaveManager.validate_snapshot(bad), str(change))
+	# Loot (index 5) and Combat (index 9) steps carry no outcome row, while an
+	# Event (index 1) always keeps its resolved outcome text.
+	var outcome_bad := original.duplicate(true)
+	outcome_bad.expedition.steps[5].outcome_id = "unexpected"
+	assert_false(SaveManager.validate_snapshot(outcome_bad), "Loot rejects an outcome row.")
+	outcome_bad = original.duplicate(true)
+	outcome_bad.expedition.steps[9].outcome_id = "unexpected"
+	assert_false(SaveManager.validate_snapshot(outcome_bad), "Combat rejects an outcome row.")
+	outcome_bad = original.duplicate(true)
+	outcome_bad.expedition.steps[1].outcome_id = ""
+	assert_false(SaveManager.validate_snapshot(outcome_bad), "Event requires outcome text.")
 	for key in original.expedition.steps[1]:
 		var bad := original.duplicate(true)
 		bad.expedition.steps[1].erase(key)
@@ -218,15 +229,20 @@ func test_v2_migration_validates_original_party_before_releasing_legacy_on_exped
 	var legacy := SaveManager.capture_state()
 	for key in ["expedition", "expedition_seed", "expedition_sequence"]:
 		legacy.erase(key)
+	# Legacy v2 saves predate the persisted Wounded recovery deadline.
+	for hero in legacy.roster + legacy.recruitment_offers:
+		hero.erase("wounded_until")
 	legacy.save_version = 2
 	legacy.roster[1].status = "ON_EXPEDITION"
 	legacy.unlocked_regions = ["forest", "arbitrary-old-region"]
 	var expected := legacy.duplicate(true)
-	expected.save_version = 3
+	expected.save_version = 4
 	expected.expedition = null
 	expected.expedition_seed = expected.recruitment_seed
 	expected.expedition_sequence = 0
 	expected.roster[1].status = "IDLE"
+	for hero in expected.roster + expected.recruitment_offers:
+		hero.wounded_until = 0
 	assert_eq(SaveManager.migrate(legacy), expected)
 	_write(SaveManager.get_save_path(), legacy)
 	SaveManager.load_or_create()

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="SkillResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/models/skill_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+skill_id = &"mend"
+display_name = "Mend"
+class_id = &"cleric"
+kind = "Heal"
+target_rule = "LowestHpAlly"
+multiplier_id = &"mend"
+cooldown = 2

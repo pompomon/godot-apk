@@ -50,10 +50,17 @@ func _refresh() -> void:
 	if expedition == null:
 		%ExpeditionLabel.text = "Ready to dispatch." if party != null else "Form a Party to begin an Expedition."
 	else:
-		%ExpeditionLabel.text = "%s · %s\nStep %d / %d · %d seconds remaining" % [
-			expedition.region_name, "Running" if ExpeditionManager.is_expedition_active() else "Completed",
-			expedition.last_revealed_index + 1, expedition.steps.size(),
-			expedition.duration_seconds - expedition.credited_elapsed_seconds]
+		# Show the ORIGINAL planned count/time while running so a truncated schedule
+		# never hints at an early ending before the terminal step is revealed.
+		var terminal_revealed := expedition.terminal_step_index != -1 and expedition.last_revealed_index == expedition.terminal_step_index
+		if terminal_revealed:
+			%ExpeditionLabel.text = "%s · Ended early\nStep %d / %d revealed · 0 seconds remaining" % [
+				expedition.region_name, expedition.last_revealed_index + 1, expedition.candidate_step_count]
+		else:
+			%ExpeditionLabel.text = "%s · %s\nStep %d / %d · %d seconds remaining" % [
+				expedition.region_name, "Running" if ExpeditionManager.is_expedition_active() else "Completed",
+				expedition.last_revealed_index + 1, expedition.candidate_step_count,
+				maxi(0, expedition.duration_seconds - expedition.credited_elapsed_seconds)]
 	%RetryProgressButton.visible = ExpeditionManager.is_expedition_active() and not ExpeditionManager.last_error.is_empty()
 	HeroUI.show_feedback(_feedback_label, ExpeditionManager.last_error)
 	if UIManager.is_current_screen(self) and ExpeditionManager.take_completion_route():

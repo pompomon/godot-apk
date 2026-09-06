@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="EnemyGroupResource" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/models/enemy_group_resource.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/models/enemy_stat_block_resource.gd" id="2"]
+
+[sub_resource type="Resource" id="thug"]
+script = ExtResource("2")
+enemy_id = &"bandit_thug"
+display_name = "Bandit Thug"
+row = "Front"
+basic_attack_target_rule = "FrontRowFirst"
+derived_stats = {
+"MaxHP": 45, "Attack": 14, "MagicPower": 0, "Defense": 6,
+"Evasion": 0.05, "Initiative": 5, "CritChance": 0.05
+}
+
+[sub_resource type="Resource" id="archer"]
+script = ExtResource("2")
+enemy_id = &"bandit_archer"
+display_name = "Bandit Archer"
+row = "Back"
+basic_attack_target_rule = "AnySlot"
+derived_stats = {
+"MaxHP": 32, "Attack": 12, "MagicPower": 0, "Defense": 3,
+"Evasion": 0.08, "Initiative": 8, "CritChance": 0.08
+}
+
+[resource]
+script = ExtResource("1")
+group_id = &"bandit_skirmishers"
+display_name = "Bandit Skirmishers"
+enemies = Array[ExtResource("2")]([SubResource("thug"), SubResource("archer")])

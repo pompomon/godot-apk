@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="SkillResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/models/skill_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+skill_id = &"guard"
+display_name = "Guard"
+class_id = &"knight"
+kind = "Guard"
+target_rule = "Self"
+multiplier_id = &"guard_reduction"
+cooldown = 2

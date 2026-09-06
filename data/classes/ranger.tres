@@ -6,6 +6,7 @@
 script = ExtResource("1_class")
 class_id = &"ranger"
 display_name = "Ranger"
+skill_id = &"aimed_shot"
 basic_attack_target_rule = "AnySlot"
 base_attribute_ranges = {
 "MIG": Vector2i(8, 12),

@@ -5,7 +5,7 @@ func test_exported_resource_contracts() -> void:
 	var contracts := [
 		[HeroClassResource.new(), {
 			"class_id": TYPE_STRING_NAME, "display_name": TYPE_STRING,
-			"basic_attack_target_rule": TYPE_STRING,
+			"basic_attack_target_rule": TYPE_STRING, "skill_id": TYPE_STRING_NAME,
 			"base_attribute_ranges": TYPE_DICTIONARY, "per_level_growth": TYPE_DICTIONARY,
 			"derived_stat_bases": TYPE_DICTIONARY,
 			"derived_stat_attribute_weights": TYPE_DICTIONARY,
@@ -51,7 +51,8 @@ func test_exported_resource_contracts() -> void:
 			"critical_damage_multiplier": TYPE_FLOAT, "max_combat_rounds": TYPE_INT,
 			"xp_award_coefficients": TYPE_DICTIONARY, "xp_threshold_curve": TYPE_DICTIONARY,
 			"encounter_kind_weight_multipliers": TYPE_DICTIONARY,
-			"base_recovery_seconds": TYPE_INT, "max_offline_delta_seconds": TYPE_INT,
+			"base_recovery_seconds": TYPE_INT, "combat_recovery_seconds": TYPE_INT,
+			"max_offline_delta_seconds": TYPE_INT,
 			"recruitment_cost": TYPE_INT,
 		}],
 	]

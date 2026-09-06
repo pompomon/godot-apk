@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="SkillResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/models/skill_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+skill_id = &"firebolt"
+display_name = "Firebolt"
+class_id = &"wizard"
+kind = "Magic"
+target_rule = "AnySlot"
+multiplier_id = &"firebolt"
+cooldown = 1

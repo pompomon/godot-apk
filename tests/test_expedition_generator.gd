@@ -32,7 +32,6 @@ func test_invalid_region_counts_durations_pool_payloads_and_configuration() -> v
 		["travel_step_count", 0], ["travel_step_count", -1], ["travel_step_count", 513],
 		["recommended_party_power", -1], ["display_name", ""], ["travel_title", ""],
 		["travel_text", ""], ["unlock_condition", {}], ["unlock_condition", {"kind": "gold", "value": 1}],
-		["retreat_ends_expedition", true],
 	]
 	for change in changes:
 		var region: RegionResource = ExpeditionCatalog.GREEN_HOLLOW.duplicate(true)
@@ -145,7 +144,7 @@ func test_loot_only_two_pairs_have_ten_second_slices_and_inclusive_rolls() -> vo
 func test_effective_kind_multipliers_zero_weights_and_nonfinite_totals() -> void:
 	var region: RegionResource = ExpeditionCatalog.GREEN_HOLLOW.duplicate(true)
 	var config: BalancingConfig = BALANCING.duplicate(true)
-	config.encounter_kind_weight_multipliers = {"Loot": 2.0, "Event": 0.0}
+	config.encounter_kind_weight_multipliers = {"Loot": 2.0, "Event": 0.0, "Combat": 0.0}
 	var run := ExpeditionGenerator.generate(region, _party(), 77, 60, 1000, config)
 	assert_not_null(run)
 	for index in [1, 3, 5, 7, 9]:
@@ -179,21 +178,21 @@ func test_exact_seeded_selection_precedes_all_outcome_rolls_and_is_byte_identica
 		var step := first.steps[index].serialize()
 		signature.append([step.content_id, step.outcome_id, step.result.gold])
 	var expected := [
-		["green_hollow_loot", "", 4],
-		["green_hollow_caravan", "news", 0],
-		["green_hollow_loot", "", 3],
-		["green_hollow_fireflies", "lights", 0],
+		["green_hollow_bridge", "quiet", 0],
 		["green_hollow_ruins", "carvings", 0],
+		["green_hollow_loot", "", 4],
+		["green_hollow_ruins", "coins", 6],
+		["bandit_skirmishers", "", 0],
 	]
-	# Five selection draws are consumed before the first inclusive Loot roll.
+	# Five weighted selection draws (pool weight nine) are consumed before any
+	# outcome roll, so an early termination cannot change which pairs were drawn.
 	var reference := RandomNumberGenerator.new()
 	reference.seed = 12345
 	var selected: Array = []
 	for pair in range(5):
-		var roll := reference.randf() * 7.0
+		var roll := reference.randf() * 9.0
 		selected.append(0 if roll < 2.0 else floori(roll) - 1)
-	assert_eq(selected, [0, 3, 0, 4, 5])
-	assert_eq(reference.randi_range(2, 6), 4)
+	assert_eq(selected, [1, 5, 0, 5, 6])
 	for index in range(expected.size()):
 		assert_eq(signature[index], expected[index], "Pair %d" % index)
 	seed(786)

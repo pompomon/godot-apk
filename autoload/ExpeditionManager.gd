@@ -33,6 +33,7 @@ func enable_lifecycle() -> void:
 func observe_foreground() -> void:
 	if _lifecycle_enabled and _foreground and GameState.initialized:
 		reveal_progress()
+		recover_wounded()
 
 
 func _notification(what: int) -> void:
@@ -139,7 +140,11 @@ func _progress_config_valid() -> bool:
 	for step in _expedition.steps:
 		if step.kind == ExpeditionStep.StepKind.TRAVEL:
 			continue
-		var kind := "Loot" if step.kind == ExpeditionStep.StepKind.LOOT else "Event"
+		var kind := "Loot"
+		if step.kind == ExpeditionStep.StepKind.EVENT:
+			kind = "Event"
+		elif step.kind == ExpeditionStep.StepKind.COMBAT:
+			kind = "Combat"
 		if not ExpeditionCatalog.weight(balancing.encounter_kind_weight_multipliers.get(kind)):
 			return false
 	return true
@@ -188,7 +193,10 @@ func reveal_progress() -> void:
 		_fail("Expedition state is invalid. Reload before retrying progress.")
 		return
 	var delta := clampi(int(now) - _expedition.last_observed_utc, 0, balancing.max_offline_delta_seconds)
-	var elapsed := _expedition.credited_elapsed_seconds + mini(delta, _expedition.duration_seconds - _expedition.credited_elapsed_seconds)
+	# Credit and complete against the effective (possibly truncated) schedule, not
+	# the original planned duration.
+	var effective := _expedition.effective_seconds()
+	var elapsed := _expedition.credited_elapsed_seconds + mini(delta, effective - _expedition.credited_elapsed_seconds)
 	var cursor: int = elapsed / _expedition.step_duration_seconds - 1
 	cursor = clampi(cursor, -1, _expedition.steps.size() - 1)
 	var gold := GameState.gold
@@ -208,11 +216,57 @@ func reveal_progress() -> void:
 	var finishing := cursor == steps.size() - 1
 	if finishing:
 		_expedition.status = ExpeditionData.Status.COMPLETED
-		for member in _expedition.party_snapshot.slots.values():
-			if member != null:
-				GameState.find_hero(member.hero_id).status = HeroData.HeroStatus.IDLE
+		_finalize_participants(int(now))
 	if _persist(company_before, own_before, true) and finishing:
 		completed.emit()
+
+
+## Merge each participant's combat HP/status by ID once, at the completion reveal.
+## Down (0 HP) or a party defeat leaves a Hero Wounded with a frozen recovery
+## deadline; otherwise the Hero returns Idle. There is no resurrection.
+func _finalize_participants(now: int) -> void:
+	var merged := _expedition.fold_final_states()
+	var defeated := _expedition.party_defeated()
+	var deadline := now + mini(_expedition.recovery_seconds, HeroCatalog.MAX_SAFE_INT - now)
+	for member in _expedition.party_snapshot.slots.values():
+		if member == null:
+			continue
+		var hero := GameState.find_hero(member.hero_id)
+		if hero == null:
+			continue
+		var state: Variant = merged.get(member.hero_id)
+		var down := state != null and int(state.hp) == 0
+		if down or defeated:
+			hero.status = HeroData.HeroStatus.WOUNDED
+			hero.wounded_until = deadline
+		else:
+			hero.status = HeroData.HeroStatus.IDLE
+			hero.wounded_until = 0
+
+
+## Wounded Heroes return to Idle once their frozen deadline passes. Runs whether or
+## not an Expedition is active, after acknowledgment, and on startup/resume. A
+## precommit failure rolls back so the same timer is retried, never consumed twice.
+func recover_wounded() -> void:
+	if not GameState.initialized:
+		return
+	var now: Variant = _now()
+	if not ExpeditionCatalog.integer(now):
+		return
+	var recovering: Array[HeroData] = []
+	for hero in GameState.roster:
+		# A zero deadline marks a Wounded Hero with no active recovery timer
+		# (e.g. migrated legacy saves); only timed wounds recover here.
+		if hero.status == HeroData.HeroStatus.WOUNDED and hero.wounded_until > 0 and int(now) >= hero.wounded_until:
+			recovering.append(hero)
+	if recovering.is_empty():
+		return
+	var company_before := GameState.checkpoint()
+	var own_before := checkpoint()
+	for hero in recovering:
+		hero.status = HeroData.HeroStatus.IDLE
+		hero.wounded_until = 0
+	_persist(company_before, own_before, true)
 
 
 func acknowledge_report(expected: ExpeditionData) -> void:

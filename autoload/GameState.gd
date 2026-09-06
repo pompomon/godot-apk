@@ -35,9 +35,11 @@ func reserve_hero_id() -> String:
 ## Retain Hero identity while snapshotting mutable statuses and formation slots.
 func checkpoint() -> Dictionary:
 	var statuses := {}
+	var wounded_until := {}
 	for hero in roster + recruitment_offers:
 		if hero != null:
 			statuses[hero] = hero.status
+			wounded_until[hero] = hero.wounded_until
 	return {
 		"roster": roster.duplicate(), "recruitment_offers": recruitment_offers.duplicate(),
 		"gold": gold, "inventory": inventory.duplicate(),
@@ -46,7 +48,7 @@ func checkpoint() -> Dictionary:
 		"recruitment_sequence": recruitment_sequence, "offer_seeds": offer_seeds.duplicate(),
 		"expedition_seed": expedition_seed, "expedition_sequence": expedition_sequence,
 		"initialized": initialized,
-		"hero_statuses": statuses,
+		"hero_statuses": statuses, "hero_wounded_until": wounded_until,
 		"party_slots": current_party.slots.duplicate() if current_party != null else null,
 		"party_identity": current_party,
 	}
@@ -57,6 +59,8 @@ func restore_checkpoint(state: Dictionary) -> void:
 	recruitment_offers.assign(state.recruitment_offers)
 	for hero in state.hero_statuses:
 		hero.status = state.hero_statuses[hero]
+	for hero in state.hero_wounded_until:
+		hero.wounded_until = state.hero_wounded_until[hero]
 	current_party = null
 	if state.party_slots != null:
 		current_party = state.party_identity

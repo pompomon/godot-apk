@@ -144,7 +144,7 @@ func test_original_rolls_survive_range_tuning_while_new_heroes_use_current_range
 
 func test_migration_rejects_unknown_versions_and_types() -> void:
 	var snapshot := _boot()
-	for version in [null, true, "1", -1, 0, 1.5, 4, HeroCatalog.MAX_SAFE_INT]:
+	for version in [null, true, "1", -1, 0, 1.5, 5, HeroCatalog.MAX_SAFE_INT]:
 		var invalid := snapshot.duplicate(true)
 		invalid.save_version = version
 		assert_eq(SaveManager.migrate(invalid), {}, str(version))
@@ -155,7 +155,7 @@ func test_migration_rejects_unknown_versions_and_types() -> void:
 func test_root_validation_rejects_bad_types_bounds_and_missing_fields() -> void:
 	var snapshot := _boot()
 	var changes := [
-		["save_version", "1"], ["save_version", 1], ["save_version", 4], ["save_version", true],
+		["save_version", "1"], ["save_version", 1], ["save_version", 5], ["save_version", true],
 		["gold", -1], ["gold", 1.1], ["gold", true], ["gold", "100"],
 		["gold", INF], ["gold", NAN], ["gold", HeroCatalog.MAX_SAFE_INT + 1],
 		["roster_capacity", 0], ["roster_capacity", 13], ["roster_capacity", 3],

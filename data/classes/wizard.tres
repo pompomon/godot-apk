@@ -6,6 +6,7 @@
 script = ExtResource("1_class")
 class_id = &"wizard"
 display_name = "Wizard"
+skill_id = &"firebolt"
 basic_attack_target_rule = "AnySlot"
 base_attribute_ranges = {
 "MIG": Vector2i(1, 3),

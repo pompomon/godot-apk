@@ -94,6 +94,20 @@ static func hero_summary(hero: HeroData) -> String:
 	]
 
 
+static func status_badge(hero: HeroData) -> Label:
+	var badge := label(status_name(hero), 24)
+	badge.name = "StatusBadge"
+	badge.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	badge.add_theme_color_override("font_color", Color("#182235"))
+	var background := _box(NOTICE_COLOR)
+	background.content_margin_left = 12
+	background.content_margin_right = 12
+	background.content_margin_top = 6
+	background.content_margin_bottom = 6
+	badge.add_theme_stylebox_override("normal", background)
+	return badge
+
+
 static func hero_row(hero: HeroData, open_detail: Callable) -> Button:
 	var row := button("")
 	row.set_meta("hero_id", hero.hero_id)
@@ -113,6 +127,7 @@ static func hero_row(hero: HeroData, open_detail: Callable) -> Button:
 	var summary := label(hero_summary(hero))
 	summary.name = "HeroSummary"
 	content.add_child(summary)
+	content.add_child(status_badge(hero))
 	var detail_hint := label("View hero details", 24)
 	detail_hint.add_theme_color_override("font_color", MUTED_COLOR)
 	content.add_child(detail_hint)

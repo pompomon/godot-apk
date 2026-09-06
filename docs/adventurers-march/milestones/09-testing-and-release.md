@@ -13,7 +13,7 @@ device playtest, and a signed, store-ready Android build.
 
 **In scope:** unit-test coverage completion for
 `CombatSimulator`/`HeroGenerator`/`PartyEvaluator`/`SaveManager`
-migrations, CI workflow extension to run tests before export, full manual
+migrations, auditing the existing CI test-before-export gate, full manual
 playtest (including offline progress and save fallback),
 release export preset and store asset preparation.
 
@@ -35,11 +35,11 @@ hardening and release logistics only).
 2. Add a determinism regression test (if not already added in Milestone
    4) that runs a full Expedition — including Combat steps — twice from
    the same seed and asserts byte-identical resolved results end-to-end.
-3. Extend `.github/workflows/android-apk.yml` (or add a sibling job/
-   workflow) to run the headless test suite
-   (`godot --headless --path . -s <test-runner-entrypoint>`) as a required
-   step **before** the export step, failing the workflow on any test
-   failure.
+3. Audit `.github/workflows/android-apk.yml`'s existing clean-import and
+   headless-GUT gate, introduced during foundation review. Confirm it discovers
+   the complete gameplay suite and that a failing test, empty discovery, or
+   skipped parse failure prevents export/upload. Keep the save-isolation hook
+   enabled; do not add a parallel test pipeline.
 4. Prepare a release export preset in `export_presets.cfg`: a real package
    identifier (replacing the placeholder `com.example.helloworld`), a
    signed release configuration (keystore handling per Godot's Android
@@ -64,7 +64,7 @@ hardening and release logistics only).
 ## Expected files / scenes / scripts / data
 
 ```
-.github/workflows/android-apk.yml (updated to run tests before export)
+.github/workflows/android-apk.yml (existing test-before-export gate audited)
 export_presets.cfg (release preset added/updated)
 tests/... (coverage gaps filled)
 tests/test_expedition_end_to_end.gd   # full-run determinism regression test

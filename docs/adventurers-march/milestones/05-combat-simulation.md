@@ -69,6 +69,11 @@ needed when equipment starts modifying them), additional Regions
      specified in plan §9; in particular, defender `Evasion` reduces hit
      chance.
    - Bounded by `MaxRounds` (data-tunable via `BalancingConfig`).
+   - Extend the existing balancing asset with authored skill multipliers;
+     retain its 20-round default and published hit/crit/damage defaults.
+     Validate positive round bounds, ordered probability limits, and finite
+     nonnegative multipliers for every used skill before simulation. Missing
+     skill configuration is an error, not an implicit zero-damage skill.
 5. Update `ExpeditionGenerator` to include `COMBAT` steps in Green
    Hollow's encounter pool, calling `CombatSimulator` at step-generation
    time (still resolve-at-start, per Milestone 4's architecture) and

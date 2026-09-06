@@ -87,6 +87,15 @@ exist and can be inspected, but cannot yet be sent anywhere.
     `fsync` or parent-directory sync. If the primary is missing or invalid,
     load the valid backup with a warning and restore the primary without
     overwriting that backup.
+13. Preserve the foundation's injectable `SaveManager.storage_directory`.
+     Derive the primary path from `get_save_path()` and sibling `.tmp`, `.bak`,
+     and `.bak.tmp` paths from that primary; never bypass it with a hard-coded
+     `user://` save path. Keep autoload initialization I/O-free so GUT's pre-run
+     isolation hook binds storage before `load_or_create()` is called.
+     Replace the foundation-empty-state smoke test with new-game assertions
+     (4 Heroes, 100 gold, typed roster). Give each persistence case a fresh
+     temporary directory and reset/restore in-memory singleton state between
+     cases; retain the real-main-scene bootstrap test using isolated storage.
 
 ## Expected files / scenes / scripts / data
 

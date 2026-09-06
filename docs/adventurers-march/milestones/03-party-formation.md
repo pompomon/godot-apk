@@ -36,9 +36,12 @@ stats if present so no rework is needed later).
    PartyData, balancing: BalancingConfig) -> float` function implementing
    the formula from
    [plan §7](../../adventurers-march-implementation-plan.md#7-party-formation-and-evaluation).
-3. Fill in `BalancingConfig` fields needed for this formula (per-level
-   weight, per-stat weights, no-front-row penalty, party-size scaling) and
-   author `data/balancing/default_balancing.tres`.
+3. Consume and, if needed, tune the existing Party Power values in
+   `data/balancing/default_balancing.tres` (per-level/per-stat weights,
+   no-front-row penalty, party-size scaling). Extend this single asset rather
+   than recreating it; preserve recruitment, combat, and Expedition settings.
+   Validate required stat keys, finite nonnegative weights, a positive divisor,
+   and a formation factor in `(0, 1]` before evaluation.
 4. Build Party Formation screen: shows only `Idle` Heroes as selectable,
    lets the player assign selected Heroes to the 4 formation slots
    (drag-and-drop or tap-to-place, whichever is simpler to implement

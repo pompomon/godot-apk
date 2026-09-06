@@ -76,6 +76,13 @@ jobs:
           mkdir -p "$templates_dir"
           cp -R "$RUNNER_TEMP/export-templates/templates/." "$templates_dir/"
 
+      - name: Import project and run headless tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . --editor --import
+          godot --headless --path . -s addons/gut/gut_cmdln.gd
+
       - name: Configure Android export
         shell: bash
         run: |

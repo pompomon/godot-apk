@@ -135,6 +135,58 @@ func test_malformed_input_returns_empty_and_is_distinguishable() -> void:
 	assert_false(CombatResolver.resolve(snapshot, states, group, 1, DEFAULT).is_empty())
 
 
+func test_state_map_must_describe_the_party_exactly() -> void:
+	var group := _group("g", [_enemy("e", "Front", "FrontRowFirst", _stats(10, 5, 0, 0, 0.0, 1, 0.0))])
+	var snapshot := _snapshot({"FRONT_LEFT": _member("hero-1", "knight", "AnySlot", _stats(30, 10, 0, 0, 0.0, 5, 0.0), null)})
+	# Exactly {hp, status} is required: an unexpected key is rejected, never ignored.
+	assert_eq(CombatResolver.resolve(snapshot, {"hero-1": {"hp": 30, "status": 2, "extra": 1}}, group, 1, DEFAULT), {})
+	# A status is mandatory; it is never defaulted.
+	assert_eq(CombatResolver.resolve(snapshot, {"hero-1": {"hp": 30}}, group, 1, DEFAULT), {})
+	# HP above the Hero's MaxHP is out of range even with both keys present.
+	assert_eq(CombatResolver.resolve(snapshot, {"hero-1": {"hp": 31, "status": 2}}, group, 1, DEFAULT), {})
+	# A status outside the Hero-status enum is rejected.
+	assert_eq(CombatResolver.resolve(snapshot, {"hero-1": {"hp": 30, "status": 6}}, group, 1, DEFAULT), {})
+	# An unrelated extra ID (the party holds only hero-1) makes the map malformed.
+	assert_eq(CombatResolver.resolve(snapshot, {"hero-1": {"hp": 30, "status": 2}, "ghost": {"hp": 5, "status": 2}}, group, 1, DEFAULT), {})
+	# The exact, in-range map still resolves.
+	assert_false(CombatResolver.resolve(snapshot, {"hero-1": {"hp": 30, "status": 2}}, group, 1, DEFAULT).is_empty())
+
+
+func test_state_map_omitting_a_party_member_is_rejected() -> void:
+	var group := _group("g", [_enemy("e", "Front", "FrontRowFirst", _stats(10, 1, 0, 0, 0.0, 1, 0.0))])
+	var snapshot := _snapshot({
+		"FRONT_LEFT": _member("hero-1", "knight", "AnySlot", _stats(30, 10, 0, 0, 0.0, 5, 0.0), null),
+		"BACK_LEFT": _member("hero-2", "ranger", "AnySlot", _stats(40, 10, 0, 0, 0.0, 6, 0.0), null),
+	})
+	# Only one of two members is described; the missing Hero cannot be guessed.
+	assert_eq(CombatResolver.resolve(snapshot, {"hero-1": {"hp": 30, "status": 2}}, group, 1, DEFAULT), {})
+
+
+func test_frozen_skill_without_a_configured_multiplier_is_rejected() -> void:
+	var group := _group("g", [_enemy("e", "Front", "FrontRowFirst", _stats(10, 1, 0, 0, 0.0, 1, 0.0))])
+	# The frozen skill points at a multiplier id absent from the balancing config.
+	var hero := _member("hero-1", "wizard", "AnySlot", _stats(40, 10, 12, 0, 0.0, 8, 0.0),
+		_skill("mystery", "Physical", "AnySlot", "not_in_config", 2))
+	var snapshot := _snapshot({"FRONT_LEFT": hero})
+	assert_eq(CombatResolver.resolve(snapshot, snapshot.hero_states(), group, 1, DEFAULT), {},
+		"A frozen skill with no configured multiplier is rejected before any RNG is drawn.")
+	# The identical party with a configured multiplier resolves normally.
+	var ok := _member("hero-1", "wizard", "AnySlot", _stats(40, 10, 12, 0, 0.0, 8, 0.0),
+		_skill("firebolt", "Physical", "AnySlot", "firebolt", 2))
+	var ok_snapshot := _snapshot({"FRONT_LEFT": ok})
+	assert_false(CombatResolver.resolve(ok_snapshot, ok_snapshot.hero_states(), group, 1, DEFAULT).is_empty())
+
+
+func test_frozen_guard_skill_with_out_of_range_multiplier_is_rejected() -> void:
+	var group := _group("g", [_enemy("e", "Front", "FrontRowFirst", _stats(10, 1, 0, 0, 0.0, 1, 0.0))])
+	# A Guard whose frozen multiplier resolves above 1.0 is not a valid mitigation.
+	var hero := _member("hero-1", "knight", "AnySlot", _stats(40, 10, 0, 0, 0.0, 8, 0.0),
+		_skill("guard", "Guard", "Self", "aimed_shot", 2))
+	var snapshot := _snapshot({"FRONT_LEFT": hero})
+	assert_eq(CombatResolver.resolve(snapshot, snapshot.hero_states(), group, 1, DEFAULT), {},
+		"A Guard reduction above 1.0 is rejected before resolution.")
+
+
 # --- Targeting ---------------------------------------------------------------
 
 func test_targeting_prefers_front_row_then_lowest_hp_then_ascending_id() -> void:
@@ -308,6 +360,22 @@ func test_party_wipe_is_a_defeat_and_downed_actors_are_skipped() -> void:
 		assert_ne(action.actor_id, "hero-1")
 
 
+func test_downed_hero_ends_wounded_while_survivors_stay_on_expedition() -> void:
+	# hero-1 is struck down before it can act; hero-2 then finishes the lone enemy.
+	var down := _member("hero-1", "knight", "FrontRowFirst", _stats(10, 1, 0, 0, 0.0, 1, 0.0), null)
+	var winner := _member("hero-2", "ranger", "AnySlot", _stats(80, 40, 0, 0, 0.0, 40, 0.0), null)
+	var snapshot := _snapshot({"FRONT_LEFT": down, "BACK_LEFT": winner})
+	var group := _group("g", [_enemy("slayer", "Front", "FrontRowFirst", _stats(15, 100, 0, 0, 0.0, 50, 0.0))])
+	var result := CombatResolver.resolve(snapshot, snapshot.hero_states(), group, 1, _forced())
+	assert_eq(result.outcome, "VICTORY")
+	assert_eq(result.final_hero_states["hero-1"].hp, 0)
+	assert_eq(result.final_hero_states["hero-1"].status, HeroData.HeroStatus.WOUNDED,
+		"A Hero at 0 HP ends the fight Wounded, with no revival.")
+	assert_gt(result.final_hero_states["hero-2"].hp, 0)
+	assert_eq(result.final_hero_states["hero-2"].status, HeroData.HeroStatus.ON_EXPEDITION,
+		"A survivor keeps the On Expedition status it entered combat with.")
+
+
 # --- Determinism, isolation, and immutability --------------------------------
 
 func test_identical_calls_are_byte_identical_and_ignore_global_randomness() -> void:
@@ -451,3 +519,4 @@ func test_fixed_seed_golden_result_is_exact() -> void:
 
 
 const GOLDEN := """{"final_hero_states":{"hero-1":{"hp":64,"status":2},"hero-2":{"hp":48,"status":2}},"gold":0,"outcome":"VICTORY","rounds":[{"actions":[{"action_kind":"Skill","action_name":"Aimed Shot","actor_id":"hero-2","actor_name":"Hero 2","amount":23,"result_hp":0,"target_id":"bandit_archer","target_name":"Bandit Archer","was_crit":false,"was_miss":false},{"action_kind":"Guard","action_name":"Guard","actor_id":"hero-1","actor_name":"Hero 1","amount":0,"result_hp":70,"target_id":"hero-1","target_name":"Hero 1","was_crit":false,"was_miss":false},{"action_kind":"Attack","action_name":"Basic Attack","actor_id":"bandit_thug","actor_name":"Bandit Thug","amount":2,"result_hp":68,"target_id":"hero-1","target_name":"Hero 1","was_crit":false,"was_miss":false}],"round_number":1},{"actions":[{"action_kind":"Attack","action_name":"Basic Attack","actor_id":"hero-2","actor_name":"Hero 2","amount":12,"result_hp":18,"target_id":"bandit_thug","target_name":"Bandit Thug","was_crit":false,"was_miss":false},{"action_kind":"Attack","action_name":"Basic Attack","actor_id":"hero-1","actor_name":"Hero 1","amount":14,"result_hp":4,"target_id":"bandit_thug","target_name":"Bandit Thug","was_crit":false,"was_miss":false},{"action_kind":"Attack","action_name":"Basic Attack","actor_id":"bandit_thug","actor_name":"Bandit Thug","amount":4,"result_hp":64,"target_id":"hero-1","target_name":"Hero 1","was_crit":false,"was_miss":false}],"round_number":2},{"actions":[{"action_kind":"Attack","action_name":"Basic Attack","actor_id":"hero-2","actor_name":"Hero 2","amount":12,"result_hp":0,"target_id":"bandit_thug","target_name":"Bandit Thug","was_crit":false,"was_miss":false}],"round_number":3}]}"""
+

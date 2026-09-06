@@ -102,7 +102,7 @@ func _journal_entry(index: int, step: ExpeditionStep, members: Dictionary) -> St
 	for hero_id in members:
 		var member: Dictionary = members[hero_id]
 		var hp := int(result.final_hero_states[hero_id].hp)
-		var wounded := hp == 0 or result.outcome == "DEFEAT"
+		var wounded: bool = hp == 0 or result.outcome == "DEFEAT"
 		lines.append("  %s: %d / %d HP · %s" % [
 			member.hero_name, hp, int(member.derived_stats.MaxHP),
 			"Wounded" if wounded else "Survived"])

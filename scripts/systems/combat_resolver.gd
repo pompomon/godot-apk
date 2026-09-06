@@ -25,6 +25,11 @@ static func resolve(
 	var combatants := _build_combatants(party, current_hero_states, enemy_group)
 	if combatants.is_empty():
 		return {}
+	# Combat runs on the Party's frozen skills, so every skill actually used must
+	# resolve a configured multiplier. A missing key is an error, never a silent
+	# zero-damage skill, and it is rejected before any RNG is drawn.
+	if not _frozen_skills_configured(combatants, balancing):
+		return {}
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed
 	var rounds: Array = []
@@ -47,7 +52,12 @@ static func resolve(
 	var final_states := {}
 	for combatant in combatants:
 		if combatant.side == HERO_SIDE:
-			final_states[combatant.id] = {"hp": int(combatant.hp), "status": int(combatant.status)}
+			# A Hero reduced to 0 HP is Wounded for the rest of the run; a survivor
+			# keeps the On Expedition status it entered with. There is no revival.
+			var status := int(combatant.status)
+			if int(combatant.hp) == 0:
+				status = HeroData.HeroStatus.WOUNDED
+			final_states[combatant.id] = {"hp": int(combatant.hp), "status": status}
 	return {"outcome": outcome, "rounds": rounds, "final_hero_states": final_states, "gold": 0}
 
 
@@ -58,24 +68,30 @@ static func _build_combatants(
 	var slots := party.slots
 	var front := [PartyData.SLOT_NAMES[PartyData.FormationSlot.FRONT_LEFT], PartyData.SLOT_NAMES[PartyData.FormationSlot.FRONT_RIGHT]]
 	var canonical := 0
+	var member_count := 0
 	for slot in PartyData.SLOT_NAMES:
 		var member: Variant = slots[slot]
 		if member == null:
 			continue
+		member_count += 1
+		# The current-state entry must carry exactly an integer HP and status for
+		# this Hero; a missing status or an unexpected key is rejected, never guessed.
 		var state: Variant = current_hero_states.get(member.hero_id)
-		if not state is Dictionary or not state.has("hp"):
+		if not state is Dictionary or not HeroCatalog.has_exact_keys(state, ["hp", "status"]):
 			return []
-		var hp: Variant = state.hp
 		var max_hp := int(member.derived_stats.MaxHP)
-		if not ExpeditionCatalog.integer(hp, 0, max_hp):
+		if not ExpeditionCatalog.integer(state.hp, 0, max_hp):
 			return []
-		var status: int = int(state.get("status", HeroData.HeroStatus.ON_EXPEDITION))
-		if status < 0 or status > HeroData.HeroStatus.DEAD:
+		if not ExpeditionCatalog.integer(state.status, 0, HeroData.HeroStatus.DEAD):
 			return []
 		combatants.append(_combatant(
 			member.hero_id, member.hero_name, HERO_SIDE, "Front" if slot in front else "Back",
-			member.basic_attack_target_rule, member.derived_stats, int(hp), max_hp, member.skill, status, canonical))
+			member.basic_attack_target_rule, member.derived_stats, int(state.hp), max_hp, member.skill, int(state.status), canonical))
 		canonical += 1
+	# The map must describe every Party Hero and nothing else: an extra, unrelated
+	# ID (or a duplicate/missing entry) is a malformed input.
+	if current_hero_states.size() != member_count:
+		return []
 	for enemy in enemy_group.enemies:
 		var max_hp := int(enemy.derived_stats.MaxHP)
 		combatants.append(_combatant(
@@ -102,6 +118,23 @@ static func _living(combatants: Array, side: String) -> bool:
 		if combatant.side == side and int(combatant.hp) > 0:
 			return true
 	return false
+
+
+## Every frozen combatant skill must resolve a finite, nonnegative multiplier from
+## the balancing config; Guard's fraction is additionally bounded to [0, 1]. The
+## resolver reads the Party's frozen skills, which the catalog-level balancing check
+## cannot see, so this guard prevents an invalid index during resolution.
+static func _frozen_skills_configured(combatants: Array, balancing: BalancingConfig) -> bool:
+	for combatant in combatants:
+		var skill: Variant = combatant.skill
+		if skill == null:
+			continue
+		var multiplier: Variant = balancing.skill_damage_multipliers.get(String(skill.multiplier_id))
+		if not ExpeditionCatalog.weight(multiplier):
+			return false
+		if String(skill.kind) == "Guard" and float(multiplier) > 1.0:
+			return false
+	return true
 
 
 ## Canonical ordering is fixed before the seeded tiebreak rolls so identical

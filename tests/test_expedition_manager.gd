@@ -40,6 +40,105 @@ func _observe(now: int) -> void:
 	ExpeditionManager.reveal_progress()
 
 
+## Every encounter becomes a lethal combat, so the first fight is a terminal defeat
+## and the lone back-row Hero is reliably downed regardless of initiative order.
+func _lethal_balancing() -> BalancingConfig:
+	var config: BalancingConfig = ExpeditionManager.DEFAULT_BALANCING.duplicate(true)
+	config.basic_attack_damage_multiplier = 1000.0
+	config.encounter_kind_weight_multipliers = {"Combat": 1.0, "Event": 0.0, "Loot": 0.0}
+	return config
+
+
+func test_a_defeated_party_is_wounded_with_a_frozen_recovery_deadline() -> void:
+	var party := _confirm()
+	var hero := GameState.roster[0]
+	ExpeditionManager.balancing = _lethal_balancing()
+	ExpeditionManager.start_expedition(REGION, party, 60)
+	assert_true(ExpeditionManager.last_committed, ExpeditionManager.last_error)
+	var run := ExpeditionManager.get_active_expedition()
+	assert_true(run.party_defeated(), "A lethal first combat ends the run in a terminal defeat.")
+	assert_eq(run.recovery_seconds, ExpeditionManager.DEFAULT_BALANCING.combat_recovery_seconds)
+	var finish := 1000 + run.effective_seconds()
+	var deadline := finish + run.recovery_seconds
+	_observe(finish)
+	assert_eq(run.status, ExpeditionData.Status.COMPLETED)
+	assert_eq(hero.status, HeroData.HeroStatus.WOUNDED, "A downed Hero is Wounded after finalization.")
+	assert_eq(hero.wounded_until, deadline, "The deadline is the reveal time plus the frozen recovery.")
+	# The wound survives a reload byte-for-byte.
+	SaveManager.load_or_create()
+	assert_eq(GameState.roster[0].status, HeroData.HeroStatus.WOUNDED)
+	assert_eq(GameState.roster[0].wounded_until, deadline)
+	# The Hero stays Wounded up to the instant before the deadline.
+	_time = deadline - 1
+	ExpeditionManager.recover_wounded()
+	assert_eq(GameState.roster[0].status, HeroData.HeroStatus.WOUNDED)
+	# At the deadline the Hero returns Idle exactly once, clearing the timer; there
+	# is no revival of a different kind and no XP or equipment change.
+	_time = deadline
+	ExpeditionManager.recover_wounded()
+	assert_eq(GameState.roster[0].status, HeroData.HeroStatus.IDLE, "The Hero recovers at its deadline.")
+	assert_eq(GameState.roster[0].wounded_until, 0)
+	ExpeditionManager.balancing = ExpeditionManager.DEFAULT_BALANCING
+
+
+func test_recovery_deadline_clamps_to_the_json_safe_ceiling() -> void:
+	var party := _confirm()
+	var hero := GameState.roster[0]
+	var config := _lethal_balancing()
+	config.combat_recovery_seconds = HeroCatalog.MAX_SAFE_INT
+	ExpeditionManager.balancing = config
+	ExpeditionManager.start_expedition(REGION, party, 60)
+	assert_true(ExpeditionManager.last_committed, ExpeditionManager.last_error)
+	var run := ExpeditionManager.get_active_expedition()
+	_observe(1000 + run.effective_seconds())
+	assert_eq(hero.status, HeroData.HeroStatus.WOUNDED)
+	# now + recovery overflows the plain sum, so the deadline clamps to the ceiling
+	# instead of wrapping or collapsing back to the reveal time.
+	assert_eq(hero.wounded_until, HeroCatalog.MAX_SAFE_INT, "The recovery deadline never exceeds the safe ceiling.")
+	assert_true(SaveManager.validate_snapshot(SaveManager.capture_state()), "A ceiling deadline stays JSON-safe.")
+	_time = HeroCatalog.MAX_SAFE_INT - 1
+	ExpeditionManager.recover_wounded()
+	assert_eq(GameState.roster[0].status, HeroData.HeroStatus.WOUNDED, "A ceiling wound never recovers within any representable clock.")
+	ExpeditionManager.balancing = ExpeditionManager.DEFAULT_BALANCING
+
+
+func test_a_wound_without_a_deadline_is_never_auto_recovered() -> void:
+	var hero := GameState.roster[0]
+	# A zero deadline marks a permanent wound (e.g. a migrated legacy save).
+	hero.status = HeroData.HeroStatus.WOUNDED
+	hero.wounded_until = 0
+	assert_true(SaveManager.validate_snapshot(SaveManager.capture_state()), "A timerless Wounded Hero is a valid persistent state.")
+	_time = HeroCatalog.MAX_SAFE_INT
+	ExpeditionManager.recover_wounded()
+	assert_eq(GameState.roster[0].status, HeroData.HeroStatus.WOUNDED, "A zero deadline never auto-recovers.")
+	assert_eq(GameState.roster[0].wounded_until, 0)
+
+
+func test_a_completed_report_stays_wounded_after_the_hero_recovers() -> void:
+	var party := _confirm()
+	var hero := GameState.roster[0]
+	ExpeditionManager.balancing = _lethal_balancing()
+	ExpeditionManager.start_expedition(REGION, party, 60)
+	assert_true(ExpeditionManager.last_committed, ExpeditionManager.last_error)
+	var run := ExpeditionManager.get_active_expedition()
+	var finish := 1000 + run.effective_seconds()
+	_observe(finish)
+	# The frozen combat record shows the downed Hero Wounded at 0 HP.
+	var frozen := run.fold_final_states()
+	assert_eq(frozen.size(), 1)
+	var record: Dictionary = frozen.values()[0]
+	assert_eq(int(record.hp), 0)
+	assert_eq(int(record.status), HeroData.HeroStatus.WOUNDED)
+	# Auto-recovery flips the live Hero to Idle but must never rewrite the history:
+	# the completed report a player is reading stays byte-for-byte the same.
+	_time = finish + run.recovery_seconds
+	ExpeditionManager.recover_wounded()
+	assert_eq(GameState.roster[0].status, HeroData.HeroStatus.IDLE, "The Hero recovers on schedule.")
+	assert_eq(ExpeditionManager.get_active_expedition().fold_final_states(), frozen,
+		"A completed report is immutable while the Hero recovers.")
+	ExpeditionManager.balancing = ExpeditionManager.DEFAULT_BALANCING
+
+
 func test_start_consumes_confirmed_party_only_and_retains_independent_rng() -> void:
 	var party := _confirm()
 	var hero := party.heroes()[0]

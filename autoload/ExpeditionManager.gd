@@ -227,7 +227,10 @@ func reveal_progress() -> void:
 func _finalize_participants(now: int) -> void:
 	var merged := _expedition.fold_final_states()
 	var defeated := _expedition.party_defeated()
-	var deadline := now + mini(_expedition.recovery_seconds, HeroCatalog.MAX_SAFE_INT - now)
+	# The frozen recovery duration is added to the reveal time and clamped to the
+	# JSON-safe ceiling. Both operands are already bounded by MAX_SAFE_INT, so the
+	# int64 sum cannot overflow before the clamp.
+	var deadline := mini(now + _expedition.recovery_seconds, HeroCatalog.MAX_SAFE_INT)
 	for member in _expedition.party_snapshot.slots.values():
 		if member == null:
 			continue

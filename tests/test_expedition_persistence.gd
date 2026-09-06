@@ -174,6 +174,54 @@ func test_rejects_bad_step_payloads_unknown_ids_and_overflowing_total_gold() -> 
 	assert_false(SaveManager.validate_snapshot(bad))
 
 
+func test_rejects_non_integer_terminal_and_candidate_before_coercion() -> void:
+	var original := _start()
+	var candidate: int = original.expedition.candidate_step_count
+	# A non-integer that would truncate toward a valid index must still be rejected:
+	# the raw type is validated before any int() coercion.
+	for value in [true, "0", 0.5, NAN, INF, candidate + 0.5, float(candidate)]:
+		var bad := original.duplicate(true)
+		bad.expedition.terminal_step_index = value
+		assert_false(SaveManager.validate_snapshot(bad), "terminal_step_index=%s" % str(value))
+	for value in [true, "10", candidate + 0.5, candidate - 0.5, NAN, INF, 1]:
+		var bad := original.duplicate(true)
+		bad.expedition.candidate_step_count = value
+		assert_false(SaveManager.validate_snapshot(bad), "candidate_step_count=%s" % str(value))
+	assert_eq(SaveManager.capture_state(), original)
+
+
+func test_terminal_index_never_dereferences_an_unvalidated_step() -> void:
+	var original := _start()
+	var last: int = original.expedition.steps.size() - 1
+	# Aim the terminal at the final step but corrupt that step's structure. The
+	# schedule must be validated element-by-element before it is indexed by the
+	# terminal, so this is a clean rejection rather than a crash.
+	for corruption in [5, "combat", [], null]:
+		var bad := original.duplicate(true)
+		bad.expedition.terminal_step_index = last
+		bad.expedition.steps[last] = corruption
+		assert_false(SaveManager.validate_snapshot(bad), "corrupt terminal step=%s" % str(corruption))
+	assert_eq(SaveManager.capture_state(), original)
+
+
+func test_combat_step_with_an_incomplete_final_state_map_is_rejected() -> void:
+	var original := _start()
+	var combat_index := -1
+	for index in range(original.expedition.steps.size()):
+		if int(original.expedition.steps[index].kind) == ExpeditionStep.StepKind.COMBAT:
+			combat_index = index
+			break
+	assert_gt(combat_index, -1, "The generated run resolves at least one combat step.")
+	var states: Dictionary = original.expedition.steps[combat_index].result.final_hero_states
+	assert_eq(states.size(), 2, "The two-Hero party yields a final state for each member.")
+	# Dropping any living Hero from the map leaves it incomplete, so it is rejected.
+	var bad := original.duplicate(true)
+	var trimmed: Dictionary = bad.expedition.steps[combat_index].result.final_hero_states
+	trimmed.erase(trimmed.keys()[0])
+	assert_false(SaveManager.validate_snapshot(bad), "An incomplete final-state map omits a Party Hero.")
+	assert_eq(SaveManager.capture_state(), original)
+
+
 func test_frozen_party_validation_and_roster_status_relations_are_strict() -> void:
 	var original := _start()
 	for change in [["hero_id", "hero-999"], ["hero_id", GameState.recruitment_offers[0].hero_id],

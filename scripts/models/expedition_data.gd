@@ -180,16 +180,21 @@ static func _valid(data: Variant, legacy: bool) -> bool:
 		return false
 	if not ExpeditionCatalog.integer(data.last_revealed_index, -1, data.steps.size() - 1):
 		return false
-	var duration := int(data.duration_seconds)
-	var slice := int(data.step_duration_seconds)
-	var candidate: int = data.steps.size() if legacy else int(data.get("candidate_step_count"))
+	# Validate the terminal index and frozen v4 fields as integers/bools *before*
+	# any int() coercion so a malformed value cannot be silently rounded through.
+	if not ExpeditionCatalog.integer(data.terminal_step_index, -1, data.steps.size() - 1):
+		return false
+	var candidate: int = data.steps.size()
 	if not legacy:
-		if not ExpeditionCatalog.integer(candidate, 2, ExpeditionCatalog.MAX_STEPS) or candidate % 2 != 0:
+		if not ExpeditionCatalog.integer(data.candidate_step_count, 2, ExpeditionCatalog.MAX_STEPS):
 			return false
-		if data.steps.size() > candidate:
+		candidate = int(data.candidate_step_count)
+		if candidate % 2 != 0 or data.steps.size() > candidate:
 			return false
 		if not ExpeditionCatalog.integer(data.recovery_seconds) or not data.retreat_is_terminal is bool:
 			return false
+	var duration := int(data.duration_seconds)
+	var slice := int(data.step_duration_seconds)
 	if duration % candidate != 0 or duration / candidate != slice:
 		return false
 	# The effective end reflects the possibly truncated schedule; the original plan
@@ -199,22 +204,22 @@ static func _valid(data: Variant, legacy: bool) -> bool:
 	var effective_seconds: int = data.steps.size() * slice
 	if int(data.effective_end_timestamp) != int(data.start_timestamp) + effective_seconds:
 		return false
-	var terminal := int(data.terminal_step_index)
-	if legacy:
-		if terminal != -1:
-			return false
-	else:
-		if terminal == -1:
-			if data.steps.size() != candidate:
-				return false
-		elif terminal != data.steps.size() - 1 or int(data.steps[terminal].kind) != ExpeditionStep.StepKind.COMBAT:
-			return false
 	var elapsed := int(data.credited_elapsed_seconds)
 	if elapsed > effective_seconds or int(data.last_revealed_index) != elapsed / slice - 1:
 		return false
 	if (int(data.status) == Status.COMPLETED) != (elapsed == effective_seconds):
 		return false
-	return _valid_steps(data, legacy, terminal)
+	# Structurally validate every step (and cross-step combat consistency) before
+	# indexing into the schedule by terminal index below, so a malformed step entry
+	# can never be dereferenced.
+	var terminal := int(data.terminal_step_index)
+	if not _valid_steps(data, legacy, terminal):
+		return false
+	if legacy:
+		return terminal == -1
+	if terminal == -1:
+		return data.steps.size() == candidate
+	return terminal == data.steps.size() - 1 and int(data.steps[terminal].kind) == ExpeditionStep.StepKind.COMBAT
 
 
 static func _valid_steps(data: Dictionary, legacy: bool, terminal: int) -> bool:
@@ -225,7 +230,7 @@ static func _valid_steps(data: Dictionary, legacy: bool, terminal: int) -> bool:
 	var retreat_terminal := not legacy and bool(data.retreat_is_terminal)
 	var total := 0
 	for index in range(data.steps.size()):
-		var step: Dictionary = data.steps[index]
+		var step: Variant = data.steps[index]
 		if not ExpeditionStep.valid(step, index):
 			return false
 		if legacy and int(step.kind) == ExpeditionStep.StepKind.COMBAT:
@@ -244,6 +249,10 @@ static func _valid_steps(data: Dictionary, legacy: bool, terminal: int) -> bool:
 ## Hero ID belongs to the frozen party, HP never exceeds that Hero's MaxHP, and the
 ## VICTORY/DEFEAT/RETREAT outcome matches whether this step is the terminal one.
 static func _valid_combat_consistency(step: Dictionary, party_hp: Dictionary, is_terminal: bool, retreat_terminal: bool) -> bool:
+	# Every frozen Party Hero must appear exactly once: the loop rejects unknown IDs,
+	# and this size check rejects an incomplete map that omits a living Hero.
+	if step.result.final_hero_states.size() != party_hp.size():
+		return false
 	for hero_id in step.result.final_hero_states:
 		if not party_hp.has(hero_id) or int(step.result.final_hero_states[hero_id].hp) > int(party_hp[hero_id]):
 			return false

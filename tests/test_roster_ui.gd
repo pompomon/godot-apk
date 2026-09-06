@@ -68,7 +68,7 @@ func test_real_main_home_roster_detail_back_and_purchase() -> void:
 		assert_string_contains(_labels(row), hero.hero_name)
 		assert_string_contains(_labels(row), hero.hero_class.display_name)
 		assert_string_contains(_labels(row), "Idle")
-		var status_badge := row.get_node("MarginContainer/VBoxContainer/StatusBadge") as Label
+		var status_badge := row.find_child("StatusBadge", true, false) as Label
 		assert_eq(status_badge.text, "Idle")
 		assert_true(status_badge.has_theme_stylebox_override("normal"))
 		assert_gte(row.custom_minimum_size.y, 96.0)

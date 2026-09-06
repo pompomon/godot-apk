@@ -1,11 +1,10 @@
-# Adventurer's March — First Expedition
+# Adventurer's March — Combat Simulation
 
 A Godot 4.7.2 portrait Android game with a generated Company roster, Hero
-inspection, deterministic recruitment, Party formation, timed non-combat
-Expeditions, and local JSON saves. The
+inspection, deterministic recruitment, Party formation, timed Expeditions with
+deterministic auto-combat, and local JSON saves. The
 application/package name and APK artifact retain their original **Hello World**
-identifiers. Combat, equipment management, and
-XP progression remain future milestones.
+identifiers. Equipment management and XP progression remain future milestones.
 
 ## Run locally
 
@@ -44,7 +43,7 @@ godot --path .
   weapon and armor slots are empty placeholders.
 - Saves live in Godot's app-private user-data directory as `save.json`.
   New-game creation, recruitment, confirmed Party changes, Expedition starts,
-  progress observations/rewards, and report acknowledgment save immediately;
+  progress observations/rewards, injury recovery, and report acknowledgment save immediately;
   initialized state is also saved on application pause/close. Failed
   pre-commit mutations roll back and show retry feedback.
 - Versioned saves validate the complete state and known content IDs. Writes
@@ -80,8 +79,9 @@ godot --path .
   progress; legacy `Assigned` statuses become `Idle` because that version did
   not store a Party. Other statuses are preserved.
 - Dispatching consumes the confirmed Party. Its Heroes become `On expedition`
-  and cannot be reassigned until the Expedition finishes; completion returns
-  them to `Idle`, ready to form the next Party.
+  and cannot be reassigned until the Expedition finishes. Surviving Heroes
+  return to `Idle`; knocked-out Heroes and participants in a Defeat become
+  `Wounded` until their saved recovery deadline. No Hero is permanently killed.
 
 ## First Expedition
 
@@ -89,10 +89,11 @@ godot --path .
   available and offers one **60-second** Expedition. Recommended Party Power
   is guidance, not an entry requirement; partial and back-row-only Parties
   remain valid.
-- Green Hollow contains five Travel/encounter pairs: **10 steps**, one every
-  **6 seconds**. The encounter pool contains five automatic narrative Events
-  and a Loot definition. Outcomes award modest nonnegative gold; there are no
-  combat encounters, item rewards, XP awards, choices, or resource costs yet.
+- Green Hollow schedules five Travel/encounter pairs: **10 steps**, one every
+  **6 seconds**. The weighted pool combines five automatic narrative Events,
+  Loot, and Combat. Loot and Events award modest nonnegative gold; Combat
+  itself awards no gold. Item rewards, XP awards, and interrupting choices
+  remain deferred.
 - At dispatch, the game freezes the Party's starting values and resolves the
   entire journal using a saved seed. Time reveals those stored results; it
   never rerolls them. Later changes to content or roster values do not alter
@@ -100,10 +101,14 @@ godot --path .
 - Home displays progress and provides access to the Report. Only revealed
   entries and their earned gold are visible. Progress is checked while the
   app is open and when resuming, including from screens other than Home.
+- Defeat or Retreat ends Green Hollow early at that Combat's original scheduled
+  reveal time. Later steps and rewards are discarded, never stretched into a
+  new schedule. Until the terminal entry is revealed, progress shows the
+  original plan rather than exposing the precomputed outcome.
 - Closing the app does not require background execution. On return, the
   game credits elapsed UTC time since its previous saved observation.
   Backward clock changes credit zero; a single forward observation credits
-  at most the configured **24 hours**, capped at the Expedition duration.
+  at most the configured **24 hours**, capped at the Expedition's effective duration.
   This is an offline clock policy, not protection against repeated clock
   manipulation.
 - Each observation persists clock accounting together with any newly
@@ -115,10 +120,42 @@ godot --path .
   Party is allowed after completion, but the previous report must be
   acknowledged before dispatching another Expedition. Back leaves a report
   available rather than silently dismissing it.
-- Version-3 saves preserve pending Parties and active/completed Expeditions.
-  Versions 1 and 2 migrate without regenerating Heroes or recruitment offers.
-  Legacy `On expedition` statuses become `Idle`: those schemas could not
-  store an Expedition to which those Heroes belonged.
+- Version-4 saves preserve combat journals, frozen Party/skill values, terminal
+  timing, and recovery deadlines. Versions 1–3 migrate after original-schema
+  validation without regenerating Heroes, offers, or existing journals.
+  Version-3 non-combat Expeditions retain their progress and original snapshots;
+  migration does not retroactively add skills or Combat encounters. Only
+  versions 1 and 2 normalize orphan `On expedition` statuses to `Idle`, since
+  those schemas could not store an Expedition.
+
+## Combat and recovery
+
+- Combat runs immediately at dispatch, using frozen derived stats and seeded
+  randomness. The Report reveals its saved rounds later; opening a report or
+  resuming the app never reruns combat.
+- Initiative determines turn order with seeded tie-breaking. Basic attacks
+  are physical. Knights target living front-row enemies first; the other
+  classes can target either row. Within the eligible targets, lowest HP
+  percentage wins, then ascending stable combatant ID.
+- Each class has one active skill: **Guard**, **Aimed Shot**, **Firebolt**, or
+  **Mend**. Guard reduces incoming damage until the Knight's next turn;
+  Aimed Shot deals physical damage and Firebolt deals magical damage. Mend
+  heals a living injured ally, including its caster, and falls back to a basic
+  attack if nobody needs healing.
+- Skills start ready. Cooldowns count subsequent personal turns; cooldowns
+  and temporary effects reset between encounters. HP does **not** reset:
+  a Hero at zero HP cannot act or be revived later in that Expedition.
+- Defender Evasion reduces hit chance. Damage and healing use derived stats,
+  not raw attributes, and are floored once before being applied to HP.
+  Combat ends in Victory, Defeat, or Retreat at the configured round cap.
+- The combat journal distinguishes misses, critical hits, healing, and Guard,
+  and shows final participant HP and injury results.
+- Finalization persists Wounded Heroes and their recovery deadlines together.
+  The existing foreground/resume checks release them to Idle after their
+  deadline, including after report acknowledgment or restart. This is a
+  minimal timed recovery, not the full Wounded/Resting progression flow
+  planned for Milestone 6. Recovery is checked against device UTC, not an
+  anti-cheat clock.
 
 ## Run the tests
 
@@ -142,7 +179,8 @@ Negative navigation and save-recovery tests deliberately emit Godot warnings;
 normal startup with healthy storage does not.
 
 The suite covers content, deterministic generation, derived stats, recruitment,
-Party models/evaluation/transactions, Expedition content/generation/timing/rewards,
+Party models/evaluation/transactions, exact combat results, skills, targeting,
+Expedition content/generation/timing/rewards, injury recovery,
 save validation/migration/recovery, and Expedition/formation/roster/detail
 navigation alongside the foundation autoload, Resource,
 bootstrap, and mobile-setting regressions. No test reads or writes a player save.
@@ -184,8 +222,10 @@ excluded from the Android APK.
   statuses and the previous formation on pre-commit failure. A post-commit
   warning never undoes saved changes. Version-2 validation rejects orphan
   `Assigned` statuses and Party members not belonging to the roster.
-- `CombatSimulator` remains a documented stub; combat resolution is deferred
-  to Milestone 5.
+- `CombatSimulator` is a stateless runtime facade for pure combat resolution.
+  It consumes frozen Party values, a complete Hero-ID HP/status map, enemy
+  content, a seed, and balancing. It never reads live roster values, clocks,
+  scene-tree state, or global randomness and never mutates its inputs.
 - `ExpeditionManager` is the sole owner of the active or completed Expedition.
   `SaveManager` serializes/restores it alongside `GameState`; no second copy
   belongs on `GameState`. Expedition seed advancement is independent of
@@ -193,15 +233,18 @@ excluded from the Android APK.
 - `ExpeditionGenerator` is pure: it selects all encounters with replacement
   before resolving their outcomes using the same seeded RNG stream.
   Step duration is computed from the complete candidate count and persisted,
-  never recalculated from a potentially truncated journal. `COMBAT` is
-  reserved in the step model but rejected by this milestone's content.
+  never recalculated from a potentially truncated journal. Combat seeds come
+  from that outcome stream, and complete final Hero-state maps carry HP into
+  subsequent Combats. Terminal policy is frozen with the Expedition.
 - Frozen Party and journal snapshots contain plain, JSON-safe values. They
   do not share mutable roster Heroes or depend on recomputing current content
   when a save is loaded. Pending Party mappings still reference canonical
   roster Heroes.
 - Expedition start, reveal/finalization, and acknowledgment use the existing
   save commit boundary. Gold, cursor, clock state, and Hero statuses are one
-  saved snapshot; only committed state is presented.
+  saved snapshot; only committed state is presented. Recovery deadlines share
+  the same rollback/commit boundary. Completed-report reads and acknowledgment
+  never apply injuries or rewards a second time.
 - `UIManager.bind_screen_root()` is bootstrap-only; screens navigate using
   `UIManager.show_screen()`. Navigation before binding is rejected, not queued.
   Accepted requests run after tree callbacks finish; requests belonging to a
@@ -211,16 +254,16 @@ excluded from the Android APK.
 - Content Resource scripts and runtime Hero, Party, and Expedition models
   live under `scripts/models/`. `ExpeditionManager.start_expedition` accepts
   the confirmed `PartyData`; it must not use the draft-oriented
-  `PartyData.copy()` as a frozen Expedition snapshot. Combat types remain
-  deferred, and inventory remains untyped until Milestone 6.
+  `PartyData.copy()` as a frozen Expedition snapshot. Enemy groups and skills
+  are authored Resources; inventory remains untyped until Milestone 6.
 - `data/balancing/default_balancing.tres` is the single balancing asset. It
   defines the 100-gold recruitment price, design §7 Party Power baseline
   (including divisor 4 and no-front-row factor 0.85), and §9 combat defaults
   with a 20-round cap. Encounter-kind multipliers start at a neutral 1.0; the
   offline cap is provisionally 86400 seconds (24 hours) per observation, not a
-  finalized balance decision. Skills, XP, and recovery remain unconfigured:
-  their owning milestones must author and validate them before use. Extend
-  this asset rather than replace it, preserving unrelated values.
+  finalized balance decision. Skill strengths and recovery duration are
+  provisional authored values; XP remains unconfigured until Milestone 6.
+  Extend this asset rather than replace it, preserving unrelated values.
 
 ## Build the Android APK
 

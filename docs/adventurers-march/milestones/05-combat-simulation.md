@@ -14,12 +14,33 @@ the [first playable vertical slice](../../adventurers-march-implementation-plan.
 **In scope:** `CombatSimulator` (turn order, hit/crit/damage/heal
 formulas, round loop, outcome determination), enemy-group data, one active
 skill per class, Combat step integration into `ExpeditionGenerator`,
-combat log rendering in Expedition Report.
+combat log rendering in Expedition Report, version-4 migration, and minimal
+persisted Wounded recovery.
 
 **Out of scope:** equipment stat contributions (Milestone 6 — the
 simulator should read whatever derived stats it's given, so no rework is
 needed when equipment starts modifying them), additional Regions
-(Milestone 7).
+(Milestone 7), XP, item rewards, permanent death, and the full Resting flow.
+
+## Selected behavior
+
+- Green Hollow still schedules five Travel/encounter pairs over 60 seconds.
+  Combat joins its weighted pool, awards no additional gold, and ends the
+  Expedition on Defeat or Retreat. Nonterminal Retreat remains supported for
+  other Region configurations.
+- Basic attacks are physical. Aimed Shot is physical, Firebolt is magical,
+  and both can target either row. Guard reduces incoming damage until the
+  Knight's next turn, does not stack, and is applied before the final floor.
+- Skills begin ready. A cooldown counts subsequent personal turns during
+  which that skill is unavailable. Cooldowns and effects reset between
+  Combats; HP does not.
+- Mend targets living injured allies, including the caster, with lowest HP
+  percentage then stable ID as the tiebreak. It cannot revive knocked-out
+  Heroes and falls back to a basic attack if no ally needs healing.
+- Minimal Wounded → Idle recovery is included now to prevent roster
+  exhaustion. Persist deadlines with injury finalization, check them through
+  the existing lifecycle path, and retain them across restart/acknowledgment.
+  Milestone 6 extends that path to Resting rather than adding a second timer.
 
 ## Prerequisites / dependencies
 
@@ -40,7 +61,7 @@ needed when equipment starts modifying them), additional Regions
    matching `HeroClassResource`). Enemy authoring may use a
    simplified "class"-like definition, but it must produce derived stats
    before simulation; enemies do not need the full Hero trait/generation
-   system. Author the same target-rule field on all four Hero class resources:
+   system. Preserve the already-authored target-rule field on all four Hero class resources:
    Knight uses `FrontRowFirst`; Ranger, Wizard, and Cleric use `AnySlot`.
    Use the class field already frozen in each Hero's Expedition snapshot; enemy
    snapshots copy their stat block's field. Never infer it from combatant IDs.
@@ -97,12 +118,26 @@ needed when equipment starts modifying them), additional Regions
    later entries replacing earlier entries for the same ID, then apply the
    merged map to the roster once. Any Hero at 0 HP becomes `Wounded`
    regardless of Party outcome. On `DEFEAT`, surviving Heroes also become
-   `Wounded`; otherwise surviving Heroes return to `Idle` (the recovery timer
-   can be a fixed placeholder duration for now; full Wounded/Resting recovery
-   flow is fleshed out in Milestone 6).
+   `Wounded`; otherwise surviving Heroes return to `Idle`. Freeze the
+   provisional recovery duration at dispatch and persist each Wounded
+   Hero's UTC deadline with finalization. Release recovered Heroes to Idle
+   using the same save/rollback boundary, including with no active Expedition.
+   The full Wounded/Resting flow remains Milestone 6.
 7. Extend Expedition Report to render the combat log readably (round
    number, actor, action, target, result) — plain text/labels are
    sufficient for this milestone.
+8. Extend strict saved-payload validation and JSON integer normalization for
+   Combat actions and final-state maps. Save version 4 validates original
+   version-3 state before migration, preserves legacy journals/snapshots and
+   clocks, and retains version-1/version-2 migrations. Never replay saved
+   combat or validate old outcomes against today's skill/enemy tuning.
+9. Validate terminal indices, original candidate counts/slices, frozen Retreat
+   policy, effective end, credited elapsed time, cursor, and completion together.
+   Running Home/Report screens display the original schedule to avoid leaking
+   future terminal outcomes; completed reports show zero remaining time.
+10. Extend save-fault tests to cover injury deadlines and recovery, preserving
+   canonical Hero identity on pre-commit rollback. Verify backup recovery,
+   exactly-once finalization, and the existing 1 MiB save-size boundary.
 
 ## Expected files / scenes / scripts / data
 
@@ -211,7 +246,8 @@ map.
 ## Next-milestone handoff
 
 Milestone 6 (Progression and equipment) will make equipment modify the
-derived stats `CombatSimulator` already reads, and will implement the full
-Wounded/Resting recovery flow this milestone only stubs.
+derived stats `CombatSimulator` already reads, and extend the minimal
+persisted Wounded recovery into the full Wounded/Resting flow without
+resetting existing deadlines.
 
 → Next: [06-progression-and-equipment.md](06-progression-and-equipment.md)

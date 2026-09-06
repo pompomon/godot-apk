@@ -314,6 +314,11 @@ a loot/reward penalty for that Expedition. This keeps the loop
 idle-friendly and avoids punishing offline players harshly. Permadeath (or
 an optional "Hardcore" mode) is a clearly-flagged post-MVP option.
 
+Milestone 5 uses a minimal persisted Wounded → Idle recovery deadline so
+combat cannot permanently exhaust the usable roster. Milestone 6 extends
+that path to the full Resting flow. A zero-HP participant is Wounded even
+after Victory or Retreat; other survivors return to Idle unless defeated.
+
 ### Generation
 
 Hero generation (used for starting roster and for recruitable Heroes
@@ -449,7 +454,8 @@ reproducible for testing and support/debugging. The approach:
    each encounter step, sampling with replacement from the weighted Region
    pool using a `RandomNumberGenerator` seeded from a per-Expedition seed.
    Complete all encounter selections before resolving outcomes in step order
-   using that same RNG stream. Store the
+   using that same RNG stream, drawing a local seed for each Combat during
+   outcome resolution. Store the
    seed and the generated step list in the save (not just the seed) so
    that changing the encounter-pool data later does not retroactively
    change an in-flight Expedition. Immediately after generating this full
@@ -479,14 +485,17 @@ reproducible for testing and support/debugging. The approach:
    later generated steps, and set `EffectiveEndTimestamp` to that step's
    scheduled reveal time:
    `StartTimestamp + (TerminalStepIndex + 1) * StepDurationSeconds`. No later
-   rewards may exist or be revealed.
+   rewards may exist or be revealed. Freeze the Region's terminal-Retreat
+   policy at dispatch; Green Hollow treats Retreat as terminal.
 4. The Home/Status screen and Expedition Report use the persisted
    `CreditedElapsedSeconds` from the clamped clock-observation policy in §11,
    map that to a step index using each
    step's persisted `StepDurationSeconds`, and reveal the journal up to that
    index. At finalization, fold saved Combat `final_hero_states` in step
    order by stable Hero ID (a later entry replaces the earlier entry for that
-   ID) and apply the resulting map to the roster once.
+   ID) and apply the resulting map to the roster once. Running screens show
+   the original planned count/duration, not the truncated suffix; early
+   termination becomes visible only when the terminal step is revealed.
    This makes idle/offline progress trivial: **resolution never depends
    on wall-clock ticking while the app is closed** (see
    [§11](#11-idle--offline-progress)).
@@ -591,12 +600,20 @@ Expedition-start.
 
 ### Skill/ability design (MVP)
 
-Give each class exactly **one** simple active skill beyond a basic attack
-for MVP (e.g., Knight: "Guard" — reduces damage to self next turn; Wizard:
-"Firebolt" — higher multiplier, single target; Cleric: "Mend" — heal
-lowest-HP ally). A simple deterministic AI policy chooses skill vs. basic
-attack (e.g., "use skill if off cooldown, else basic attack"). Keep the
-skill roster minimal for MVP; expand skill variety as
+Give each class exactly **one** simple active skill beyond a physical basic
+attack: Knight's **Guard**, Ranger's physical **Aimed Shot**, Wizard's magical
+**Firebolt**, and Cleric's **Mend**. Guard reduces incoming physical and
+magical damage until the start of the Knight's next turn and cannot stack.
+Apply its reduction before the single final damage floor. Mend targets the
+living injured ally with the lowest HP percentage, including the caster;
+it never revives a zero-HP Hero. Skills use authored targeting rules.
+
+Use a ready skill if it has a valid target, otherwise make a basic attack.
+Skills begin ready, and cooldowns count subsequent personal turns on which
+the skill is unavailable. Cooldowns and temporary effects reset for each
+encounter; HP and injury state carry forward. Skill strengths and cooldowns
+are provisional authored values, not new raw-attribute formulas. Keep the
+skill roster minimal; expand skill variety as
 [content expansion](adventurers-march/milestones/07-content-expansion.md).
 
 ## 10. Events, regions, equipment, progression
@@ -654,7 +671,7 @@ on_app_resume():
         expedition.LastObservedUtc = observed_now
         expedition.CreditedElapsedSeconds = min(
             expedition.CreditedElapsedSeconds + safe_delta,
-            expedition.Duration)
+            expedition.EffectiveEndTimestamp - expedition.StartTimestamp)
         elapsed = expedition.CreditedElapsedSeconds
         newly_revealed = []
         is_complete = false
@@ -714,6 +731,10 @@ platform-specific background-execution APIs are required for MVP.
   record and independent Expedition seed/sequence state. Versions 1 and 2
   are validated before migration; legacy `OnExpedition` statuses become
   `Idle` because those schemas could not store an Expedition.
+  Combat adds version 4 with frozen skill/terminal-policy data and persisted
+  injury recovery. Validate the original version-3 schema before migration;
+  preserve its resolved non-combat journals and progress without rerolling
+  encounters or adding skills to historical snapshots.
 - **Contents:** Company roster (each Hero's immutable ID, stats, status, and
   equipped-item resource IDs), roster capacity, the `next_hero_id` counter,
   current Party (formation slots referencing
@@ -726,7 +747,7 @@ platform-specific background-execution APIs are required for MVP.
   Every persisted seed/RNG-state number is in `[0, 2^53 - 1]`.
 - **Cadence:** autosave after any committed state-mutating action (Hero recruited,
   Party confirmed/changed/disbanded, Expedition started, each revealed reward batch and cursor
-  update, Expedition Report acknowledged, item equipped) and on app pause
+  update, Hero recovered, Expedition Report acknowledged, item equipped) and on app pause
   (`NOTIFICATION_APPLICATION_FOCUS_OUT` / `NOTIFICATION_WM_CLOSE_REQUEST`).
   Avoid saving on a fixed timer only — mobile OSes may terminate a
   backgrounded app without further notice, so save-on-mutation is required,
@@ -734,7 +755,8 @@ platform-specific background-execution APIs are required for MVP.
   lifecycle saves; a failed pre-commit Party mutation restores both the prior
   slot mapping and mutable Hero statuses without replacing Hero identity.
   Dispatch consumes the pending Party and marks participants `OnExpedition`.
-  Non-combat finalization releases them to `Idle`, retaining the completed
+  Finalization releases survivors to `Idle` or persists their Wounded
+  recovery deadline in the same transaction, retaining the completed
   report until acknowledgment. Players can form the next Party after completion,
   but must acknowledge the previous report before dispatching again.
 - **Best-effort replacement within Godot's APIs:** serialize to

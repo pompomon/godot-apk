@@ -22,16 +22,19 @@ Regions/content variety (Milestone 7).
 ## Prerequisites / dependencies
 
 - Milestone 5 (Combat simulation): Combat outcomes and Hero HP/status
-  results must already flow into Expedition finalization.
+  results must already flow into Expedition finalization. Its minimal
+  persisted Wounded → Idle timer prevents roster exhaustion before this
+  milestone; extend that existing recovery path rather than add a second one.
 - Milestone 4 (First expedition) already owns and tests applying Loot gold
   at reveal time; this milestone extends that path rather than replacing it.
 
 ## Tasks
 
-Before enabling progression/recovery, configure `xp_award_coefficients`,
-`xp_threshold_curve`, and `base_recovery_seconds` in the existing
-`data/balancing/default_balancing.tres`. These are intentionally unconfigured
-foundation fields. Validate required keys, finite nonnegative XP coefficients,
+Before enabling progression, configure `xp_award_coefficients` and
+`xp_threshold_curve` in the existing `data/balancing/default_balancing.tres`.
+These are intentionally unconfigured foundation fields; retain or tune
+the `base_recovery_seconds` already used by Milestone 5's minimal recovery.
+Validate required keys, finite nonnegative XP coefficients,
 a positive threshold base/growth factor, and a positive recovery duration;
 do not consume placeholder zeros or replace unrelated balancing settings.
 
@@ -66,7 +69,8 @@ do not consume placeholder zeros or replace unrelated balancing settings.
 6. Build Equipment screen: per-Hero weapon/armor slot assignment from
    available inventory, showing before/after stat deltas prior to
    confirming.
-7. Implement the full Wounded/Resting recovery flow: when Expedition
+7. Extend Milestone 5's persisted timer into the full Wounded/Resting recovery
+   flow, migrating existing Wounded deadlines without resetting them: when Expedition
    finalization applies a `Wounded` result to the roster, immediately
    transition that Hero to `Resting`, assign
    `resting_until_timestamp = now_utc + recovery_duration` (data-tunable,

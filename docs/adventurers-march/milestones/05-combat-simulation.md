@@ -285,6 +285,17 @@ issues in new test fixtures were also resolved. No existing baseline failure
 was hidden or unrelated assertion relaxed. Read-only review found no significant
 issues; these results are local validation, not CI or device acceptance.
 
+**Final published code checkpoint:** `753159d` contains the validated Slice 3
+code and the integral-status fixes. Publication succeeded and the working tree
+was verified clean before this documentation-only closeout. Changed-file secret
+scanning found no secrets. CodeQL was requested after committing the code, but
+reported that no changed language was supported, so **no CodeQL analysis was
+performed**; GDScript validation relied on the tests and bounded code reviews.
+The [Android workflow for `753159d`](https://github.com/pompomon/godot-apk/actions/runs/34064464555)
+is `action_required`; the job-logs endpoint reports zero jobs. CI approval and
+all physical-device checks remain pending. Both delegated writers confirmed
+they had stopped with no pending writes.
+
 ### Remaining implementation handoff
 
 This session deliberately stops after Slice 3 to preserve a verified checkpoint.

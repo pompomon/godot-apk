@@ -228,13 +228,13 @@ second recruitment-price constant.
 - [x] Base Resource classes exist with documented, stable field names.
 - [x] App boots to an empty Home screen via `UIManager`.
 - [x] Headless test framework runs with ≥1 passing test.
-- [ ] Android debug export CI workflow still passes.
+- [x] Android debug export CI workflow still passes.
 - [ ] Exported Android app remains portrait while the device rotates.
 
 ## Implementation and validation evidence
 
-Implemented the foundation only; the overall milestone remains **pending**
-until CI and the exported-device check above are complete.
+Implemented the foundation; its overall milestone remains **pending** until
+the exported-device rotation check above is complete. CI has passed.
 
 - **Resources and structure:** all nine Resource contracts are implemented,
   including typed nested arrays and Inspector hints. Empty future-content/screen
@@ -285,9 +285,11 @@ until CI and the exported-device check above are complete.
   The baseline missing-icon diagnostic is unchanged. CodeQL reports zero Actions
   alerts (GDScript is not analyzed). CI approval and the exported-device rotation
   check remain required.
-- **CI pending:** [the review-fix workflow run](https://github.com/pompomon/godot-apk/actions/runs/34011635800)
-  reports `action_required`, with zero jobs/logs available until approval.
-  Local export does not substitute for a passing workflow run.
+- **CI verified (2026-09-06):** the earlier approval requirement is resolved.
+  The [merged foundation workflow run](https://github.com/pompomon/godot-apk/actions/runs/34013018850)
+  passed on `8923be4`, including clean import, headless tests, signed Android
+  export, and APK upload. Its build job/logs were verified during Milestone 2.
+  This evidence closes the foundation CI check, not the device check.
 - **Device check pending:** no Android device or compatible emulator is
   connected. Install the exported ARM64 APK, enable auto-rotate, cold-launch
   Home, and rotate the device. Manifest inspection alone does not complete this

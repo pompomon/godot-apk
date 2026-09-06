@@ -62,9 +62,9 @@ Milestones 6–9 build out full MVP scope and release readiness.
       with one passing smoke test.
 
 **Status:** implementation and local test/export validation are complete.
-The top-level milestone remains unchecked pending an approved, passing Android
-workflow run and an exported-device portrait-rotation check; see the detail
-file's validation evidence.
+The Android workflow passed on the merged foundation. The top-level milestone
+remains unchecked pending an exported-device portrait-rotation check; see the
+detail file's validation evidence.
 
 **Definition of done:** the project builds/exports via the existing
 Android workflow, boots to an empty Home screen through `UIManager`, all

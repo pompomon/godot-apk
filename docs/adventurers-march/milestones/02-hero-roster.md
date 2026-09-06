@@ -24,6 +24,23 @@ exist and can be inspected, but cannot yet be sent anywhere.
 - Milestone 1 (Technical foundation): autoloads, base Resource classes,
   `UIManager.show_screen`, test framework must already exist.
 
+## Implementation decisions
+
+- Start with three persisted offers. Replace only the purchased slot; no
+  timed refresh or manual reroll is introduced.
+- Use immediately functional additive-stat traits with compensating penalties.
+  Brave, Cautious, and Quick Healer below are design examples, not required
+  content: their conditional/percentage effects belong to later gameplay
+  systems and are not silently reinterpreted as flat bonuses.
+- Show cumulative XP with an inactive progress bar and explanatory text.
+  XP thresholds, awards, and level-up processing remain in Milestone 6.
+- Initial class ranges, growth, stat weights, trait values, and names are
+  provisional authored content. Preserve explicit zero weights and distinct
+  class roles; tuning does not require changes to generic generation/stat code.
+- Retain the foundation's test-before-export pipeline and app/package IDs.
+  Passing local tests or manifest inspection does not complete physical-device
+  acceptance checks.
+
 ## Tasks
 
 1. Fill in `HeroClassResource` fields (per
@@ -104,18 +121,23 @@ data/classes/knight.tres
 data/classes/ranger.tres
 data/classes/wizard.tres
 data/classes/cleric.tres
-data/traits/brave.tres
-data/traits/cautious.tres
-data/traits/quick_healer.tres
+data/traits/hearty.tres
+data/traits/keen_eyed.tres
+data/traits/lightfooted.tres
+data/traits/studious.tres
 scripts/models/hero_data.gd
+scripts/systems/hero_catalog.gd          # ordered, project-owned content lookup
 scripts/systems/hero_generator.gd
 scripts/systems/recruitment_service.gd
 scripts/systems/hero_stats.gd            # derived-stat calculation
 scenes/ui/roster/roster_screen.tscn
 scenes/ui/hero_detail/hero_detail_screen.tscn
 tests/test_hero_generator.gd
+tests/test_hero_content.gd
 tests/test_hero_stats.gd
 tests/test_save_manager.gd
+tests/test_recruitment.gd
+tests/test_roster_ui.gd
 ```
 
 ## Interfaces / data contracts
@@ -167,6 +189,35 @@ offer keeps that ID when recruited. Callers reserve the `hero_ids` passed to
 `Evasion` and `CritChance` are returned as total probabilities in
 `[0.0, 1.0]`, matching the Milestone 5 combat contract.
 
+### Persistence and generation handoff
+
+- `SaveManager.load_or_create()` and `save()` retain their `void` contracts.
+  `last_success`, `last_committed`, `last_error`, and `last_warning` expose the
+  result. **Primary replacement is the commit point:** recruitment checks
+  `last_committed`, rolls back all pre-commit state on failure, and never undoes
+  a purchase merely because a post-commit diagnostic occurred.
+- Version 1 snapshots include roster and offer Hero records, gold, capacity,
+  `next_hero_id`, `recruitment_seed`, `recruitment_sequence`, per-slot
+  `offer_seeds`, empty inventory, and unlocked Region IDs. Hero records use
+  class/trait content IDs, original attributes, cumulative XP, named statuses,
+  and empty equipment slots. Derived stats and UI selection are not saved.
+- `HeroCatalog` supplies explicit ordered pools and known-ID resolution.
+  Generation consumes the class pool, name table, attributes in
+  `MIG/FOC/GRT/GUI/FTH` order, then an equal-probability zero-or-one trait roll.
+  All authored roster traits are eligible for all four classes.
+- Recruitment derives each local generator seed from the saved base seed and
+  sequence using bounded integer arithmetic:
+  `(seed % 2147483647 + (sequence % 2147483647) * 48271) % 2147483647`.
+  The sequence advances whenever a Hero is generated; IDs are reserved before
+  generation. The three offers keep their own generation seeds. This is
+  deterministic gameplay sampling, not a cryptographic RNG or serialized native
+  RNG state. Saved seeds/counters must remain exactly representable JSON integers.
+- Pool/name order and authored content are part of deterministic generation.
+  Intentional changes require reviewing golden tests and existing-save
+  compatibility. Future milestones must extend the versioned validation and
+  migration boundary when adding equipment, Party state, or new status behavior;
+  they must not bypass validation or duplicate Expedition ownership.
+
 ## Testing requirements
 
 - Unit test: `generate_hero` with a fixed seed, class pool, and trait pool
@@ -194,22 +245,75 @@ offer keeps that ID when recruited. Callers reserve the `hero_ids` passed to
 
 ## Acceptance criteria
 
-- [ ] Four `HeroClassResource` `.tres` files exist with distinct,
+- [x] Four `HeroClassResource` `.tres` files exist with distinct,
       class-appropriate attribute ranges/growth curves.
-- [ ] 3–5 `HeroTraitResource` `.tres` files exist.
-- [ ] `HeroGenerator.generate_hero` is deterministic for a given ID and seed
+- [x] 3–5 `HeroTraitResource` `.tres` files exist.
+- [x] `HeroGenerator.generate_hero` is deterministic for a given ID and seed
       (covered by a passing unit test).
-- [ ] Company Roster screen lists all Heroes with correct status badges.
-- [ ] Hero Detail screen shows correct attributes/traits/status/XP for the
+- [x] Company Roster screen lists all Heroes with correct status badges.
+- [x] Hero Detail screen shows correct attributes/traits/status/XP for the
       selected Hero.
-- [ ] New game seeds exactly 4 Heroes, one per class, with unique immutable
+- [x] New game seeds exactly 4 Heroes, one per class, with unique immutable
       IDs.
-- [ ] A new game starts with 100 gold; the player can immediately recruit one
+- [x] A new game starts with 100 gold; the player can immediately recruit one
       deterministic 100-gold offer, and the purchase survives reload.
-- [ ] Versioned save/load round-trips all Milestone 2 state, validates
+- [x] Versioned save/load round-trips all Milestone 2 state, validates
       flushed temporary files before best-effort replacement, and recovers
       from a missing or invalid primary via `.bak` before restoring the
       primary.
+
+### Exported-device acceptance still required
+
+The implementation and automated checks do not substitute for these manual
+checks. Keep the overall milestone unchecked until they are recorded:
+
+- [ ] Install the exported ARM64 APK and cold-launch a new Company; inspect
+  each class and confirm name, attributes, traits, status, and inactive XP UI.
+- [ ] Verify scrolling, long-text wrapping, readability, and effective
+  48×48 dp touch targets on a target-density Android device.
+- [ ] Recruit an offer, force-close and relaunch the app, and confirm the same
+  Hero ID, five-Hero roster, zero gold, and unchanged replacement offers.
+- [ ] Verify recovery with a missing and a corrupt primary while retaining a
+  valid backup; confirm feedback and that the backup is not overwritten.
+- [ ] Enable auto-rotate and rotate the device; the game remains portrait.
+  This also closes the foundation's outstanding device check.
+
+## Implementation and validation evidence
+
+Implemented the four classes, four flat trade-off traits, immutable Hero IDs,
+pure generation/stat calculations, transactional recruitment, version-1 saves,
+backup recovery, and Home/Roster/Detail navigation.
+
+- **Local gameplay suite (2026-09-06):** 93 tests passed with 14,942
+  assertions using the existing Godot 4.7.2/GUT runner. Coverage includes exact
+  seeded Heroes, per-class arithmetic, complete save round trips, invalid
+  inputs, interrupted writes, unchanged recovery backups, save-failure purchase
+  rollback, and touch-emulated scrolling/taps.
+- **Test isolation follow-up:** the original OS-temporary-directory pre-run
+  hook is retained unchanged, and each persistence/bootstrap/UI case now owns
+  a separate `DirAccess.create_temp` directory and restores singleton state.
+  This final restoration occurred after the 93-test run above; the complete
+  suite with the committed OS-temp setup still requires CI verification.
+  No player save is used. Verification logs and temporary tooling remain
+  outside the tracked project.
+- **Export:** import, Android debug export, and APK signature verification
+  passed after the final isolation restoration. The ARM64 APK includes the
+  four classes, four traits, and three screens, and excludes tests/GUT.
+  The pre-existing missing-project-icon export diagnostic remains; final icon
+  artwork is outside this milestone.
+- **Review:** fixed touch scrolling over Hero buttons/offer panels and added
+  input-routing regressions. Saved original attributes are validated
+  independently of today's generation ranges, so balance tuning does not
+  invalidate older rolls. A follow-up code review found no significant issues.
+- **Security:** changed-file secret scanning found no secrets. CodeQL was
+  invoked for these non-trivial changes, but no changed language is supported
+  by its available analyzers; **GDScript was not analyzed**.
+- **CI pending:** the [implementation workflow](https://github.com/pompomon/godot-apk/actions/runs/34018091613)
+  for `578c1e5` requires approval (`action_required`); its jobs/logs endpoint
+  reports zero jobs. Approve the existing Android workflow to verify the final
+  isolated suite and CI export. Local export is not a substitute for that run.
+- **Device pending:** no Android device or compatible emulator was connected.
+  Complete the manual checklist above before checking the overall milestone.
 
 ## Risks
 

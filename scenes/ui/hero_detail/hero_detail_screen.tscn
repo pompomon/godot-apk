@@ -1,0 +1,145 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/ui/hero_detail/hero_detail_screen.gd" id="1_detail"]
+
+[node name="HeroDetailScreen" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_detail")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.055, 0.075, 0.115, 1)
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 24
+
+[node name="Layout" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="BackButton" type="Button" parent="Margin/Layout"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+text = "Back to Company Roster"
+
+[node name="Scroll" type="ScrollContainer" parent="Margin/Layout"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+follow_focus = true
+
+[node name="Content" type="VBoxContainer" parent="Margin/Layout/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 24
+
+[node name="HeroNameLabel" type="Label" parent="Margin/Layout/Scroll/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 44
+text = "Hero"
+autowrap_mode = 3
+
+[node name="FeedbackLabel" type="Label" parent="Margin/Layout/Scroll/Content"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+autowrap_mode = 3
+
+[node name="MissingHeroLabel" type="Label" parent="Margin/Layout/Scroll/Content"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="HeroContent" type="VBoxContainer" parent="Margin/Layout/Scroll/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 24
+
+[node name="HeroSummaryLabel" type="Label" parent="Margin/Layout/Scroll/Content/HeroContent"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="AttributesAndStats" type="VBoxContainer" parent="Margin/Layout/Scroll/Content/HeroContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 24
+
+[node name="TraitDetails" type="VBoxContainer" parent="Margin/Layout/Scroll/Content/HeroContent"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="ProgressionHeading" type="Label" parent="Margin/Layout/Scroll/Content/HeroContent"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 36
+text = "Progression"
+autowrap_mode = 3
+
+[node name="XPLabel" type="Label" parent="Margin/Layout/Scroll/Content/HeroContent"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Cumulative XP: 0"
+autowrap_mode = 3
+
+[node name="XPProgressBar" type="ProgressBar" parent="Margin/Layout/Scroll/Content/HeroContent"]
+unique_name_in_owner = true
+modulate = Color(0.55, 0.55, 0.55, 1)
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+mouse_filter = 2
+focus_mode = 0
+max_value = 1.0
+show_percentage = false
+
+[node name="ProgressionNotice" type="Label" parent="Margin/Layout/Scroll/Content/HeroContent"]
+layout_mode = 2
+text = "Progression thresholds are deferred to Milestone 6. XP is cumulative; next-level progress is not calculated yet."
+autowrap_mode = 3
+
+[node name="EquipmentHeading" type="Label" parent="Margin/Layout/Scroll/Content/HeroContent"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 36
+text = "Equipment"
+autowrap_mode = 3
+
+[node name="WeaponLabel" type="Label" parent="Margin/Layout/Scroll/Content/HeroContent"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Weapon: Empty"
+autowrap_mode = 3
+
+[node name="ArmorLabel" type="Label" parent="Margin/Layout/Scroll/Content/HeroContent"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Armor: Empty"
+autowrap_mode = 3
+
+[node name="EquipmentNotice" type="Label" parent="Margin/Layout/Scroll/Content/HeroContent"]
+layout_mode = 2
+text = "Equipment changes are deferred to Milestone 6."
+autowrap_mode = 3

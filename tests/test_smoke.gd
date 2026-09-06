@@ -1,5 +1,20 @@
 extends GutTest
 
+const Isolation = preload("res://tests/isolated_state.gd")
+var _isolation: RefCounted
+var _auto_accept_quit: bool
+
+
+func before_each() -> void:
+	_isolation = Isolation.new()
+	assert_true(_isolation.begin())
+	_auto_accept_quit = get_tree().auto_accept_quit
+
+
+func after_each() -> void:
+	get_tree().auto_accept_quit = _auto_accept_quit
+	_isolation.finish()
+
 
 func test_save_storage_is_isolated() -> void:
 	assert_ne(SaveManager.storage_directory, OS.get_user_data_dir())
@@ -22,15 +37,28 @@ func test_all_autoloads_exist() -> void:
 		assert_not_null(get_tree().root.get_node_or_null(singleton), singleton)
 
 
-## Milestone 2 replaces these foundation-only expectations with isolated new-game tests.
-func test_foundation_state_is_empty_and_loading_is_side_effect_free() -> void:
+func test_new_company_has_four_typed_heroes_and_starting_gold() -> void:
+	assert_false(FileAccess.file_exists(SaveManager.get_save_path()))
 	SaveManager.load_or_create()
-	assert_eq(GameState.roster, [])
-	assert_false(GameState.roster.is_typed())
+	assert_true(SaveManager.last_success)
+	assert_true(FileAccess.file_exists(SaveManager.get_save_path()))
+	assert_eq(GameState.roster.size(), 4)
+	assert_eq(GameState.roster.get_typed_script(), HeroData)
 	assert_eq(GameState.inventory, [])
 	assert_false(GameState.inventory.is_typed())
-	assert_eq(GameState.gold, 0)
+	assert_eq(GameState.gold, 100)
 	assert_eq(typeof(GameState.gold), TYPE_INT)
+	assert_eq(GameState.roster_capacity, 12)
+	assert_eq(GameState.recruitment_offers.size(), 3)
+	assert_eq(GameState.recruitment_offers.get_typed_script(), HeroData)
+	assert_eq(GameState.next_hero_id, 8)
+	assert_eq(GameState.recruitment_sequence, 7)
+	var ids := {}
+	for hero in GameState.roster + GameState.recruitment_offers:
+		assert_false(ids.has(hero.hero_id))
+		ids[hero.hero_id] = true
+	for index in 4:
+		assert_same(GameState.roster[index].hero_class, HeroCatalog.classes()[index])
 	assert_true(GameState.unlocked_regions.is_empty())
 	assert_eq(GameState.unlocked_regions.get_typed_builtin(), TYPE_STRING_NAME)
 	assert_false(ExpeditionManager.is_expedition_active())

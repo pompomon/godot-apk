@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="HeroClassResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/models/hero_class_resource.gd" id="1_class"]
+
+[resource]
+script = ExtResource("1_class")
+class_id = &"cleric"
+display_name = "Cleric"
+basic_attack_target_rule = "AnySlot"
+base_attribute_ranges = {
+"MIG": Vector2i(2, 4),
+"FOC": Vector2i(4, 6),
+"GRT": Vector2i(5, 7),
+"GUI": Vector2i(2, 4),
+"FTH": Vector2i(11, 15)
+}
+per_level_growth = {"MIG": 0.5, "FOC": 0.75, "GRT": 1.0, "GUI": 0.5, "FTH": 2.5}
+derived_stat_bases = {
+"MaxHP": 30.0, "Attack": 2.0, "MagicPower": 8.0, "Defense": 3.0,
+"Evasion": 0.015, "Initiative": 4.0, "CritChance": 0.01
+}
+derived_stat_attribute_weights = {
+"MaxHP": {"MIG": 0.0, "FOC": 0.0, "GRT": 4.0, "GUI": 0.0, "FTH": 0.5},
+"Attack": {"MIG": 0.75, "FOC": 0.0, "GRT": 0.0, "GUI": 0.0, "FTH": 0.0},
+"MagicPower": {"MIG": 0.0, "FOC": 0.5, "GRT": 0.0, "GUI": 0.0, "FTH": 2.0},
+"Defense": {"MIG": 0.0, "FOC": 0.0, "GRT": 0.75, "GUI": 0.0, "FTH": 0.25},
+"Evasion": {"MIG": 0.0, "FOC": 0.0, "GRT": 0.0, "GUI": 0.004, "FTH": 0.0},
+"Initiative": {"MIG": 0.0, "FOC": 0.0, "GRT": 0.0, "GUI": 0.75, "FTH": 0.25},
+"CritChance": {"MIG": 0.0, "FOC": 0.0, "GRT": 0.0, "GUI": 0.002, "FTH": 0.001}
+}

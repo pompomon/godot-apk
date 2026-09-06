@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="HeroTraitResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/models/hero_trait_resource.gd" id="1_trait"]
+
+[resource]
+script = ExtResource("1_trait")
+trait_id = &"studious"
+display_name = "Studious"
+description = "+3 Magic Power, -2 Attack."
+stat_modifiers = {"MagicPower": 3.0, "Attack": -2.0}

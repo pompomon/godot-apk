@@ -62,9 +62,9 @@ Milestones 6–9 build out full MVP scope and release readiness.
       with one passing smoke test.
 
 **Status:** implementation and local test/export validation are complete.
-The top-level milestone remains unchecked pending an approved, passing Android
-workflow run and an exported-device portrait-rotation check; see the detail
-file's validation evidence.
+The Android workflow passed on the merged foundation. The top-level milestone
+remains unchecked pending an exported-device portrait-rotation check; see the
+detail file's validation evidence.
 
 **Definition of done:** the project builds/exports via the existing
 Android workflow, boots to an empty Home screen through `UIManager`, all
@@ -78,21 +78,27 @@ Detail: [01-technical-foundation.md](adventurers-march/milestones/01-technical-f
 
 **Depends on:** 1 (Technical foundation).
 
-- [ ] Author `HeroClassResource` data for Knight, Ranger, Wizard, Cleric.
-- [ ] Author 3–5 `HeroTraitResource` entries.
-- [ ] Implement `HeroGenerator` (seeded, pure function per
+- [x] Author `HeroClassResource` data for Knight, Ranger, Wizard, Cleric.
+- [x] Author 3–5 `HeroTraitResource` entries.
+- [x] Implement `HeroGenerator` (seeded, pure function per
       [plan §6](adventurers-march-implementation-plan.md#6-heroes-classes-attributes-traits-status-generation)).
-- [ ] Implement `HeroData` with immutable, persisted stable IDs and
+- [x] Implement `HeroData` with immutable, persisted stable IDs and
       derived-stat calculation.
-- [ ] Build Company Roster screen (list/grid + status badges).
-- [ ] Build Hero Detail screen (attributes, traits, status, XP).
-- [ ] Seed a starting roster of 4 Heroes (one per class) and 100 starting
+- [x] Build Company Roster screen (list/grid + status badges).
+- [x] Build Hero Detail screen (attributes, traits, status, XP).
+- [x] Seed a starting roster of 4 Heroes (one per class) and 100 starting
       gold on new-game creation.
-- [ ] Add deterministic 100-gold recruitment offers to the Company Roster,
+- [x] Add deterministic 100-gold recruitment offers to the Company Roster,
       including roster-cap checks and immediate persistence.
-- [ ] Implement versioned JSON save/load with validated same-directory
+- [x] Implement versioned JSON save/load with validated same-directory
       temporary writes, best-effort replacement through Godot APIs, and
       recovery from a missing or invalid primary via `.bak`.
+
+**Status:** implemented with automated generation, statistics, persistence,
+recruitment, and UI coverage. Three offers use functional flat-stat traits;
+XP progression remains deferred. The overall milestone remains unchecked until
+the exported-device checks and final validation evidence in the detail file
+are complete.
 
 **Definition of done:** a new game starts with 4 generated Heroes visible
 in the Company Roster screen; tapping a Hero opens Hero Detail showing

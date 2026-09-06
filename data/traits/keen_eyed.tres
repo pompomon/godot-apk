@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="HeroTraitResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/models/hero_trait_resource.gd" id="1_trait"]
+
+[resource]
+script = ExtResource("1_trait")
+trait_id = &"keen_eyed"
+display_name = "Keen-Eyed"
+description = "+4 percentage points Crit Chance, -2 Defense."
+stat_modifiers = {"CritChance": 0.04, "Defense": -2.0}

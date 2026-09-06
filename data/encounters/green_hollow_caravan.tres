@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="EventResource" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/models/event_resource.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/models/event_outcome_resource.gd" id="2"]
+
+[sub_resource type="Resource" id="a"]
+script = ExtResource("2")
+outcome_id = &"help"
+journal_text = "They help right a crate and receive a small tip."
+weight = 2.0
+result = {"gold": 5}
+
+[sub_resource type="Resource" id="b"]
+script = ExtResource("2")
+outcome_id = &"news"
+journal_text = "The merchants share news before continuing."
+weight = 1.0
+result = {"gold": 0}
+
+[resource]
+script = ExtResource("1")
+event_id = &"green_hollow_caravan"
+display_name = "Passing caravan"
+description = "A friendly caravan pauses beside the path."
+outcomes = Array[ExtResource("2")]([SubResource("a"), SubResource("b")])

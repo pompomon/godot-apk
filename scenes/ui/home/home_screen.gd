@@ -3,6 +3,8 @@ extends Control
 const HeroUI = preload("res://scenes/ui/hero_ui.gd")
 const ROSTER_SCREEN := "res://scenes/ui/roster/roster_screen.tscn"
 const PARTY_SCREEN := "res://scenes/ui/party_formation/party_formation_screen.tscn"
+const REGION_SCREEN := "res://scenes/ui/region_select/region_select_screen.tscn"
+const REPORT_SCREEN := "res://scenes/ui/expedition_report/expedition_report_screen.tscn"
 const BALANCING: BalancingConfig = preload("res://data/balancing/default_balancing.tres")
 
 @onready var _gold_label: Label = %GoldLabel
@@ -14,6 +16,11 @@ func _ready() -> void:
 	HeroUI.apply_theme(self)
 	%CompanyRosterButton.pressed.connect(_open_roster)
 	%FormationButton.pressed.connect(_open_formation)
+	%ExpeditionButton.pressed.connect(_open_expedition)
+	%RetryProgressButton.pressed.connect(_retry_progress)
+	ExpeditionManager.changed.connect(_refresh)
+	ExpeditionManager.operation_failed.connect(_refresh)
+	ExpeditionManager.reveal_progress()
 	_refresh()
 
 
@@ -36,7 +43,21 @@ func _refresh() -> void:
 		var power := PartyEvaluator.compute_party_power(party, BALANCING)
 		%PartySummaryLabel.text = "Current Party: %d / 4 Heroes · Power: %s" % [
 			party.heroes().size(), String.num(power, 2) if is_finite(power) else "Unavailable"]
-	HeroUI.show_feedback(_feedback_label)
+	var expedition := ExpeditionManager.get_active_expedition()
+	%FormationButton.visible = not ExpeditionManager.is_expedition_active()
+	%ExpeditionButton.disabled = expedition == null and party == null
+	%ExpeditionButton.text = "View report" if expedition != null else "Choose Region"
+	if expedition == null:
+		%ExpeditionLabel.text = "Ready to dispatch." if party != null else "Form a Party to begin an Expedition."
+	else:
+		%ExpeditionLabel.text = "%s · %s\nStep %d / %d · %d seconds remaining" % [
+			expedition.region_name, "Running" if ExpeditionManager.is_expedition_active() else "Completed",
+			expedition.last_revealed_index + 1, expedition.steps.size(),
+			expedition.duration_seconds - expedition.credited_elapsed_seconds]
+	%RetryProgressButton.visible = ExpeditionManager.is_expedition_active() and not ExpeditionManager.last_error.is_empty()
+	HeroUI.show_feedback(_feedback_label, ExpeditionManager.last_error)
+	if UIManager.is_current_screen(self) and ExpeditionManager.take_completion_route():
+		UIManager.show_screen(REPORT_SCREEN)
 
 
 func _open_roster() -> void:
@@ -45,3 +66,12 @@ func _open_roster() -> void:
 
 func _open_formation() -> void:
 	UIManager.show_screen(PARTY_SCREEN, {"origin": "home"})
+
+
+func _open_expedition() -> void:
+	UIManager.show_screen(REPORT_SCREEN if ExpeditionManager.get_active_expedition() != null else REGION_SCREEN)
+
+
+func _retry_progress() -> void:
+	ExpeditionManager.reveal_progress()
+	_refresh()

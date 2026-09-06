@@ -27,6 +27,8 @@ func configure(context: Dictionary) -> void:
 func _ready() -> void:
 	HeroUI.apply_theme(self)
 	%BackButton.pressed.connect(_go_back)
+	ExpeditionManager.changed.connect(_refresh_expedition_state)
+	ExpeditionManager.operation_failed.connect(_refresh_expedition_state)
 	_refresh()
 
 
@@ -62,3 +64,12 @@ func _refresh() -> void:
 
 func _go_back() -> void:
 	UIManager.show_screen(ROSTER_SCREEN)
+
+
+func _refresh_expedition_state() -> void:
+	var hero := GameState.find_hero(_hero_id)
+	if hero != null:
+		_hero_summary_label.text = HeroUI.hero_summary(hero)
+	else:
+		_refresh()
+	HeroUI.show_feedback(_feedback_label, ExpeditionManager.last_error)

@@ -11,6 +11,8 @@ var roster_capacity: int = 12
 var next_hero_id: int = 1
 var recruitment_seed: int = 0
 var recruitment_sequence: int = 0
+var expedition_seed: int = 0
+var expedition_sequence: int = 0
 var offer_seeds: Array[int] = []
 var initialized: bool = false
 
@@ -42,9 +44,11 @@ func checkpoint() -> Dictionary:
 		"unlocked_regions": unlocked_regions.duplicate(), "roster_capacity": roster_capacity,
 		"next_hero_id": next_hero_id, "recruitment_seed": recruitment_seed,
 		"recruitment_sequence": recruitment_sequence, "offer_seeds": offer_seeds.duplicate(),
+		"expedition_seed": expedition_seed, "expedition_sequence": expedition_sequence,
 		"initialized": initialized,
 		"hero_statuses": statuses,
 		"party_slots": current_party.slots.duplicate() if current_party != null else null,
+		"party_identity": current_party,
 	}
 
 
@@ -55,7 +59,7 @@ func restore_checkpoint(state: Dictionary) -> void:
 		hero.status = state.hero_statuses[hero]
 	current_party = null
 	if state.party_slots != null:
-		current_party = PartyData.new()
+		current_party = state.party_identity
 		current_party.slots = state.party_slots.duplicate()
 	gold = state.gold
 	inventory = state.inventory.duplicate()
@@ -64,11 +68,14 @@ func restore_checkpoint(state: Dictionary) -> void:
 	next_hero_id = state.next_hero_id
 	recruitment_seed = state.recruitment_seed
 	recruitment_sequence = state.recruitment_sequence
+	expedition_seed = state.expedition_seed
+	expedition_sequence = state.expedition_sequence
 	offer_seeds.assign(state.offer_seeds)
 	initialized = state.initialized
 
 
 func reset() -> void:
+	ExpeditionManager.reset()
 	roster.clear()
 	current_party = null
 	recruitment_offers.clear()
@@ -79,5 +86,7 @@ func reset() -> void:
 	next_hero_id = 1
 	recruitment_seed = 0
 	recruitment_sequence = 0
+	expedition_seed = 0
+	expedition_sequence = 0
 	offer_seeds.clear()
 	initialized = false

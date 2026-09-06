@@ -139,21 +139,28 @@ Detail: [03-party-formation.md](adventurers-march/milestones/03-party-formation.
 
 **Depends on:** 3 (Party formation).
 
-- [ ] Author `RegionResource` data for "Green Hollow" with non-combat
+- [x] Author `RegionResource` data for "Green Hollow" with non-combat
       travel/loot/event steps only (combat wired in Milestone 5).
-- [ ] Implement `ExpeditionData` model and step-generation logic
+- [x] Implement `ExpeditionData` model and step-generation logic
       (seeded, resolved-at-start per
       [plan §8](adventurers-march-implementation-plan.md#8-expeditions-travel-encounters-outcomes-deterministic-resolution)),
       including persisted immutable step duration computed before any
       terminal truncation.
-- [ ] Implement `ExpeditionManager.start_expedition(...)` and
+- [x] Implement `ExpeditionManager.start_expedition(...)` and
       `reveal_progress(...)`.
-- [ ] Build Region Select screen (single Region for now) and Expedition
+- [x] Build Region Select screen (single Region for now) and Expedition
       Report screen (travel journal).
-- [ ] Wire Home screen to show in-progress Expedition status and route to
+- [x] Wire Home screen to show in-progress Expedition status and route to
       the Report screen when complete.
 - [ ] Verify offline/idle progress: closing and reopening the app reveals
       the correct amount of progress based on elapsed time.
+
+**Status:** implemented with five non-combat Travel/encounter pairs over
+60 seconds, frozen Party/journal snapshots, version-3 saves, transactional
+gold/status updates, and retained reports requiring acknowledgment.
+Clean import, all 182 tests, and the Android debug export passed locally.
+The overall milestone remains unchecked pending the exported-device
+offline/lifecycle checks in its detail file.
 
 **Definition of done:** the player can select the Party, start an
 Expedition to Green Hollow, see it progress on Home, and view a correct

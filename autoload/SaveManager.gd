@@ -2,14 +2,15 @@ extends Node
 ## Versioned, validated snapshots and best-effort same-directory replacement.
 ## No fsync or cross-platform atomicity guarantees are available through these APIs.
 
-const SAVE_VERSION := 2
+const SAVE_VERSION := 3
 const MAX_SAVE_BYTES := 1048576
 const LEGACY_ROOT_KEYS := [
 	"save_version", "roster", "recruitment_offers", "gold", "inventory",
 	"unlocked_regions", "roster_capacity", "next_hero_id", "recruitment_seed",
 	"recruitment_sequence", "offer_seeds",
 ]
-const ROOT_KEYS := LEGACY_ROOT_KEYS + ["current_party"]
+const V2_ROOT_KEYS := LEGACY_ROOT_KEYS + ["current_party"]
+const ROOT_KEYS := V2_ROOT_KEYS + ["expedition_seed", "expedition_sequence", "expedition"]
 const HERO_KEYS := [
 	"hero_id", "hero_name", "class_id", "level", "xp", "attributes", "trait_ids",
 	"status", "equipped_weapon", "equipped_armor",
@@ -36,15 +37,20 @@ func load_or_create() -> void:
 	if not primary.is_empty():
 		_apply_validated(primary)
 		last_success = true
+		ExpeditionManager.reveal_progress()
 		return
 	var backup := _read_validated(get_save_path() + ".bak")
 	if not backup.is_empty():
 		_apply_validated(backup)
 		_write_snapshot(backup, false)
-		last_warning = "Recovered the company from the backup save."
+		var recovery_warning := "Recovered the company from the backup save."
 		if not last_success:
-			last_warning += " Primary restoration failed; the backup remains safe. Retry saving."
+			recovery_warning += " Primary restoration failed; the backup remains safe. Retry saving."
+		retain_warning(recovery_warning)
 		push_warning(last_warning)
+		recovery_warning = last_warning
+		ExpeditionManager.reveal_progress()
+		retain_warning(recovery_warning)
 		return
 	var had_files := FileAccess.file_exists(get_save_path()) or FileAccess.file_exists(
 		get_save_path() + ".bak")
@@ -83,23 +89,39 @@ func _clear_result() -> void:
 	last_warning = ""
 
 
+## Automatic observations must not erase recovery feedback before it can be read.
+func retain_warning(previous: String) -> void:
+	var lines := previous.split("\n", false)
+	for line in last_warning.split("\n", false):
+		if not lines.has(line):
+			lines.append(line)
+	last_warning = "\n".join(lines)
+
+
 ## Validate the original schema before normalizing; never repair malformed saves.
 func migrate(data: Variant) -> Dictionary:
 	if not data is Dictionary or not _integer(data.get("save_version"), 1, HeroCatalog.MAX_SAFE_INT):
 		return {}
 	match int(data.save_version):
-		1:
-			if not _validate_schema(data, 1, LEGACY_ROOT_KEYS):
+		1, 2:
+			var version := int(data.save_version)
+			if not _validate_schema(data, version, LEGACY_ROOT_KEYS if version == 1 else V2_ROOT_KEYS):
+				return {}
+			if version == 2 and not _validate_party(data):
 				return {}
 			var migrated: Dictionary = data.duplicate(true)
 			migrated.save_version = SAVE_VERSION
-			migrated.current_party = null
+			if version == 1:
+				migrated.current_party = null
+			migrated.expedition = null
+			migrated.expedition_seed = migrated.recruitment_seed
+			migrated.expedition_sequence = 0
 			for hero in migrated.roster:
-				if hero.status == "ASSIGNED":
+				if hero.status == "ON_EXPEDITION" or (version == 1 and hero.status == "ASSIGNED"):
 					hero.status = "IDLE"
 			return migrated
 		SAVE_VERSION:
-			return data
+			return data if validate_snapshot(data) else {}
 		_:
 			return {}
 
@@ -122,6 +144,8 @@ func capture_state() -> Dictionary:
 		"recruitment_sequence": GameState.recruitment_sequence,
 		"offer_seeds": GameState.offer_seeds.duplicate(),
 		"current_party": _serialize_party(GameState.current_party),
+		"expedition_seed": GameState.expedition_seed, "expedition_sequence": GameState.expedition_sequence,
+		"expedition": ExpeditionManager.serialize(),
 	}
 
 
@@ -163,7 +187,35 @@ func _serialize_hero(hero: HeroData) -> Dictionary:
 func validate_snapshot(data: Variant) -> bool:
 	if not _validate_schema(data, SAVE_VERSION, ROOT_KEYS):
 		return false
-	return _validate_party(data)
+	if not _integer(data.expedition_seed) or not _integer(data.expedition_sequence) or not _validate_party(data):
+		return false
+	return _validate_expedition_relations(data)
+
+
+func _validate_expedition_relations(data: Dictionary) -> bool:
+	var participants := {}
+	var running := false
+	if data.expedition != null:
+		if not ExpeditionData.valid(data.expedition):
+			return false
+		running = int(data.expedition.status) == ExpeditionData.Status.RUNNING
+		if running and data.current_party != null:
+			return false
+		var roster_by_id := {}
+		for hero in data.roster:
+			roster_by_id[hero.hero_id] = hero
+		for member in data.expedition.party_snapshot.values():
+			if member == null:
+				continue
+			if not roster_by_id.has(member.hero_id):
+				return false
+			participants[member.hero_id] = true
+			if running and roster_by_id[member.hero_id].status != "ON_EXPEDITION":
+				return false
+	for hero in data.roster:
+		if hero.status == "ON_EXPEDITION" and (not running or not participants.has(hero.hero_id)):
+			return false
+	return true
 
 
 func _validate_schema(data: Variant, version: int, keys: Array) -> bool:
@@ -312,6 +364,9 @@ func _apply_validated(data: Dictionary) -> void:
 	GameState.next_hero_id = int(data.next_hero_id)
 	GameState.recruitment_seed = int(data.recruitment_seed)
 	GameState.recruitment_sequence = int(data.recruitment_sequence)
+	GameState.expedition_seed = int(data.expedition_seed)
+	GameState.expedition_sequence = int(data.expedition_sequence)
+	ExpeditionManager.replace_from_save(data.expedition)
 	GameState.offer_seeds.clear()
 	for seed in data.offer_seeds:
 		GameState.offer_seeds.append(int(seed))
@@ -409,7 +464,11 @@ func _write_snapshot(snapshot: Dictionary, preserve_primary: bool) -> void:
 	var backup_temp := primary + ".bak.tmp"
 	if _interrupted("before_temp_write"):
 		return
-	if not _write_text(temp, JSON.stringify(snapshot, "\t")):
+	var text := JSON.stringify(snapshot, "\t", true, true)
+	if text.to_utf8_buffer().size() > MAX_SAVE_BYTES:
+		last_error = "Save exceeds the supported size; the existing save was not replaced."
+		return
+	if not _write_text(temp, text):
 		return
 	if _read_validated(temp).is_empty():
 		last_error = "Temporary save validation failed; the primary was not replaced."

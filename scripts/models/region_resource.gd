@@ -4,6 +4,8 @@ extends Resource
 
 @export var region_id: StringName
 @export var display_name: String
+@export var travel_title: String
+@export_multiline var travel_text: String
 @export var recommended_party_power: int
 @export var duration_options_seconds: Array[int] = []
 ## Positive; each Travel step is followed by exactly one encounter.

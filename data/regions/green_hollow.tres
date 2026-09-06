@@ -1,0 +1,52 @@
+[gd_resource type="Resource" script_class="RegionResource" load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://scripts/models/region_resource.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/models/encounter_entry_resource.gd" id="2"]
+
+[sub_resource type="Resource" id="loot"]
+script = ExtResource("2")
+kind = "Loot"
+content_id = &"green_hollow_loot"
+weight = 2.0
+
+[sub_resource type="Resource" id="bridge"]
+script = ExtResource("2")
+kind = "Event"
+content_id = &"green_hollow_bridge"
+weight = 1.0
+
+[sub_resource type="Resource" id="spring"]
+script = ExtResource("2")
+kind = "Event"
+content_id = &"green_hollow_spring"
+weight = 1.0
+
+[sub_resource type="Resource" id="caravan"]
+script = ExtResource("2")
+kind = "Event"
+content_id = &"green_hollow_caravan"
+weight = 1.0
+
+[sub_resource type="Resource" id="fireflies"]
+script = ExtResource("2")
+kind = "Event"
+content_id = &"green_hollow_fireflies"
+weight = 1.0
+
+[sub_resource type="Resource" id="ruins"]
+script = ExtResource("2")
+kind = "Event"
+content_id = &"green_hollow_ruins"
+weight = 1.0
+
+[resource]
+script = ExtResource("1")
+region_id = &"green_hollow"
+display_name = "Green Hollow"
+travel_title = "Along the woodland trail"
+travel_text = "The Party follows the peaceful paths of Green Hollow."
+recommended_party_power = 40
+duration_options_seconds = Array[int]([60])
+travel_step_count = 5
+encounter_pool = Array[ExtResource("2")]([SubResource("loot"), SubResource("bridge"), SubResource("spring"), SubResource("caravan"), SubResource("fireflies"), SubResource("ruins")])
+unlock_condition = {"kind": "always"}

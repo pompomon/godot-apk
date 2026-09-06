@@ -160,6 +160,11 @@ caching; every job performs a clean build. A failing test or rejected test
 discovery stops the job before export/upload. Milestone 9 audits this existing
 gate with the full gameplay suite; it does not introduce a second test pipeline.
 
+Hero Roster's implementation is complete, but final OS-temp-isolated CI
+verification requires workflow approval and exported-device acceptance remains
+pending. See the [milestone evidence](docs/adventurers-march/milestones/02-hero-roster.md#implementation-and-validation-evidence)
+for the tested revision, local results, and remaining checks.
+
 ## Adventurer's March design & implementation docs
 
 Planning documentation for the **Adventurer's March** mobile idle fantasy

@@ -278,6 +278,43 @@ checks. Keep the overall milestone unchecked until they are recorded:
 - [ ] Enable auto-rotate and rotate the device; the game remains portrait.
   This also closes the foundation's outstanding device check.
 
+## Implementation and validation evidence
+
+Implemented the four classes, four flat trade-off traits, immutable Hero IDs,
+pure generation/stat calculations, transactional recruitment, version-1 saves,
+backup recovery, and Home/Roster/Detail navigation.
+
+- **Local gameplay suite (2026-09-06):** 93 tests passed with 14,942
+  assertions using the existing Godot 4.7.2/GUT runner. Coverage includes exact
+  seeded Heroes, per-class arithmetic, complete save round trips, invalid
+  inputs, interrupted writes, unchanged recovery backups, save-failure purchase
+  rollback, and touch-emulated scrolling/taps.
+- **Test isolation follow-up:** the original OS-temporary-directory pre-run
+  hook is retained unchanged, and each persistence/bootstrap/UI case now owns
+  a separate `DirAccess.create_temp` directory and restores singleton state.
+  This final restoration occurred after the 93-test run above; the complete
+  suite with the committed OS-temp setup still requires CI verification.
+  No player save is used. Verification logs and temporary tooling remain
+  outside the tracked project.
+- **Export:** import, Android debug export, and APK signature verification
+  passed after the final isolation restoration. The ARM64 APK includes the
+  four classes, four traits, and three screens, and excludes tests/GUT.
+  The pre-existing missing-project-icon export diagnostic remains; final icon
+  artwork is outside this milestone.
+- **Review:** fixed touch scrolling over Hero buttons/offer panels and added
+  input-routing regressions. Saved original attributes are validated
+  independently of today's generation ranges, so balance tuning does not
+  invalidate older rolls. A follow-up code review found no significant issues.
+- **Security:** changed-file secret scanning found no secrets. CodeQL was
+  invoked for these non-trivial changes, but no changed language is supported
+  by its available analyzers; **GDScript was not analyzed**.
+- **CI pending:** the [implementation workflow](https://github.com/pompomon/godot-apk/actions/runs/34018091613)
+  for `578c1e5` requires approval (`action_required`); its jobs/logs endpoint
+  reports zero jobs. Approve the existing Android workflow to verify the final
+  isolated suite and CI export. Local export is not a substitute for that run.
+- **Device pending:** no Android device or compatible emulator was connected.
+  Complete the manual checklist above before checking the overall milestone.
+
 ## Risks
 
 - **Attribute ranges too similar across classes** would make Party

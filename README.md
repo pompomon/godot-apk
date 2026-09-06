@@ -1,9 +1,10 @@
-# Adventurer's March — Technical Foundation
+# Adventurer's March — Hero Roster
 
-A Godot 4.7.2 foundation that boots to an empty Home screen through `UIManager`
-and exports a portrait-only debug Android APK. Gameplay and persistence remain
-unimplemented; the application/package name and APK artifact retain their
-original **Hello World** identifiers.
+A Godot 4.7.2 portrait Android game with a generated Company roster, Hero
+inspection, deterministic recruitment, and local JSON saves. The
+application/package name and APK artifact retain their original **Hello World**
+identifiers. Party formation, Expeditions, combat, equipment management, and
+XP progression remain future milestones.
 
 ## Run locally
 
@@ -15,8 +16,9 @@ original **Hello World** identifiers.
    ```
 
 3. Press **F5** or click **Run Project**. The configured `main.tscn` scene
-   binds the persistent screen root, calls the placeholder
-   `SaveManager.load_or_create()`, and displays the empty Home screen.
+   binds the persistent screen root, calls `SaveManager.load_or_create()`,
+   and displays Home with the Company's gold and roster count. Open
+   **Company Roster** to inspect or recruit Heroes.
 
 You can also run the project directly:
 
@@ -24,7 +26,35 @@ You can also run the project directly:
 godot --path .
 ```
 
-## Run the foundation tests
+## Recruitment and saves
+
+- A new Company starts with one Knight, Ranger, Wizard, and Cleric, **100 gold**,
+  and capacity for **12 Heroes**.
+- Three generated recruitment offers persist across navigation and restarts.
+  Recruiting costs **100 gold** by default, read from the existing balancing
+  resource. Only the purchased offer is replaced; there is no timer or refresh
+  button. Insufficient gold and full capacity disable recruitment.
+- Heroes retain their original stable IDs when recruited and after reload.
+  Each has zero or one flat-stat trade-off trait. Conditional combat/recovery
+  traits are deferred, not represented as working effects.
+- Hero Detail shows attributes, derived stats, traits, status, and cumulative
+  XP. The XP bar is inactive until progression is implemented in Milestone 6;
+  weapon and armor slots are empty placeholders.
+- Saves live in Godot's app-private user-data directory as `save.json`.
+  New-game creation and recruitment save immediately; initialized state is
+  also saved on application pause/close. A failed purchase save is reported
+  rather than spending gold only in memory.
+- Versioned saves validate the complete state and known content IDs. Writes
+  flush, close, reopen, and validate a same-directory temporary file before
+  replacing the primary. The previous valid primary is retained as `.bak`.
+  A missing or invalid primary can recover from that backup, with visible
+  feedback; recovery does not overwrite the valid backup. If neither copy is
+  usable, a new Company is created.
+- This is best-effort replacement using Godot APIs, **not** a guarantee of
+  atomic replacement or durability across arbitrary power loss. Do not delete
+  a player's save to troubleshoot; copy the primary and backup elsewhere first.
+
+## Run the tests
 
 Run these commands from the repository root with Godot 4.7.2:
 
@@ -42,17 +72,17 @@ The pre-run hook binds `SaveManager.storage_directory` to a fresh OS temporary
 directory before tests run, aborting if isolation cannot be created. Godot removes
 that directory when the hook is released. Keep both hooks enabled in the CLI
 and any optional GUT editor configuration.
-Navigation rejection tests deliberately emit Godot warnings; normal app startup
-does not.
+Negative navigation and save-recovery tests deliberately emit Godot warnings;
+normal startup with healthy storage does not.
 
-The suite covers autoloads, Resource schemas/Inspector hints, the default
-balancing asset, real main-scene bootstrap, screen replacement and invalid
-navigation, and mobile settings. No test reads or writes a player save.
+The suite covers content, deterministic generation, derived stats, recruitment,
+save validation/recovery, and roster/detail navigation alongside the foundation
+autoload, Resource, bootstrap, and mobile-setting regressions. No test reads or
+writes a player save.
 Persistence must derive primary, backup, and temporary paths from
 `SaveManager.get_save_path()`, never hard-code `user://save.json`. Autoload
-initialization must remain I/O-free. Milestone 2 replaces the explicitly named
-foundation-empty-state test with isolated new-game/round-trip tests, resetting
-in-memory state and using fresh storage per persistence case.
+initialization must remain I/O-free. Persistence and bootstrap cases use fresh
+temporary storage and reset/restore singleton state between cases.
 
 **Pinned dependency:** [GUT 9.7.1](https://github.com/bitwes/Gut/tree/v9.7.1),
 the upstream Godot 4.7.x release, vendored unchanged from commit
@@ -66,23 +96,31 @@ cache is already ignored under `.godot/`; GUT's editor scratch files live under
 `user://gut_temp_directory/`, outside the checkout. Tests and the GUT addon are
 excluded from the Android APK.
 
-## Foundation boundaries
+## Architecture boundaries
 
-- `GameState` owns empty roster/inventory arrays, zero gold, and unlocked Region
-  IDs. Milestone 2 introduces starting Heroes/gold and persistence.
-- `SaveManager`, `ExpeditionManager`, and `CombatSimulator` expose documented
-  stubs; save/start/resolve calls warn rather than fabricate success.
+- `GameState` owns the typed Hero roster and offers, gold, roster capacity,
+  ID/seed state, inventory, and unlocked Region IDs. Inventory and unlocked
+  Regions remain empty until their owning milestones.
+- `HeroData` is a `RefCounted` runtime model. Generation and derived-stat
+  calculation are pure; generated attributes are not overwritten by growth.
+  Class-specific stat bases and weights live on authored class Resources.
+- `SaveManager` owns validation, migration dispatch, serialization, and backup
+  recovery. Recruitment saves its gold, Hero, offer, ID, and seed changes
+  together and rolls back a failed pre-commit purchase.
+- `ExpeditionManager` and `CombatSimulator` remain documented stubs;
+  start/resolve calls warn rather than fabricate success.
 - `ExpeditionManager` is the sole future owner of the active Expedition.
   `SaveManager` serializes/restores it alongside `GameState`; no second copy
   belongs on `GameState`.
 - `UIManager.bind_screen_root()` is bootstrap-only; screens navigate using
   `UIManager.show_screen()`. Navigation before binding is rejected, not queued.
   Accepted requests run after tree callbacks finish; requests belonging to a
-  root that has exited are discarded. Await a process frame before inspecting
-  the resulting screen in tests.
-- Nine content Resource scripts live under `scripts/models/`. Runtime Hero,
-  Party, and Expedition models do not exist yet, so their stub parameters use
-  `Variant` and the roster/inventory model arrays remain untyped.
+  root that has exited are discarded. Hero Detail receives a stable Hero ID
+  through request-specific navigation context, not a roster index. Await a
+  process frame before inspecting the resulting screen in tests.
+- Content Resource scripts and `HeroData` live under `scripts/models/`.
+  Runtime Party/Expedition models do not exist yet; their stub parameters
+  remain `Variant`, and inventory remains untyped until Milestone 6.
 - `data/balancing/default_balancing.tres` is the single balancing asset. It
   defines the 100-gold recruitment price, design §7 Party Power baseline
   (including divisor 4 and no-front-row factor 0.85), and §9 combat defaults

@@ -28,14 +28,17 @@ func bind_screen_root(screen_root: Control) -> void:
 ## the current screen intact. Only project-owned Control scenes are supported.
 ## Apply navigation after tree callbacks finish, and discard requests for a root
 ## that has since exited (including redirects from outgoing screen callbacks).
-func show_screen(scene_path: String) -> void:
+## Snapshot each request's context before deferring, then configure before _ready.
+func show_screen(scene_path: String, context: Dictionary = {}) -> void:
 	if not is_instance_valid(_screen_root):
 		push_warning("UIManager cannot navigate before the screen root is ready.")
 		return
-	_show_screen.call_deferred(scene_path, _root_generation)
+	_show_screen.call_deferred(scene_path, _root_generation, context.duplicate(true))
 
 
-func _show_screen(scene_path: String, root_generation: int) -> void:
+func _show_screen(
+	scene_path: String, root_generation: int, context: Dictionary = {}
+) -> void:
 	if not is_instance_valid(_screen_root) or _root_generation != root_generation:
 		return
 	if not scene_path.begins_with("res://") or not ResourceLoader.exists(scene_path):
@@ -50,6 +53,12 @@ func _show_screen(scene_path: String, root_generation: int) -> void:
 		if is_instance_valid(next_screen):
 			next_screen.free()
 		push_warning("UIManager requires a Control screen: %s" % scene_path)
+		return
+
+	if next_screen.has_method("configure"):
+		next_screen.call("configure", context)
+	if not is_instance_valid(_screen_root) or _root_generation != root_generation:
+		next_screen.free()
 		return
 
 	var previous_screen := _current_screen

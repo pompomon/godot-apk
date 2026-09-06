@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="HeroTraitResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/models/hero_trait_resource.gd" id="1_trait"]
+
+[resource]
+script = ExtResource("1_trait")
+trait_id = &"hearty"
+display_name = "Hearty"
+description = "+12 Max HP, -1 Initiative."
+stat_modifiers = {"MaxHP": 12.0, "Initiative": -1.0}

@@ -9,6 +9,16 @@ config/name="Hello World"
 run/main_scene="res://main.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 
+[autoload]
+
+; State precedes persistence; simulation precedes expedition orchestration.
+; UIManager binds the UI root only after main.tscn is ready.
+GameState="*res://autoload/GameState.gd"
+SaveManager="*res://autoload/SaveManager.gd"
+CombatSimulator="*res://autoload/CombatSimulator.gd"
+ExpeditionManager="*res://autoload/ExpeditionManager.gd"
+UIManager="*res://autoload/UIManager.gd"
+
 [display]
 
 window/size/viewport_width=720
@@ -16,6 +26,7 @@ window/size/viewport_height=1280
 window/size/window_width_override=360
 window/size/window_height_override=640
 window/stretch/mode="canvas_items"
+window/handheld/orientation=1
 
 [rendering]
 

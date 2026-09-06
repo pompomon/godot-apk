@@ -17,6 +17,7 @@ func test_navigation_before_binding_is_rejected() -> void:
 	assert_eq(_screen_root.get_child_count(), 0)
 	_manager.bind_screen_root(_screen_root)
 	_manager.show_screen(HOME)
+	await get_tree().process_frame
 	assert_eq(_screen_root.get_child_count(), 1)
 
 
@@ -33,6 +34,7 @@ func test_switching_releases_previous_screen_and_fills_root() -> void:
 	for path in [HOME, ALTERNATE, HOME, HOME]:
 		var previous: Node = _screen_root.get_child(0) if _screen_root.get_child_count() else null
 		_manager.show_screen(path)
+		await get_tree().process_frame
 		assert_eq(_screen_root.get_child_count(), 1)
 		var current := _screen_root.get_child(0) as Control
 		assert_eq(current.scene_file_path, path)
@@ -45,15 +47,13 @@ func test_switching_releases_previous_screen_and_fills_root() -> void:
 		assert_eq(current.offset_right, 0.0)
 		assert_eq(current.offset_bottom, 0.0)
 		if previous != null:
-			assert_null(previous.get_parent())
-			assert_true(previous.is_queued_for_deletion())
-			await get_tree().process_frame
 			assert_false(is_instance_valid(previous))
 
 
 func test_invalid_screens_preserve_current_screen() -> void:
 	_manager.bind_screen_root(_screen_root)
 	_manager.show_screen(HOME)
+	await get_tree().process_frame
 	var current := _screen_root.get_child(0)
 	for invalid_path in [
 		"",
@@ -63,6 +63,7 @@ func test_invalid_screens_preserve_current_screen() -> void:
 		"res://tests/fixtures/not_control.tscn",
 	]:
 		_manager.show_screen(invalid_path)
+		await get_tree().process_frame
 		assert_eq(_screen_root.get_child_count(), 1)
 		assert_eq(_screen_root.get_child(0), current)
 		assert_false(current.is_queued_for_deletion())
@@ -71,12 +72,15 @@ func test_invalid_screens_preserve_current_screen() -> void:
 func test_navigation_from_outgoing_exit_callback_is_deferred() -> void:
 	_manager.bind_screen_root(_screen_root)
 	_manager.show_screen(HOME)
+	await get_tree().process_frame
 	var outgoing := _screen_root.get_child(0)
 	outgoing.tree_exiting.connect(_manager.show_screen.bind(HOME), CONNECT_ONE_SHOT)
+	var entered_paths: Array[String] = []
+	_screen_root.child_entered_tree.connect(
+		func(screen: Node) -> void: entered_paths.append(screen.scene_file_path))
 	_manager.show_screen(ALTERNATE)
-	assert_eq(_screen_root.get_child_count(), 1)
-	assert_eq(_screen_root.get_child(0).scene_file_path, ALTERNATE)
 	await get_tree().process_frame
+	assert_eq(entered_paths, [ALTERNATE, HOME])
 	assert_false(is_instance_valid(outgoing))
 	assert_eq(_screen_root.get_child_count(), 1)
 	assert_eq(_screen_root.get_child(0).scene_file_path, HOME)
@@ -85,11 +89,12 @@ func test_navigation_from_outgoing_exit_callback_is_deferred() -> void:
 func test_navigation_from_incoming_ready_callback_is_deferred() -> void:
 	_manager.bind_screen_root(_screen_root)
 	_screen_root.child_entered_tree.connect(_redirect_alternate_on_ready)
+	var entered_paths: Array[String] = []
+	_screen_root.child_entered_tree.connect(
+		func(screen: Node) -> void: entered_paths.append(screen.scene_file_path))
 	_manager.show_screen(ALTERNATE)
-	var outgoing := _screen_root.get_child(0)
-	assert_eq(outgoing.scene_file_path, ALTERNATE)
 	await get_tree().process_frame
-	assert_false(is_instance_valid(outgoing))
+	assert_eq(entered_paths, [ALTERNATE, HOME])
 	assert_eq(_screen_root.get_child_count(), 1)
 	assert_eq(_screen_root.get_child(0).scene_file_path, HOME)
 
@@ -104,6 +109,7 @@ func test_second_live_root_is_rejected() -> void:
 	var second_root: Control = add_child_autofree(Control.new())
 	_manager.bind_screen_root(second_root)
 	_manager.show_screen(HOME)
+	await get_tree().process_frame
 	assert_eq(_screen_root.get_child_count(), 1)
 	assert_eq(second_root.get_child_count(), 0)
 
@@ -119,12 +125,17 @@ func test_nonempty_root_is_rejected() -> void:
 func test_root_teardown_allows_rebinding() -> void:
 	_manager.bind_screen_root(_screen_root)
 	_manager.show_screen(HOME)
+	await get_tree().process_frame
 	var previous := _screen_root.get_child(0)
+	previous.tree_exiting.connect(_manager.show_screen.bind(ALTERNATE), CONNECT_ONE_SHOT)
 	remove_child(_screen_root)
 	_manager.show_screen(HOME)
 	assert_eq(_screen_root.get_child_count(), 1)
 	assert_eq(_screen_root.get_child(0), previous)
 	var next_root: Control = add_child_autofree(Control.new())
 	_manager.bind_screen_root(next_root)
+	await get_tree().process_frame
+	assert_eq(next_root.get_child_count(), 0, "Old-root redirects must be discarded.")
 	_manager.show_screen(HOME)
+	await get_tree().process_frame
 	assert_eq(next_root.get_child_count(), 1)

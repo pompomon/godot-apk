@@ -4,7 +4,7 @@ extends Node
 
 var _screen_root: Control
 var _current_screen: Control
-var _is_switching: bool = false
+var _root_generation: int = 0
 
 
 ## Bind an empty, ready screen container. Reject a second live UI root.
@@ -20,18 +20,23 @@ func bind_screen_root(screen_root: Control) -> void:
 		push_warning("UIManager requires an empty screen root.")
 		return
 	_screen_root = screen_root
+	_root_generation += 1
 	_screen_root.tree_exiting.connect(_on_screen_root_exiting, CONNECT_ONE_SHOT)
 
 
 ## Calls before root binding are rejected, not queued. Invalid resources leave
 ## the current screen intact. Only project-owned Control scenes are supported.
+## Apply navigation after tree callbacks finish, and discard requests for a root
+## that has since exited (including redirects from outgoing screen callbacks).
 func show_screen(scene_path: String) -> void:
 	if not is_instance_valid(_screen_root):
 		push_warning("UIManager cannot navigate before the screen root is ready.")
 		return
-	if _is_switching:
-		# Lifecycle callbacks cannot mutate the root while add/remove is in progress.
-		show_screen.call_deferred(scene_path)
+	_show_screen.call_deferred(scene_path, _root_generation)
+
+
+func _show_screen(scene_path: String, root_generation: int) -> void:
+	if not is_instance_valid(_screen_root) or _root_generation != root_generation:
 		return
 	if not scene_path.begins_with("res://") or not ResourceLoader.exists(scene_path):
 		push_warning("UIManager screen does not exist: %s" % scene_path)
@@ -40,12 +45,10 @@ func show_screen(scene_path: String) -> void:
 	if scene == null or not scene.can_instantiate():
 		push_warning("UIManager requires a PackedScene: %s" % scene_path)
 		return
-	_is_switching = true
 	var next_screen := scene.instantiate()
 	if not next_screen is Control:
 		if is_instance_valid(next_screen):
 			next_screen.free()
-		_is_switching = false
 		push_warning("UIManager requires a Control screen: %s" % scene_path)
 		return
 
@@ -56,7 +59,6 @@ func show_screen(scene_path: String) -> void:
 	_current_screen = next_screen
 	_screen_root.add_child(_current_screen)
 	_current_screen.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_is_switching = false
 
 
 func _on_screen_root_exiting() -> void:

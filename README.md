@@ -65,8 +65,9 @@ excluded from the Android APK.
   stubs; save/start/resolve calls warn rather than fabricate success.
 - `UIManager.bind_screen_root()` is bootstrap-only; screens navigate using
   `UIManager.show_screen()`. Navigation before binding is rejected, not queued.
-  Requests from screen lifecycle callbacks are deferred until the active
-  transition finishes.
+  Accepted requests run after tree callbacks finish; requests belonging to a
+  root that has exited are discarded. Await a process frame before inspecting
+  the resulting screen in tests.
 - Nine content Resource scripts live under `scripts/models/`. Runtime Hero,
   Party, and Expedition models do not exist yet, so their stub parameters use
   `Variant` and the roster/inventory model arrays remain untyped.

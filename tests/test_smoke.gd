@@ -25,6 +25,7 @@ func test_initial_state_is_empty_and_loading_is_side_effect_free() -> void:
 func test_real_main_scene_boots_to_home() -> void:
 	var main: Control = load("res://main.tscn").instantiate()
 	add_child_autofree(main)
+	await get_tree().process_frame
 	var screen_root := main.get_node("ScreenRoot")
 	assert_eq(screen_root.get_child_count(), 1)
 	assert_eq(

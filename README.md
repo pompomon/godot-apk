@@ -151,11 +151,18 @@ godot --path .
 - The combat journal distinguishes misses, critical hits, healing, and Guard,
   and shows final participant HP and injury results.
 - Finalization persists Wounded Heroes and their recovery deadlines together.
+  The provisional recovery period is **one hour**, frozen at dispatch from
+  `BalancingConfig.base_recovery_seconds` and starting when completion is first
+  saved. It does not retroactively credit recovery before that observation.
   The existing foreground/resume checks release them to Idle after their
   deadline, including after report acknowledgment or restart. This is a
   minimal timed recovery, not the full Wounded/Resting progression flow
   planned for Milestone 6. Recovery is checked against device UTC, not an
   anti-cheat clock.
+- Guard currently reduces incoming damage by 50%; the Aimed Shot, Firebolt, and
+  Mend multipliers are 1.6, 1.8, and 1.5. Cooldowns are two subsequent personal
+  turns except Firebolt's one. These are provisional values in authored data,
+  not finalized balance targets.
 
 ## Run the tests
 

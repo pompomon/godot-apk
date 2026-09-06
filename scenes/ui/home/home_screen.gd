@@ -52,8 +52,8 @@ func _refresh() -> void:
 	else:
 		# Show the ORIGINAL planned count/time while running so a truncated schedule
 		# never hints at an early ending before the terminal step is revealed.
-		var terminal_revealed := expedition.terminal_step_index != -1 and expedition.last_revealed_index == expedition.terminal_step_index
-		if terminal_revealed:
+		var ended_early := expedition.status == ExpeditionData.Status.COMPLETED and expedition.steps.size() < expedition.candidate_step_count
+		if ended_early:
 			%ExpeditionLabel.text = "%s · Ended early\nStep %d / %d revealed · 0 seconds remaining" % [
 				expedition.region_name, expedition.last_revealed_index + 1, expedition.candidate_step_count]
 		else:
@@ -61,7 +61,7 @@ func _refresh() -> void:
 				expedition.region_name, "Running" if ExpeditionManager.is_expedition_active() else "Completed",
 				expedition.last_revealed_index + 1, expedition.candidate_step_count,
 				maxi(0, expedition.duration_seconds - expedition.credited_elapsed_seconds)]
-	%RetryProgressButton.visible = ExpeditionManager.is_expedition_active() and not ExpeditionManager.last_error.is_empty()
+	%RetryProgressButton.visible = not ExpeditionManager.last_error.is_empty()
 	HeroUI.show_feedback(_feedback_label, ExpeditionManager.last_error)
 	if UIManager.is_current_screen(self) and ExpeditionManager.take_completion_route():
 		UIManager.show_screen(REPORT_SCREEN)
@@ -81,4 +81,5 @@ func _open_expedition() -> void:
 
 func _retry_progress() -> void:
 	ExpeditionManager.reveal_progress()
+	ExpeditionManager.recover_wounded()
 	_refresh()

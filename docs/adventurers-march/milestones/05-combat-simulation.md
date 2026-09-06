@@ -41,6 +41,16 @@ needed when equipment starts modifying them), additional Regions
   exhaustion. Persist deadlines with injury finalization, check them through
   the existing lifecycle path, and retain them across restart/acknowledgment.
   Milestone 6 extends that path to Resting rather than adding a second timer.
+- Provisional skill tuning: Guard reduces incoming damage by 50% with two
+  unavailable personal turns after use; Aimed Shot uses a 1.6 multiplier and
+  two-turn cooldown; Firebolt uses 1.8 and one turn; Mend uses 1.5 and two
+  turns. Guard applies after Defense and critical scaling, before the single
+  floor, retaining the minimum of one damage on a hit.
+- `BalancingConfig.base_recovery_seconds` supplies the provisional one-hour
+  recovery period. A dispatch freezes that duration; finalization starts the
+  timer when its completion is first saved, not retroactively from the
+  scheduled end. Recovery deadlines use UTC, while Expedition progress keeps
+  its existing clamped elapsed-time policy.
 
 ## Prerequisites / dependencies
 
@@ -143,7 +153,10 @@ needed when equipment starts modifying them), additional Regions
 
 ```
 scripts/models/enemy_group_resource.gd
+scripts/models/enemy_stat_block_resource.gd
 scripts/models/skill_resource.gd
+scripts/systems/combat_catalog.gd
+scripts/systems/combat_resolver.gd
 data/encounters/bandit_skirmishers.tres
 data/encounters/forest_wolves.tres
 data/skills/guard.tres
@@ -164,10 +177,13 @@ func resolve_combat(party: ExpeditionPartySnapshot, current_hero_states: Diction
 # {
 #   "outcome": "VICTORY" | "DEFEAT" | "RETREAT",
 #   "rounds": [{ "round_number": int, "actions": [{
-#       "actor_name": String, "action_name": String, "target_name": String,
-#       "damage_or_heal": int, "was_crit": bool
+#       "actor_id": String, "actor_name": String,
+#       "action_kind": "Attack" | "Skill" | "Heal" | "Guard",
+#       "action_name": String, "target_id": String, "target_name": String,
+#       "amount": int, "result_hp": int, "was_miss": bool, "was_crit": bool
 #   }]}],
-#   "final_hero_states": { hero_id: { "hp": int, "status": int } }
+#   "final_hero_states": { hero_id: { "hp": int, "status": int } },
+#   "gold": 0
 # }
 ```
 
@@ -177,6 +193,23 @@ or object keys, so the active Expedition can be written directly to JSON.
 Both `current_hero_states` and `final_hero_states` use Hero ID strings as
 keys and contain every Party Hero; `resolve_combat` must not mutate its input
 map.
+
+`amount` is the single floored damage/healing amount, before overkill or
+overhealing is clamped by the target's HP bounds; `result_hp` records the actual
+remaining HP. Misses and Guard record zero amount and cannot be critical hits.
+The report uses frozen names, formation order, and MaxHP to summarize every
+participant, not current roster or recovery values.
+
+`CombatSimulator` delegates to the pure `CombatResolver`; generation calls that
+same resolver without requiring the autoload to be in a scene tree. Enemy
+groups and skills resolve through `CombatCatalog`'s explicit content allowlist.
+Saved journals are validated structurally without replaying the simulation.
+
+Version 4 adds `HeroData.wounded_until` (a saved UTC deadline),
+`candidate_step_count`, `retreat_is_terminal`, `recovery_seconds`, and frozen
+skill snapshots. Valid version-3 journals migrate with null skills and zero
+recovery duration because they contain no Combat. Existing Evasion/CritChance
+hexadecimal encodings are retained exactly.
 
 ## Testing requirements
 
@@ -230,6 +263,24 @@ map.
       using the unchanged pre-truncation step duration and cannot grant
       rewards from later generated steps.
 - [ ] Expedition Report renders a readable combat log.
+- [ ] Version-1/2/3 migrations and running/completed combat round trips preserve
+      saved progress without regenerating outcomes.
+- [ ] Wounded recovery persists and retries safely, including after report
+      acknowledgment, with no repeated injury or reward application.
+
+### Exported-device acceptance
+
+Keep the overall milestone unchecked until device evidence is recorded:
+
+- [ ] Read a complete combat report in portrait orientation, checking long names,
+      round/action wrapping, scrolling, and touch targets.
+- [ ] Force-close before a terminal encounter is revealed; reopen and verify its
+      original reveal time, correct Wounded statuses, and no later rewards.
+- [ ] Background/resume with a retained completed report and then after
+      acknowledgment; verify recovery and the next Party/Expedition loop.
+- [ ] Confirm that a future terminal outcome is not disclosed by Home/Report
+      progress counts or remaining-time labels.
+- [ ] Verify the easiest enemy group is survivable by a starting four-Hero Party.
 
 ## Risks
 
@@ -241,7 +292,7 @@ map.
 - **`CombatSimulator` accidentally depending on Node/scene-tree state**
   would break the "pure/stateless, unit-testable without a running scene"
   guarantee from plan §13. Mitigation: keep it operating only on plain
-  data models (`PartyData`, `EnemyGroupResource`, primitives).
+  data models (`ExpeditionPartySnapshot`, `EnemyGroupResource`, primitives).
 
 ## Next-milestone handoff
 

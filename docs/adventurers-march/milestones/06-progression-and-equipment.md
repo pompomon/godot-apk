@@ -69,8 +69,8 @@ do not consume placeholder zeros or replace unrelated balancing settings.
 6. Build Equipment screen: per-Hero weapon/armor slot assignment from
    available inventory, showing before/after stat deltas prior to
    confirming.
-7. Extend Milestone 5's persisted timer into the full Wounded/Resting recovery
-   flow, migrating existing Wounded deadlines without resetting them: when Expedition
+7. Extend Milestone 5's persisted `HeroData.wounded_until` timer into the full
+   Wounded/Resting recovery flow, migrating existing deadlines without resetting them: when Expedition
    finalization applies a `Wounded` result to the roster, immediately
    transition that Hero to `Resting`, assign
    `resting_until_timestamp = now_utc + recovery_duration` (data-tunable,

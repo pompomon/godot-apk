@@ -565,7 +565,7 @@ read raw Hero attributes directly:
    ```
 7. Floor damage or healing exactly once, after all multipliers and mitigation
    and before applying it to HP, as shown above. Record that integer in
-   `damage_or_heal`, apply it, clamp HP to `[0, MaxHP]`, and apply any
+   the action's `amount` field, apply it, clamp HP to `[0, MaxHP]`, and apply any
    deterministic status effects carried by the skill. MVP has no separate
    raw-attribute resistance roll.
 8. A combatant at `HP == 0` is removed from turn order for the remainder of

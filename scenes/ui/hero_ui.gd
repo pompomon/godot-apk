@@ -108,9 +108,12 @@ static func status_name(hero: HeroData) -> String:
 
 
 static func hero_summary(hero: HeroData) -> String:
-	return "%s %s · Level %d\nStatus: %s" % [
+	var summary := "%s %s · Level %d\nStatus: %s" % [
 		class_icon_for(hero), class_name_for(hero), hero.level, status_name(hero)
 	]
+	if hero.status == HeroData.HeroStatus.WOUNDED and hero.wounded_until > 0:
+		summary += "\nRecovers automatically after the saved recovery period."
+	return summary
 
 
 static func status_badge(hero: HeroData) -> Label:

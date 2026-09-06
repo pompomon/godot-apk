@@ -57,8 +57,8 @@ func _refresh() -> void:
 		ExpeditionManager.mark_report_viewed()
 	# The ORIGINAL planned count/time is shown while running; only once the terminal
 	# step is revealed do we admit the run ended early with no time remaining.
-	var terminal_revealed := _report.terminal_step_index != -1 and _report.last_revealed_index == _report.terminal_step_index
-	if terminal_revealed:
+	var ended_early := _report.status == ExpeditionData.Status.COMPLETED and _report.steps.size() < _report.candidate_step_count
+	if ended_early:
 		_status.text = "%s · Ended early\nStep %d / %d revealed · 0 seconds remaining\nGold credited: %d" % [
 			_report.region_name, _report.last_revealed_index + 1, _report.candidate_step_count, _report.credited_gold()]
 	else:
@@ -71,24 +71,25 @@ func _refresh() -> void:
 		_shown_cursor = _report.last_revealed_index
 		if _shown_cursor == -1:
 			_journal.add_child(HeroUI.label("The Party has departed. The journal will appear as steps are revealed."))
-		var names := _hero_names()
+		var members := _hero_members()
 		var steps := _report.steps
 		for index in range(_shown_cursor + 1):
-			_journal.add_child(HeroUI.label(_journal_entry(index, steps[index], names)))
+			_journal.add_child(HeroUI.label(_journal_entry(index, steps[index], members)))
 	HeroUI.show_feedback(_feedback, ExpeditionManager.last_error)
 
 
-## Stable Hero ID -> display name from the frozen snapshot, so combat injuries can
-## be shown without touching live roster resources.
-func _hero_names() -> Dictionary:
-	var names := {}
-	for member in _report.party_snapshot.slots.values():
+## Combat summaries use the frozen formation, never today's roster or recovery state.
+func _hero_members() -> Dictionary:
+	var members := {}
+	var slots := _report.party_snapshot.slots
+	for slot in PartyData.SLOT_NAMES:
+		var member: Variant = slots[slot]
 		if member != null:
-			names[member.hero_id] = member.hero_name
-	return names
+			members[member.hero_id] = member
+	return members
 
 
-func _journal_entry(index: int, step: ExpeditionStep, names: Dictionary) -> String:
+func _journal_entry(index: int, step: ExpeditionStep, members: Dictionary) -> String:
 	if step.kind != ExpeditionStep.StepKind.COMBAT:
 		return "%d. %s\n%s\nGold: +%d" % [index + 1, step.title, step.journal_text, int(step.result.gold)]
 	var result := step.result
@@ -97,11 +98,14 @@ func _journal_entry(index: int, step: ExpeditionStep, names: Dictionary) -> Stri
 		lines.append("Round %d:" % int(round_entry.round_number))
 		for action in round_entry.actions:
 			lines.append("  " + _action_line(action))
-	var injuries: Array = []
-	for hero_id in result.final_hero_states:
-		if int(result.final_hero_states[hero_id].hp) == 0:
-			injuries.append(String(names.get(hero_id, hero_id)))
-	lines.append("Injuries: %s" % ("none" if injuries.is_empty() else ", ".join(injuries) + " down"))
+	lines.append("Party after combat:")
+	for hero_id in members:
+		var member: Dictionary = members[hero_id]
+		var hp := int(result.final_hero_states[hero_id].hp)
+		var wounded := hp == 0 or result.outcome == "DEFEAT"
+		lines.append("  %s: %d / %d HP · %s" % [
+			member.hero_name, hp, int(member.derived_stats.MaxHP),
+			"Wounded" if wounded else "Survived"])
 	return "\n".join(lines)
 
 
@@ -111,7 +115,7 @@ func _action_line(action: Dictionary) -> String:
 	var name: String = action.action_name
 	match String(action.action_kind):
 		"Guard":
-			return "%s uses %s, bracing for the next blow." % [actor, name]
+			return "%s uses %s, reducing incoming damage until their next turn." % [actor, name]
 		"Heal":
 			return "%s uses %s on %s, healing %d HP. (%s now %d HP)" % [
 				actor, name, target, int(action.amount), target, int(action.result_hp)]
@@ -126,6 +130,7 @@ func _retry() -> void:
 	if _leaving or not is_inside_tree():
 		return
 	ExpeditionManager.reveal_progress()
+	ExpeditionManager.recover_wounded()
 	_refresh()
 
 

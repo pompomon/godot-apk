@@ -277,10 +277,15 @@ until CI and the exported-device check above are complete.
   project); it exits 0 and signs/verifies the APK. Icon artwork remains deferred.
 - **Review follow-up (2026-09-06):** the updated suite passes 19 tests
   (153 assertions), including save-directory isolation/path injection and the
-  additional balancing defaults. Empty discovery exits 1 with both hooks enabled;
-  temporary save directories are removed on process exit. CI approval and the
-  exported-device rotation check remain required.
-- **CI pending:** [the reviewed branch workflow run](https://github.com/pompomon/godot-apk/actions/runs/34009268860)
+  additional balancing defaults. Empty discovery, an intentional failed assertion,
+  and a skipped parse failure each exit 1 with both hooks enabled; temporary save
+  directories are removed on process exit. Normal headless startup is error-free.
+  The updated ARM64 APK exports and passes signature verification, preserves
+  `com.example.helloworld` and portrait orientation, and excludes tests/GUT.
+  The baseline missing-icon diagnostic is unchanged. CodeQL reports zero Actions
+  alerts (GDScript is not analyzed). CI approval and the exported-device rotation
+  check remain required.
+- **CI pending:** [the review-fix workflow run](https://github.com/pompomon/godot-apk/actions/runs/34011635800)
   reports `action_required`, with zero jobs/logs available until approval.
   Local export does not substitute for a passing workflow run.
 - **Device check pending:** no Android device or compatible emulator is

@@ -201,6 +201,10 @@ disbanding, and version-2 saves with validated version-1 migration.
   before multiplication to prevent int64 overflow from becoming a plausible
   Power estimate. The added regression failed before the fix and passed
   afterward; nonfinite floating-point results remain rejected.
+- **Security/review checks:** changed-file secret scanning found no secrets,
+  and the final UI/integration review found no significant issues. CodeQL
+  was invoked, but performed no analysis because the changed source languages
+  are unsupported; this is not a clean CodeQL security-analysis result.
 - **Android export:** the existing debug preset exported successfully and
   APK signature verification passed. The pre-existing missing-icon diagnostic
   remains; no application/package identifiers or export presets were changed.

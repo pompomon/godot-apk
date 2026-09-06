@@ -35,10 +35,15 @@ Regions/content variety (Milestone 7).
    xp_award_coefficients["duration_seconds"])`, clamped to a minimum of 0.
    Grant it exactly once to each participating Hero, per
    [plan §10](../../adventurers-march-implementation-plan.md#10-events-regions-equipment-progression).
-2. Implement leveling: when a Hero's XP crosses their level's threshold,
-   increment level and reapply the class's growth curve to recompute
-   derived stats (via the `compute_derived_stats` function from
-   Milestone 2).
+2. Implement leveling with cumulative lifetime XP. For level `L >= 1`, the
+   XP cost to advance to `L + 1` is
+   `ceil(xp_threshold_curve["base"] *
+   pow(xp_threshold_curve["growth_factor"], L - 1))`; therefore the cumulative
+   threshold for reaching level `L` is the sum of those costs for levels
+   `1` through `L - 1` (and the level-1 threshold is `0`). After adding an
+   award, repeatedly increment the Hero's level while their XP meets the next
+   cumulative threshold, then reapply the class's growth curve once to
+   recompute derived stats (via `compute_derived_stats` from Milestone 2).
 3. Fill in `ItemResource` fields (slot: `Weapon`/`Armor`, rarity tier, flat
    stat modifiers) and author a small starter item pool under
    `data/items/` (e.g., 2–3 weapons, 2–3 armor pieces, spanning Common/
@@ -64,10 +69,12 @@ Regions/content variety (Milestone 7).
    `Idle` once their timer elapses and saves that transition — reusing the
    same elapsed-time-based pattern as Expedition reveal (no new polling
    architecture needed).
-8. Extend Milestone 4's Loot result and reveal pipeline to roll/store item
-   resource IDs from the new item pool, resolve them to `ItemResource`
-   references, and add those references to `GameState.inventory`. Keep its
-   existing, tested gold application in place; Milestone 6 does not introduce
+8. Extend Milestone 4's reveal pipeline to handle item IDs from both Loot
+   results and `EventOutcomeResource.result`. Roll/store Loot item resource IDs
+   from the new item pool; for every newly revealed Loot or Event result,
+   resolve its `item_ids` through the item registry and add those
+   `ItemResource` references to `GameState.inventory`. Keep the existing,
+   tested gold application in the same handler; Milestone 6 does not introduce
    a second reward handler.
 
 ## Expected files / scenes / scripts / data
@@ -103,13 +110,15 @@ var resting_until_timestamp: int    # unix time, UTC; valid only while status ==
 
 # Leveling
 static func grant_xp(hero: HeroData, amount: int) -> void
-    # mutates hero.xp/level in place, recomputing derived stats on level-up
+    # Adds to cumulative lifetime XP, processes every crossed threshold,
+    # and recomputes derived stats after all resulting level-ups.
 ```
 
 ## Testing requirements
 
-- Unit test: `grant_xp` crossing a level threshold increments level and
-  changes derived stats per the class's growth curve.
+- Unit test: `grant_xp` uses ceiling-rounded cumulative thresholds, processes
+  every threshold crossed by one award, and changes derived stats per the
+  class's growth curve.
 - Unit test: equipping/unequipping an item changes
   `compute_derived_stats` output by exactly the item's `stat_modifiers`.
 - Unit test: a save/load round trip preserves every inventory item and each
@@ -118,8 +127,9 @@ static func grant_xp(hero: HeroData, amount: int) -> void
   and persists `resting_until_timestamp` in the same mutation, and the Hero
   transitions back to `Idle` only after that timestamp has elapsed (test with
   a simulated "now" before and after the timestamp).
-- Unit test: an item reward and reveal cursor persist in one save mutation;
-  reloading cannot grant that item or its accompanying gold twice.
+- Unit test: Loot and Event `item_ids` both use the same reveal handler; each
+  item reward and the reveal cursor persist in one save mutation, and
+  reloading cannot grant an item or its accompanying gold twice.
 - Manual test: complete an Expedition, verify XP/level/gold/items are
   applied correctly and are visible in Hero Detail/Equipment/Roster
   screens, including regression-checking Milestone 4's gold path.
@@ -134,8 +144,9 @@ static func grant_xp(hero: HeroData, amount: int) -> void
       verifiable via `CombatSimulator` picking up the change).
 - [ ] Wounded Heroes automatically recover to `Idle` after their rest
       duration elapses, including across app restarts.
-- [ ] Item loot extends the existing reveal path and correctly updates
-      `GameState.inventory` without duplicating gold or item grants.
+- [ ] Loot and Event item rewards extend the existing reveal path and
+      correctly update `GameState.inventory` without duplicating gold or
+      item grants.
 
 ## Risks
 

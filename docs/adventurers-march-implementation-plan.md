@@ -515,23 +515,28 @@ read raw Hero attributes directly:
    (Hero ID or authored enemy ID) when HP percentages tie.
 2. **Hit chance:**
    ```
-   HitChance = clamp(0.90 - Defender.Evasion, 0.50, 0.99)
+   HitChance = clamp(
+       balancing.base_hit_chance - Defender.Evasion,
+       balancing.min_hit_chance,
+       balancing.max_hit_chance)
    ```
 3. **Crit chance:**
    ```
-   CritChance = clamp(Attacker.CritChance, 0.0, 0.50)
+   CritChance = clamp(Attacker.CritChance, 0.0, balancing.max_crit_chance)
    ```
 4. **Damage (physical example, e.g. Knight/Ranger basic attack):**
    ```
    BaseDamage = Attacker.Attack * SkillMultiplier
    Mitigated  = max(1, BaseDamage - Defender.Defense)
-   FinalDamage = max(1, floor(Mitigated * (Attacker.rolled_crit ? 1.5 : 1.0)))
+   FinalDamage = max(1, floor(Mitigated *
+       (Attacker.rolled_crit ? balancing.critical_damage_multiplier : 1.0)))
    ```
 5. **Damage (magic example, e.g. Wizard spell):**
    ```
    BaseDamage = Attacker.MagicPower * SkillMultiplier
    Mitigated  = max(1, BaseDamage - Defender.Defense)
-   FinalDamage = max(1, floor(Mitigated * (Attacker.rolled_crit ? 1.5 : 1.0)))
+   FinalDamage = max(1, floor(Mitigated *
+       (Attacker.rolled_crit ? balancing.critical_damage_multiplier : 1.0)))
    ```
 6. **Healing (e.g. Cleric skill):**
    ```
@@ -545,6 +550,12 @@ read raw Hero attributes directly:
 8. A combatant at `HP == 0` is removed from turn order for the remainder of
    the encounter (marked for Wounded/Defeat resolution at encounter end,
    not deleted from the simulation state, so combat logs remain complete).
+
+`SkillMultiplier` is `balancing.basic_attack_damage_multiplier` for a basic
+attack or `balancing.skill_damage_multipliers[skill_id]` for an authored
+skill. The default balancing resource uses `0.90` base hit chance, `0.50`
+minimum hit chance, `0.99` maximum hit chance, `0.50` maximum crit chance,
+`1.0` basic-attack damage, and `1.5` critical damage.
 
 ### Encounter resolution loop
 
@@ -958,9 +969,10 @@ classes, or polish:
 - 1 Party of up to 4 Heroes, both formation rows usable.
 - Deterministic combat against 1–2 simple enemy-group definitions.
 - Full save/load of roster + one active/completed Expedition.
-- Screens: Home, Party Formation, Region Select (single Region), Expedition
-  Report. (Company Roster/Hero Detail/Equipment/Settings can be minimal
-  stubs for the slice and fleshed out in subsequent milestones.)
+- Screens: Home, functional Company Roster and Hero Detail, Party Formation,
+  Region Select (single Region), and Expedition Report. Equipment and Settings
+  can remain stubs for the slice; Milestones 6 and 8 implement them,
+  respectively.
 
 Recommended build order (matching the
 [milestones checklist](adventurers-march-milestones.md), most-dependent

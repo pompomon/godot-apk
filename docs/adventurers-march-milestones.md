@@ -20,8 +20,8 @@ the single place to see overall status at a glance.
   criteria, interfaces, and testing requirements before starting.
 - Check a milestone's box only when its **Definition of Done** (below) is
   fully met, not just when code is written.
-- If a milestone must be split across multiple PRs, check off individual
-  tasks within its own file rather than the top-level box, and only check
+- If a milestone must be split across multiple PRs, record completion notes
+  and PR links alongside the numbered tasks in its own file, and only check
   the top-level box here once the whole milestone is done.
 
 ## Recommended execution order

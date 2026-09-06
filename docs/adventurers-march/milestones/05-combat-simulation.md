@@ -164,12 +164,14 @@ bounded action. Verify publication and obtain stopped-writer acknowledgments
 before declaring a handoff complete. Reuse that evidence on resumption instead
 of repeating an identical review/validation cycle.
 
-The first bounded delivery using these guidelines is the pilot: record whether
-it finished with a verified checkpoint or an explicit incomplete handoff
-without relying on timeout recovery. This remains a follow-up validation of
-the workflow, not evidence supplied merely by adding this section. Keep the
-milestone's overall acceptance pending until all required behavior and checks
-are complete; slice completion alone does not close the milestone.
+The first bounded gameplay implementation slice using these guidelines is the
+pilot: record its actual validation and whether it finished with a verified
+checkpoint or an explicit incomplete handoff without relying on timeout recovery.
+Keep the pilot pending through documentation-only deliveries, including Slice 1.
+This remains a follow-up validation of the workflow, not evidence supplied by
+adding these guidelines. Keep the milestone's overall acceptance pending until
+all required behavior and checks are complete; slice completion alone does not
+close the milestone.
 
 ## Tasks
 

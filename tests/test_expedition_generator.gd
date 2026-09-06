@@ -164,7 +164,10 @@ func test_effective_kind_multipliers_zero_weights_and_nonfinite_totals() -> void
 	for outcome in event.outcomes:
 		outcome.weight = 1.0e308
 	assert_false(ExpeditionCatalog.validate_event(event))
-	assert_false(ExpeditionCatalog.validate_catalog(ExpeditionCatalog.events(), ExpeditionCatalog.regions(), ExpeditionCatalog.loot(), config))
+	config = BALANCING.duplicate(true)
+	var events := ExpeditionCatalog.events()
+	events[0] = event
+	assert_false(ExpeditionCatalog.validate_catalog(ExpeditionCatalog.regions(), events, ExpeditionCatalog.loot(), config))
 
 
 func test_exact_seeded_selection_precedes_all_outcome_rolls_and_is_byte_identical() -> void:

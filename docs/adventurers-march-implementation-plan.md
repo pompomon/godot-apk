@@ -786,7 +786,9 @@ res://
 - **ExpeditionManager** — starts Expeditions (generates and fully resolves
   `Steps[]` using `CombatSimulator` and seeded RNG at start time, per §8),
   and on each `UIManager`-driven "check progress" call, reveals steps
-  based on elapsed time (per §11).
+  based on elapsed time (per §11). Sole owner of the active Expedition:
+  readers use `get_active_expedition()`, and `SaveManager` serializes/restores
+  it alongside `GameState` without keeping a duplicate on `GameState`.
 - **CombatSimulator** — pure/stateless functions taking a Party snapshot,
   current Hero-state map, enemy group definition, and seed, returning a full
   round-by-round result. No Node dependencies, so it can be exercised
@@ -935,13 +937,13 @@ consideration, once the core loop is validated:
 | Offline-progress edge cases (clock changes, long absences) | Incorrect rewards, exploits | Persist credited elapsed time; clamp each observed UTC delta to `[0, MaxOfflineDeltaSeconds]`; accept that repeated local clock tampering cannot be prevented without a server; cover negative/large deltas with tests (§19) |
 | Scope creep beyond MVP (factions, crafting, procedural regions) | Delayed first playable | Explicit non-goals list (§3); milestones checklist enforces order |
 | Save corruption / data loss on device | Player frustration, poor reviews | `.bak` fallback, versioned migrations (§12) |
-| Godot mobile export/build regressions | Broken releases | Keep relying on the existing CI workflow (`.github/workflows/android-apk.yml`) and its debug-export smoke test; extend it to run headless unit tests before export |
+| Godot mobile export/build regressions | Broken releases | Keep the existing CI workflow's clean-import/headless-test gate before its debug-export smoke test |
 
 ## 21. Release preparation
 
-- Extend the existing `.github/workflows/android-apk.yml` CI (which already
-  builds a debug APK on push/PR) to also run the headless unit test suite
-  (§19) before export, failing the build on test failure.
+- Audit the existing `.github/workflows/android-apk.yml` headless-test gate
+  (§19) before debug export on push/PR. Confirm the full gameplay suite is
+  discovered and that test/discovery failures prevent export.
 - Before a public/store release: switch to a signed release export preset
   (the current preset is debug-only per `export_presets.cfg`), pick a real
   package identifier (replacing the placeholder

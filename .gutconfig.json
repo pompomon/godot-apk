@@ -4,5 +4,6 @@
   "prefix": "test_",
   "suffix": ".gd",
   "should_exit": true,
+  "pre_run_script": "res://tests/isolate_saves.gd",
   "post_run_script": "res://tests/require_tests.gd"
 }

@@ -100,6 +100,18 @@ func test_default_balancing_asset() -> void:
 	assert_almost_eq(balancing.max_crit_chance, 0.50, 0.00001)
 	assert_almost_eq(balancing.basic_attack_damage_multiplier, 1.0, 0.00001)
 	assert_almost_eq(balancing.critical_damage_multiplier, 1.5, 0.00001)
+	assert_eq(balancing.party_power_level_weight, 10.0)
+	assert_eq(balancing.party_power_stat_weights, {
+		"MaxHP": 0.5, "Attack": 1.0, "MagicPower": 1.0, "Defense": 0.5,
+		"Evasion": 0.0, "Initiative": 0.0, "CritChance": 0.0,
+	})
+	assert_eq(balancing.missing_front_row_factor, 0.85)
+	assert_eq(balancing.party_size_divisor, 4.0)
+	assert_eq(balancing.max_combat_rounds, 20)
+	assert_eq(balancing.encounter_kind_weight_multipliers, {
+		"Loot": 1.0, "Event": 1.0, "Combat": 1.0,
+	})
+	assert_eq(balancing.max_offline_delta_seconds, 86400)
 
 
 func _assert_hint(resource: Resource, field: String, hint: int, hint_string: String) -> void:

@@ -1,5 +1,6 @@
 extends Node
-## Owns future start/resolve/reveal orchestration, not duplicate Company state.
+## Owns the future active Expedition and start/resolve/reveal orchestration.
+## SaveManager serializes this state alongside GameState; never duplicate it there.
 ## Milestone 4 uses GameState, CombatSimulator, and SaveManager.
 
 

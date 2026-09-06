@@ -1,6 +1,20 @@
 extends GutTest
 
 
+func test_save_storage_is_isolated() -> void:
+	assert_ne(SaveManager.storage_directory, OS.get_user_data_dir())
+	assert_true(DirAccess.dir_exists_absolute(SaveManager.storage_directory))
+	assert_eq(SaveManager.get_save_path(), SaveManager.storage_directory.path_join("save.json"))
+	assert_false(FileAccess.file_exists(SaveManager.get_save_path()))
+
+
+func test_save_path_follows_storage_override() -> void:
+	var manager: Node = autofree(load("res://autoload/SaveManager.gd").new())
+	assert_eq(manager.get_save_path(), OS.get_user_data_dir().path_join("save.json"))
+	manager.storage_directory = SaveManager.storage_directory
+	assert_eq(manager.get_save_path(), SaveManager.get_save_path())
+
+
 func test_all_autoloads_exist() -> void:
 	for singleton in [
 		"GameState", "SaveManager", "CombatSimulator", "ExpeditionManager", "UIManager"
@@ -8,7 +22,8 @@ func test_all_autoloads_exist() -> void:
 		assert_not_null(get_tree().root.get_node_or_null(singleton), singleton)
 
 
-func test_initial_state_is_empty_and_loading_is_side_effect_free() -> void:
+## Milestone 2 replaces these foundation-only expectations with isolated new-game tests.
+func test_foundation_state_is_empty_and_loading_is_side_effect_free() -> void:
 	SaveManager.load_or_create()
 	assert_eq(GameState.roster, [])
 	assert_false(GameState.roster.is_typed())

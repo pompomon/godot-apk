@@ -240,9 +240,11 @@ until CI and the exported-device check above are complete.
   including typed nested arrays and Inspector hints. Empty future-content/screen
   directories are tracked without dummy gameplay content.
 - **Balancing:** the one default resource sets recruitment cost to 100 and
-  includes the published §9 combat defaults. Party Power, skills, XP, recovery,
-  encounter multipliers, and offline limits remain unconfigured until their
-  owning milestones. Milestone 3 must extend, not recreate, this resource.
+  includes the §7 Party Power baseline, published §9 combat defaults and a
+  20-round cap. Encounter multipliers are neutral (1.0); the provisional offline
+  cap is 86400 seconds per observation, subject to gameplay tuning. Only skills,
+  XP, and recovery remain unconfigured. Their owning milestones must author and
+  validate them before use; extend, never recreate, the resource.
 - **Autoloads:** initialization order is GameState, SaveManager,
   CombatSimulator, ExpeditionManager, UIManager. Startup performs no save I/O
   or content seeding. Stub operations warn and never fabricate gameplay results.
@@ -256,10 +258,13 @@ until CI and the exported-device check above are complete.
   redirects from outgoing callbacks during root teardown.
 - **Tests:** GUT 9.7.1 is vendored unchanged at upstream commit
   `aeb5d4f3f7f0a6c9b5e178876d6c99b791fda605`, with its MIT license. The standard
-  CLI and `.gutconfig.json` discover the foundation suite. A standard post-run
-  hook rejects empty discovery and GUT errors/warnings, including skipped
-  scripts. See the root README for commands.
-- **Local evidence (2026-09-06):** Godot 4.7.2 clean-cache import and headless
+  CLI and `.gutconfig.json` discover the foundation suite. A pre-run hook injects
+  an automatically cleaned OS temporary directory into `SaveManager`, aborting
+  if isolation fails. All persistence paths must derive from `get_save_path()`.
+  The post-run hook rejects empty discovery and GUT errors/warnings, including
+  skipped scripts. CI now runs clean import and this suite before export/upload.
+  Milestone 9 audits the gate with the full gameplay suite.
+- **Initial local evidence (2026-09-06, before review fixes):** Godot 4.7.2 clean-cache import and headless
   Home launch succeeded. All 17 foundation tests passed (140 assertions).
   Negative controls for empty discovery, a failed assertion, and an unparseable
   test each exited 1. Desktop launch under Xvfb also succeeded with the
@@ -270,7 +275,12 @@ until CI and the exported-device check above are complete.
   neither test nor GUT assets are packaged. Export still emits the baseline
   missing-project-icon diagnostic (also reproduced on the original Hello World
   project); it exits 0 and signs/verifies the APK. Icon artwork remains deferred.
-- **CI pending:** [the branch workflow run](https://github.com/pompomon/godot-apk/actions/runs/34008601071)
+- **Review follow-up (2026-09-06):** the updated suite passes 19 tests
+  (153 assertions), including save-directory isolation/path injection and the
+  additional balancing defaults. Empty discovery exits 1 with both hooks enabled;
+  temporary save directories are removed on process exit. CI approval and the
+  exported-device rotation check remain required.
+- **CI pending:** [the reviewed branch workflow run](https://github.com/pompomon/godot-apk/actions/runs/34009268860)
   reports `action_required`, with zero jobs/logs available until approval.
   Local export does not substitute for a passing workflow run.
 - **Device check pending:** no Android device or compatible emulator is
@@ -297,10 +307,16 @@ against the stable schema defined here, and build the first real screens
 (Company Roster, Hero Detail) using `UIManager.show_screen`.
 
 `SaveManager.load_or_create()` is a no-op until then; `save()` only warns.
+Keep autoload initialization I/O-free. Replace the foundation-empty-state test
+with isolated new-game tests for 4 Heroes/100 gold, resetting in-memory state and
+using fresh storage per persistence case as specified in Milestone 2. Preserve
+the real-main bootstrap test and both GUT hooks.
 `GameState.roster` becomes `Array[HeroData]` in Milestone 2 and inventory becomes
 `Array[ItemResource]` in Milestone 6. Expedition/combat parameters and return
 values that need not-yet-existing runtime types currently use `Variant`, with
 their intended types documented in the stubs. Do not introduce duplicate state,
 recruitment constants, or another balancing resource when filling them in.
+`ExpeditionManager` is the sole owner of the future active Expedition;
+`SaveManager` restores it alongside `GameState` without duplicating it there.
 
 → Next: [02-hero-roster.md](02-hero-roster.md)

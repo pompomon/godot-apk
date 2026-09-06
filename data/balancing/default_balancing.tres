@@ -4,10 +4,29 @@
 
 [resource]
 script = ExtResource("1_balancing")
+party_power_level_weight = 10.0
+party_power_stat_weights = {
+"Attack": 1.0,
+"CritChance": 0.0,
+"Defense": 0.5,
+"Evasion": 0.0,
+"Initiative": 0.0,
+"MagicPower": 1.0,
+"MaxHP": 0.5
+}
+missing_front_row_factor = 0.85
+party_size_divisor = 4.0
 base_hit_chance = 0.9
 min_hit_chance = 0.5
 max_hit_chance = 0.99
 max_crit_chance = 0.5
 basic_attack_damage_multiplier = 1.0
 critical_damage_multiplier = 1.5
+max_combat_rounds = 20
+encounter_kind_weight_multipliers = {
+"Combat": 1.0,
+"Event": 1.0,
+"Loot": 1.0
+}
+max_offline_delta_seconds = 86400
 recruitment_cost = 100

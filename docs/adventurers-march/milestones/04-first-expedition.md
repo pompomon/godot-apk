@@ -74,7 +74,10 @@ should contain only Loot and Event-card entries.
    so Milestone 5 doesn't need a data-model change.
 5. Implement `ExpeditionManager.start_expedition(region, party, duration)
    -> void`: snapshots the Party, generates steps via
-   `ExpeditionGenerator`, sets `GameState`'s active Expedition, autosaves.
+   `ExpeditionGenerator`, stores the active Expedition on `ExpeditionManager`,
+   and autosaves. `ExpeditionManager` is its sole owner; `GameState` must not
+   hold a second copy. `SaveManager` serializes/restores it alongside Company
+   state, and readers use `get_active_expedition()`.
 6. Implement `ExpeditionManager.reveal_progress() -> void`: computes
    elapsed time, advances `last_revealed_index`, applies newly revealed
    gold rewards to `GameState`, and marks the Expedition
@@ -106,6 +109,12 @@ should contain only Loot and Event-card entries.
     cursor, terminal/end fields, and clock-accounting fields. Add an
     active-Expedition round-trip test, including the maximum allowed seed
     `2^53 - 1`.
+13. Consume the existing balancing asset's neutral encounter-kind multipliers
+    and provisional 86400-second offline cap. Validate that every used kind has
+    a finite nonnegative multiplier, the effective pool has positive total
+    weight, and the offline cap is positive before starting/revealing an
+    Expedition. Reject invalid configuration rather than silently freezing
+    progress or substituting hard-coded values.
 
 ## Expected files / scenes / scripts / data
 

@@ -28,6 +28,13 @@ Regions/content variety (Milestone 7).
 
 ## Tasks
 
+Before enabling progression/recovery, configure `xp_award_coefficients`,
+`xp_threshold_curve`, and `base_recovery_seconds` in the existing
+`data/balancing/default_balancing.tres`. These are intentionally unconfigured
+foundation fields. Validate required keys, finite nonnegative XP coefficients,
+a positive threshold base/growth factor, and a positive recovery duration;
+do not consume placeholder zeros or replace unrelated balancing settings.
+
 1. Implement XP gain at Expedition finalization: compute one award
    from the existing `RegionResource.recommended_party_power` and Expedition
    duration: `floor(recommended_party_power *

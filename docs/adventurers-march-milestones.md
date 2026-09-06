@@ -242,8 +242,8 @@ Detail: [08-presentation-pass.md](adventurers-march/milestones/08-presentation-p
 
 - [ ] Reach full unit-test coverage of `CombatSimulator`, `HeroGenerator`,
       `PartyEvaluator`, and `SaveManager` migrations.
-- [ ] Extend CI to run the headless test suite before export, failing on
-      test failure.
+- [ ] Audit the foundation's existing test-before-export CI gate against the
+      complete gameplay suite, including failure/discovery rejection.
 - [ ] Perform full manual device playtest of the core loop, including a
       real offline/backgrounding check and a save-corruption/`.bak`
       fallback check for both invalid and missing primary saves.

@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="EnemyGroupResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/models/enemy_group_resource.gd" id="1_group"]
+
+[resource]
+script = ExtResource("1_group")
+group_id = &"forest_wolves"
+display_name = "Forest Wolves"
+enemies = Array[Dictionary]([{
+"combatant_id": "forest_wolf_a",
+"display_name": "Forest Wolf",
+"row": "Front",
+"basic_attack_target_rule": "FrontRowFirst",
+"derived_stats": {
+"MaxHP": 24, "Attack": 8, "MagicPower": 0, "Defense": 1,
+"Evasion": 0.04, "Initiative": 10, "CritChance": 0.04
+}
+}, {
+"combatant_id": "forest_wolf_b",
+"display_name": "Forest Wolf",
+"row": "Front",
+"basic_attack_target_rule": "FrontRowFirst",
+"derived_stats": {
+"MaxHP": 24, "Attack": 8, "MagicPower": 0, "Defense": 1,
+"Evasion": 0.04, "Initiative": 10, "CritChance": 0.04
+}
+}])

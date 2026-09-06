@@ -12,6 +12,8 @@ var slots: Dictionary:
 
 func _init(data: Dictionary = {}) -> void:
 	_slots = data.duplicate(true)
+	if not valid(_slots):
+		return
 	for member in _slots.values():
 		if member != null:
 			for key in ["Evasion", "CritChance"]:
@@ -22,6 +24,8 @@ func _init(data: Dictionary = {}) -> void:
 
 func serialize() -> Dictionary:
 	var data := _slots.duplicate(true)
+	if not valid(data):
+		return data
 	for member in data.values():
 		if member != null:
 			for key in ["Evasion", "CritChance"]:
@@ -31,7 +35,7 @@ func serialize() -> Dictionary:
 	return data
 
 
-static func capture(party: PartyData) -> ExpeditionPartySnapshot:
+static func capture(party: PartyData, include_skills: bool = false) -> ExpeditionPartySnapshot:
 	if party == null or not party.validation_error(true).is_empty():
 		return null
 	var data := {}
@@ -49,6 +53,10 @@ static func capture(party: PartyData) -> ExpeditionPartySnapshot:
 				"level": hero.level, "attributes": attributes, "derived_stats": stats,
 				"basic_attack_target_rule": hero.hero_class.basic_attack_target_rule,
 			}
+			if include_skills:
+				if not CombatCatalog.validate_skill(hero.hero_class.active_skill):
+					return null
+				member["active_skill"] = hero.hero_class.active_skill.snapshot()
 		data[PartyData.SLOT_NAMES[slot]] = member
 	return ExpeditionPartySnapshot.new(data) if valid(data) else null
 
@@ -57,7 +65,10 @@ func hero_states() -> Dictionary:
 	var result := {}
 	for member in _slots.values():
 		if member != null:
-			result[member.hero_id] = {"hp": int(member.derived_stats.MaxHP)}
+			var hp: int = int(member.derived_stats.MaxHP)
+			result[member.hero_id] = {
+				"hp": hp, "status": HeroData.HeroStatus.IDLE if hp > 0 else HeroData.HeroStatus.WOUNDED,
+			}
 	return result
 
 
@@ -68,7 +79,11 @@ static func valid(data: Variant) -> bool:
 	for member in data.values():
 		if member == null:
 			continue
-		if not member is Dictionary or not HeroCatalog.has_exact_keys(member, MEMBER_KEYS):
+		if not member is Dictionary:
+			return false
+		if not HeroCatalog.has_exact_keys(member, MEMBER_KEYS) and not HeroCatalog.has_exact_keys(member, MEMBER_KEYS + ["active_skill"]):
+			return false
+		if member.has("active_skill") and not CombatCatalog.validate_skill_snapshot(member.active_skill):
 			return false
 		for key in ["hero_id", "hero_name", "class_id", "class_name"]:
 			if not ExpeditionCatalog.text(member[key]):

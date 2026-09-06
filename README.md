@@ -188,8 +188,11 @@ excluded from the Android APK.
   statuses and the previous formation on pre-commit failure. A post-commit
   warning never undoes saved changes. Version-2 validation rejects orphan
   `Assigned` statuses and Party members not belonging to the roster.
-- `CombatSimulator` remains a documented stub; combat resolution is deferred
-  to Milestone 5.
+- `CombatSimulator` delegates to pure `CombatEngine` functions consuming
+  detached Party/skill snapshots, current Hero HP/status, enemy data, a seed,
+  and balancing. Guard, Aimed Shot, Firebolt, and Mend are authored and tested;
+  production encounters remain noncombat until the remaining Milestone 5
+  persistence, orchestration, and presentation slices are validated.
 - `ExpeditionManager` is the sole owner of the active or completed Expedition.
   `SaveManager` serializes/restores it alongside `GameState`; no second copy
   belongs on `GameState`. Expedition seed advancement is independent of
@@ -215,16 +218,18 @@ excluded from the Android APK.
 - Content Resource scripts and runtime Hero, Party, and Expedition models
   live under `scripts/models/`. `ExpeditionManager.start_expedition` accepts
   the confirmed `PartyData`; it must not use the draft-oriented
-  `PartyData.copy()` as a frozen Expedition snapshot. Combat types remain
-  deferred, and inventory remains untyped until Milestone 6.
+  `PartyData.copy()` as a frozen Expedition snapshot. Combat enemy and skill
+  Resources are detached before simulation; inventory remains untyped until
+  Milestone 6.
 - `data/balancing/default_balancing.tres` is the single balancing asset. It
   defines the 100-gold recruitment price, design §7 Party Power baseline
   (including divisor 4 and no-front-row factor 0.85), and §9 combat defaults
   with a 20-round cap. Encounter-kind multipliers start at a neutral 1.0; the
   offline cap is provisionally 86400 seconds (24 hours) per observation, not a
-  finalized balance decision. Skills, XP, and recovery remain unconfigured:
-  their owning milestones must author and validate them before use. Extend
-  this asset rather than replace it, preserving unrelated values.
+  finalized balance decision. Skill multipliers are configured for Combat,
+  with a provisional 60-second recovery coefficient awaiting integration.
+  XP remains unconfigured until Milestone 6. Extend this asset rather than
+  replace it, preserving unrelated values.
 
 ## Build the Android APK
 

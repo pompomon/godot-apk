@@ -235,6 +235,28 @@ unperformed or approval-blocked checks remain pending.
 
 ### Delivery evidence and guideline pilot
 
+Baseline at `3ad8613` (2026-09-06): clean Godot 4.7.2 import exited 0;
+the existing GUT suite passed **182 tests / 17,267 assertions** with both hooks
+enabled; Android debug export exited 0 and produced a nonempty **28,409,368-byte**
+APK. These are local checks, not CI or device acceptance. Contract decisions
+were published separately at `8c7b823`; the gameplay pilot remains pending until
+the pure-combat slice has its own validated, published checkpoint.
+
+**Slice 2 validation (2026-09-06, changes based on `8c7b823`):** the combat
+writer explicitly stopped before validation/publication. Clean import exited 0;
+focused Combat tests passed **36 tests / 1,395 assertions**, Resource tests
+passed **5 tests / 107 assertions**, and the full suite passed **219 tests /
+18,718 assertions**, all exiting 0 with both GUT hooks enabled. Android debug
+export exited 0 and produced a **28,435,984-byte** APK with build-tools 36.1.0
+available. Commands are the README sequence, with
+`-gselect=test_combat_simulator.gd` and `-gselect=test_resources.gd` for focused
+runs. An earlier iteration exposed strict JSON float/integer comparison
+assumptions and an externally shared skill Resource in test fixtures; both were
+fixed without relaxing the exact expected combat result or production behavior.
+Read-only review reported no significant issues. This is the bounded gameplay
+pilot checkpoint; it does not claim complete combat integration or device
+acceptance. Next bounded action: Slice 3 persistence compatibility.
+
 For each delivered slice, record its published revision/task or PR, scope,
 agreed decisions, validation commands and actual results, blockers, and next
 bounded action. Verify publication and obtain stopped-writer acknowledgments
@@ -400,11 +422,11 @@ map.
 
 ## Acceptance criteria
 
-- [ ] `CombatSimulator.resolve_combat` is deterministic and covered by a
+- [x] `CombatSimulator.resolve_combat` is deterministic and covered by a
       passing exact-output unit test.
-- [ ] Front-row-first targeting and Initiative-based turn order are
+- [x] Front-row-first targeting and Initiative-based turn order are
       correctly implemented and tested.
-- [ ] Combat formulas consume the documented derived stats, including an
+- [x] Combat formulas consume the documented derived stats, including an
       effective defender `Evasion`, and are covered by hand-computed tests.
 - [ ] Green Hollow includes at least one Combat encounter using at least
       one enemy group.

@@ -21,6 +21,12 @@ min_hit_chance = 0.5
 max_hit_chance = 0.99
 max_crit_chance = 0.5
 basic_attack_damage_multiplier = 1.0
+skill_damage_multipliers = {
+"aimed_shot": 1.5,
+"firebolt": 1.5,
+"guard": 0.5,
+"mend": 1.0
+}
 critical_damage_multiplier = 1.5
 max_combat_rounds = 20
 encounter_kind_weight_multipliers = {
@@ -29,4 +35,5 @@ encounter_kind_weight_multipliers = {
 "Loot": 1.0
 }
 max_offline_delta_seconds = 86400
+base_recovery_seconds = 60
 recruitment_cost = 100

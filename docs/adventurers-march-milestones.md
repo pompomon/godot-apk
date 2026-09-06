@@ -174,11 +174,11 @@ Detail: [04-first-expedition.md](adventurers-march/milestones/04-first-expeditio
 
 **Depends on:** 4 (First expedition).
 
-- [ ] Implement `CombatSimulator` per
+- [x] Implement `CombatSimulator` per
       [plan §9](adventurers-march-implementation-plan.md#9-auto-combat-simulation-design)
       (derived-stat hit/crit/damage/heal formulas including Evasion, round
       loop, outcome).
-- [ ] Author 1–2 enemy-group data definitions for Green Hollow.
+- [x] Author 1–2 enemy-group data definitions for Green Hollow.
 - [ ] Wire Combat encounter steps into `ExpeditionManager`'s step
       generation/resolution.
 - [ ] Truncate generated steps at Defeat or a Region-terminal Retreat and
@@ -187,8 +187,13 @@ Detail: [04-first-expedition.md](adventurers-march/milestones/04-first-expeditio
 - [ ] Carry HP through sequential Combats and merge `final_hero_states` by
       stable Hero ID before Expedition finalization.
 - [ ] Extend Expedition Report to render a readable combat log.
-- [ ] Add one active skill per class (Guard / Firebolt / Mend / basic
+- [x] Add one active skill per class (Guard / Firebolt / Mend / basic
       Ranger attack variant).
+
+**Status:** contracts and pure combat are implemented, with 36 focused combat
+tests and all 219 tests passing locally, plus a successful Android debug export.
+Enemy/skill assets are authored but the live encounter pool remains noncombat
+until persistence, orchestration, and presentation integration are validated.
 
 **Definition of done:** Combat steps in Green Hollow resolve
 deterministically via `CombatSimulator`, produce a correct

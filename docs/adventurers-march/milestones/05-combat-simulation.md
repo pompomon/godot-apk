@@ -26,6 +26,9 @@ needed when equipment starts modifying them), additional Regions
 - Milestone 4 (First expedition): `ExpeditionData`/`ExpeditionStep`
   (including the reserved `COMBAT` kind) and `ExpeditionGenerator` must
   exist.
+- Milestone 4's `ExpeditionPartySnapshot` provides detached formation members,
+  stable Hero IDs, derived stats, and authored targeting rules. Consume those
+  frozen values, not live roster Heroes or recomputed class statistics.
 
 ## Tasks
 
@@ -39,7 +42,7 @@ needed when equipment starts modifying them), additional Regions
    before simulation; enemies do not need the full Hero trait/generation
    system. Author the same target-rule field on all four Hero class resources:
    Knight uses `FrontRowFirst`; Ranger, Wizard, and Cleric use `AnySlot`.
-   Copy the class field into each Hero's Party combat snapshot; enemy
+   Use the class field already frozen in each Hero's Expedition snapshot; enemy
    snapshots copy their stat block's field. Never infer it from combatant IDs.
 2. Author 1–2 `.tres` enemy groups under `data/encounters/` for Green
    Hollow (e.g., "Bandit Skirmishers", "Forest Wolves").
@@ -120,7 +123,7 @@ tests/test_combat_simulator.gd
 
 ```gdscript
 # CombatSimulator (autoload, stateless functions)
-func resolve_combat(party: PartyData, current_hero_states: Dictionary,
+func resolve_combat(party: ExpeditionPartySnapshot, current_hero_states: Dictionary,
         enemy_group: EnemyGroupResource, seed: int,
         balancing: BalancingConfig) -> Dictionary
 # {

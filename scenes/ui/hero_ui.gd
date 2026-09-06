@@ -62,6 +62,25 @@ static func button(text: String) -> Button:
 	return result
 
 
+static func scrollable_content(screen: Control) -> VBoxContainer:
+	var margin := MarginContainer.new()
+	margin.name = "Margin"
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	for side in ["left", "top", "right", "bottom"]:
+		margin.add_theme_constant_override("margin_%s" % side, 32)
+	screen.add_child(margin)
+	var scroll := ScrollContainer.new()
+	scroll.name = "Scroll"
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.follow_focus = true
+	margin.add_child(scroll)
+	var content := VBoxContainer.new()
+	content.name = "Content"
+	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	margin.get_child(0).add_child(content)
+	return content
+
+
 static func class_name_for(hero: HeroData) -> String:
 	return hero.hero_class.display_name if hero.hero_class != null else "Unknown class"
 

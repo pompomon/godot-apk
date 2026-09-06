@@ -19,6 +19,8 @@ func _ready() -> void:
 	HeroUI.apply_theme(self)
 	%BackButton.pressed.connect(_go_home)
 	%FormationButton.pressed.connect(_open_formation)
+	ExpeditionManager.changed.connect(_refresh_expedition_state)
+	ExpeditionManager.operation_failed.connect(_refresh_expedition_state)
 	_refresh()
 
 
@@ -117,3 +119,21 @@ func _go_home() -> void:
 
 func _open_formation() -> void:
 	UIManager.show_screen(PARTY_SCREEN, {"origin": "roster"})
+
+
+func _refresh_expedition_state() -> void:
+	_gold_label.text = "Gold: %d" % GameState.gold
+	%FormationButton.disabled = not PartyFormationService.editing_error().is_empty()
+	for row in _roster_list.get_children():
+		var hero := GameState.find_hero(row.get_meta("hero_id", ""))
+		if hero != null:
+			row.find_child("HeroSummary", true, false).text = HeroUI.hero_summary(hero)
+			row.find_child("StatusBadge", true, false).text = HeroUI.status_name(hero)
+	for card in _offer_list.get_children():
+		var reason := RecruitmentService.availability_error(card.get_meta("hero_id", ""), BALANCING)
+		var availability: Label = card.find_child("AvailabilityLabel", true, false)
+		if availability != null:
+			availability.text = reason
+			availability.visible = not reason.is_empty()
+			card.find_child("RecruitButton", true, false).disabled = not reason.is_empty()
+	HeroUI.show_feedback(_feedback_label, ExpeditionManager.last_error)

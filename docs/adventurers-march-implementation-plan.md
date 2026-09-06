@@ -480,8 +480,9 @@ reproducible for testing and support/debugging. The approach:
    scheduled reveal time:
    `StartTimestamp + (TerminalStepIndex + 1) * StepDurationSeconds`. No later
    rewards may exist or be revealed.
-4. The Home/Status screen and Expedition Report simply compute
-   `elapsed = now - StartTimestamp`, map that to a step index using each
+4. The Home/Status screen and Expedition Report use the persisted
+   `CreditedElapsedSeconds` from the clamped clock-observation policy in §11,
+   map that to a step index using each
    step's persisted `StepDurationSeconds`, and reveal the journal up to that
    index. At finalization, fold saved Combat `final_hero_states` in step
    order by stable Hero ID (a later entry replaces the earlier entry for that
@@ -709,6 +710,10 @@ platform-specific background-execution APIs are required for MVP.
   unassociated `Assigned` Heroes become `Idle` because it stored no formation.
   Other Hero data and Company progress are preserved. Version 2 requires
   Party membership and `Assigned` statuses to agree, with no orphan assignments.
+  First Expedition adds version 3 with a nullable running/completed Expedition
+  record and independent Expedition seed/sequence state. Versions 1 and 2
+  are validated before migration; legacy `OnExpedition` statuses become
+  `Idle` because those schemas could not store an Expedition.
 - **Contents:** Company roster (each Hero's immutable ID, stats, status, and
   equipped-item resource IDs), roster capacity, the `next_hero_id` counter,
   current Party (formation slots referencing
@@ -728,6 +733,10 @@ platform-specific background-execution APIs are required for MVP.
   not optional. Formation drafts are presentation-local and excluded from
   lifecycle saves; a failed pre-commit Party mutation restores both the prior
   slot mapping and mutable Hero statuses without replacing Hero identity.
+  Dispatch consumes the pending Party and marks participants `OnExpedition`.
+  Non-combat finalization releases them to `Idle`, retaining the completed
+  report until acknowledgment. Players can form the next Party after completion,
+  but must acknowledge the previous report before dispatching again.
 - **Best-effort replacement within Godot's APIs:** serialize to
   `save.json.tmp` in the same directory, call `FileAccess.flush()`, close it,
   then reopen, parse, and validate it. If the current primary is valid, copy

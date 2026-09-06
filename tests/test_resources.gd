@@ -25,6 +25,7 @@ func test_exported_resource_contracts() -> void:
 		}],
 		[LootResource.new(), {
 			"loot_id": TYPE_STRING_NAME, "min_gold": TYPE_INT, "max_gold": TYPE_INT,
+			"display_name": TYPE_STRING, "journal_text": TYPE_STRING,
 		}],
 		[EventOutcomeResource.new(), {
 			"outcome_id": TYPE_STRING_NAME, "journal_text": TYPE_STRING,
@@ -36,6 +37,7 @@ func test_exported_resource_contracts() -> void:
 		}],
 		[RegionResource.new(), {
 			"region_id": TYPE_STRING_NAME, "display_name": TYPE_STRING,
+			"travel_title": TYPE_STRING, "travel_text": TYPE_STRING,
 			"recommended_party_power": TYPE_INT, "duration_options_seconds": TYPE_ARRAY,
 			"travel_step_count": TYPE_INT, "encounter_pool": TYPE_ARRAY,
 			"unlock_condition": TYPE_DICTIONARY, "retreat_ends_expedition": TYPE_BOOL,
@@ -81,6 +83,8 @@ func test_inspector_hints_and_positive_defaults() -> void:
 		[HeroTraitResource.new(), "description"],
 		[EventResource.new(), "description"],
 		[EventOutcomeResource.new(), "journal_text"],
+		[RegionResource.new(), "travel_text"],
+		[LootResource.new(), "journal_text"],
 	]:
 		_assert_hint(pair[0], pair[1], PROPERTY_HINT_MULTILINE_TEXT, "")
 	assert_gt(EncounterEntryResource.new().weight, 0.0)

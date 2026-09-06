@@ -41,14 +41,17 @@ static func initialize_new_game(seed: int) -> bool:
 			HeroCatalog.classes(), HeroCatalog.traits()):
 		return false
 	var old_state := GameState.checkpoint()
+	var old_expedition := ExpeditionManager.checkpoint()
 	GameState.reset()
 	GameState.recruitment_seed = seed
+	GameState.expedition_seed = seed
 	GameState.gold = 100
 	for hero_class in HeroCatalog.classes():
 		var single_class: Array[HeroClassResource] = [hero_class]
 		var hero := _reserve_hero(single_class)
 		if hero == null:
 			GameState.restore_checkpoint(old_state)
+			ExpeditionManager.restore_checkpoint(old_expedition)
 			return false
 		GameState.roster.append(hero)
 	for index in OFFER_COUNT:
@@ -56,6 +59,7 @@ static func initialize_new_game(seed: int) -> bool:
 		var hero := _reserve_hero(HeroCatalog.classes())
 		if hero == null:
 			GameState.restore_checkpoint(old_state)
+			ExpeditionManager.restore_checkpoint(old_expedition)
 			return false
 		GameState.recruitment_offers.append(hero)
 		GameState.offer_seeds.append(offer_seed)

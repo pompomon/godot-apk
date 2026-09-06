@@ -5,6 +5,5 @@ extends Resource
 @export var outcome_id: StringName
 @export_multiline var journal_text: String
 @export_range(0.001, 1000000.0) var weight: float = 1.0
-## { "gold": int, "item_ids": Array[StringName] }; no objects or object keys.
-## Persistence normalizes identifiers to JSON strings in later milestones.
+## { "gold": int }; nonnegative gold only. Other payloads are not supported yet.
 @export var result: Dictionary = {}

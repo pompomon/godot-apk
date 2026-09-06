@@ -62,10 +62,10 @@ func _show_screen(
 		return
 
 	var previous_screen := _current_screen
+	_current_screen = next_screen
 	if is_instance_valid(previous_screen):
 		_screen_root.remove_child(previous_screen)
 		previous_screen.queue_free()
-	_current_screen = next_screen
 	_screen_root.add_child(_current_screen)
 	_current_screen.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
@@ -73,6 +73,11 @@ func _show_screen(
 func _on_screen_root_exiting() -> void:
 	_current_screen = null
 	_screen_root = null
+
+
+func is_current_screen(screen: Control) -> bool:
+	return (is_instance_valid(_screen_root) and is_instance_valid(screen)
+		and _current_screen == screen and screen.get_parent() == _screen_root and screen.is_inside_tree())
 
 
 func cancel_screen_draft() -> bool:

@@ -7,12 +7,13 @@ var _expedition_script: Script
 
 class ActiveExpedition:
 	extends "res://autoload/ExpeditionManager.gd"
+	var sentinel := ExpeditionData.new()
 
 	func is_expedition_active() -> bool:
 		return true
 
-	func get_active_expedition() -> Variant:
-		return {"sentinel": "unchanged"}
+	func get_active_expedition() -> ExpeditionData:
+		return sentinel
 
 
 func before_each() -> void:
@@ -256,7 +257,7 @@ func test_active_expedition_blocks_edit_confirm_and_disband_without_mutation() -
 	assert_false(PartyFormationService.confirm(draft, BALANCING))
 	assert_false(PartyFormationService.disband())
 	assert_eq(SaveManager.capture_state(), before)
-	assert_eq(ExpeditionManager.get_active_expedition(), {"sentinel": "unchanged"})
+	assert_same(ExpeditionManager.get_active_expedition(), ExpeditionManager.get("sentinel"))
 
 
 func test_invalid_balance_and_invalid_company_save_leave_party_and_statuses_unchanged() -> void:

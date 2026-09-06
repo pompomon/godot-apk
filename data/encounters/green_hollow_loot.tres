@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="LootResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/models/loot_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+loot_id = &"green_hollow_loot"
+display_name = "Wayside cache"
+journal_text = "The Party finds a few forgotten coins beside the trail."
+min_gold = 2
+max_gold = 6

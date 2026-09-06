@@ -1,9 +1,10 @@
-# Adventurer's March — Party Formation
+# Adventurer's March — First Expedition
 
 A Godot 4.7.2 portrait Android game with a generated Company roster, Hero
-inspection, deterministic recruitment, Party formation, and local JSON saves. The
+inspection, deterministic recruitment, Party formation, timed non-combat
+Expeditions, and local JSON saves. The
 application/package name and APK artifact retain their original **Hello World**
-identifiers. Expeditions, combat, equipment management, and
+identifiers. Combat, equipment management, and
 XP progression remain future milestones.
 
 ## Run locally
@@ -19,7 +20,7 @@ XP progression remain future milestones.
    binds the persistent screen root, calls `SaveManager.load_or_create()`,
    and displays Home with the Company's gold and roster count. Open
    **Company Roster** to inspect or recruit Heroes, or **Form Party** to
-   assemble a formation.
+   assemble a formation, then choose **Green Hollow** for the first Expedition.
 
 You can also run the project directly:
 
@@ -42,9 +43,10 @@ godot --path .
   XP. The XP bar is inactive until progression is implemented in Milestone 6;
   weapon and armor slots are empty placeholders.
 - Saves live in Godot's app-private user-data directory as `save.json`.
-  New-game creation, recruitment, and confirmed Party changes save immediately;
+  New-game creation, recruitment, confirmed Party changes, Expedition starts,
+  progress observations/rewards, and report acknowledgment save immediately;
   initialized state is also saved on application pause/close. Failed
-  pre-commit purchases and Party changes roll back and show retry feedback.
+  pre-commit mutations roll back and show retry feedback.
 - Versioned saves validate the complete state and known content IDs. Writes
   flush, close, reopen, and validate a same-directory temporary file before
   replacing the primary. The previous valid primary is retained as `.bak`.
@@ -77,7 +79,46 @@ godot --path .
   Version-1 saves migrate without regenerating Heroes or losing Company
   progress; legacy `Assigned` statuses become `Idle` because that version did
   not store a Party. Other statuses are preserved.
-- Region selection and expedition execution remain deferred to Milestone 4.
+- Dispatching consumes the confirmed Party. Its Heroes become `On expedition`
+  and cannot be reassigned until the Expedition finishes; completion returns
+  them to `Idle`, ready to form the next Party.
+
+## First Expedition
+
+- Confirm a Party, then choose **Green Hollow** from Home. It is always
+  available and offers one **60-second** Expedition. Recommended Party Power
+  is guidance, not an entry requirement; partial and back-row-only Parties
+  remain valid.
+- Green Hollow contains five Travel/encounter pairs: **10 steps**, one every
+  **6 seconds**. The encounter pool contains five automatic narrative Events
+  and a Loot definition. Outcomes award modest nonnegative gold; there are no
+  combat encounters, item rewards, XP awards, choices, or resource costs yet.
+- At dispatch, the game freezes the Party's starting values and resolves the
+  entire journal using a saved seed. Time reveals those stored results; it
+  never rerolls them. Later changes to content or roster values do not alter
+  an existing journal.
+- Home displays progress and provides access to the Report. Only revealed
+  entries and their earned gold are visible. Progress is checked while the
+  app is open and when resuming, including from screens other than Home.
+- Closing the app does not require background execution. On return, the
+  game credits elapsed UTC time since its previous saved observation.
+  Backward clock changes credit zero; a single forward observation credits
+  at most the configured **24 hours**, capped at the Expedition duration.
+  This is an offline clock policy, not protection against repeated clock
+  manipulation.
+- Each observation persists clock accounting together with any newly
+  revealed gold, cursor, and final Hero-status changes before displaying
+  them. Failed pre-commit saves restore the previous state and can be retried;
+  post-commit warnings do not undo saved rewards.
+- A completed report remains available across restarts until explicitly
+  acknowledged. Acknowledgment does **not** award gold again. Forming a new
+  Party is allowed after completion, but the previous report must be
+  acknowledged before dispatching another Expedition. Back leaves a report
+  available rather than silently dismissing it.
+- Version-3 saves preserve pending Parties and active/completed Expeditions.
+  Versions 1 and 2 migrate without regenerating Heroes or recruitment offers.
+  Legacy `On expedition` statuses become `Idle`: those schemas could not
+  store an Expedition to which those Heroes belonged.
 
 ## Run the tests
 
@@ -101,8 +142,9 @@ Negative navigation and save-recovery tests deliberately emit Godot warnings;
 normal startup with healthy storage does not.
 
 The suite covers content, deterministic generation, derived stats, recruitment,
-Party models/evaluation/transactions, save validation/migration/recovery, and
-formation/roster/detail navigation alongside the foundation autoload, Resource,
+Party models/evaluation/transactions, Expedition content/generation/timing/rewards,
+save validation/migration/recovery, and Expedition/formation/roster/detail
+navigation alongside the foundation autoload, Resource,
 bootstrap, and mobile-setting regressions. No test reads or writes a player save.
 Persistence must derive primary, backup, and temporary paths from
 `SaveManager.get_save_path()`, never hard-code `user://save.json`. Autoload
@@ -142,21 +184,35 @@ excluded from the Android APK.
   statuses and the previous formation on pre-commit failure. A post-commit
   warning never undoes saved changes. Version-2 validation rejects orphan
   `Assigned` statuses and Party members not belonging to the roster.
-- `ExpeditionManager` and `CombatSimulator` remain documented stubs;
-  start/resolve calls warn rather than fabricate success.
-- `ExpeditionManager` is the sole future owner of the active Expedition.
+- `CombatSimulator` remains a documented stub; combat resolution is deferred
+  to Milestone 5.
+- `ExpeditionManager` is the sole owner of the active or completed Expedition.
   `SaveManager` serializes/restores it alongside `GameState`; no second copy
-  belongs on `GameState`.
+  belongs on `GameState`. Expedition seed advancement is independent of
+  recruitment and is committed with dispatch.
+- `ExpeditionGenerator` is pure: it selects all encounters with replacement
+  before resolving their outcomes using the same seeded RNG stream.
+  Step duration is computed from the complete candidate count and persisted,
+  never recalculated from a potentially truncated journal. `COMBAT` is
+  reserved in the step model but rejected by this milestone's content.
+- Frozen Party and journal snapshots contain plain, JSON-safe values. They
+  do not share mutable roster Heroes or depend on recomputing current content
+  when a save is loaded. Pending Party mappings still reference canonical
+  roster Heroes.
+- Expedition start, reveal/finalization, and acknowledgment use the existing
+  save commit boundary. Gold, cursor, clock state, and Hero statuses are one
+  saved snapshot; only committed state is presented.
 - `UIManager.bind_screen_root()` is bootstrap-only; screens navigate using
   `UIManager.show_screen()`. Navigation before binding is rejected, not queued.
   Accepted requests run after tree callbacks finish; requests belonging to a
   root that has exited are discarded. Hero Detail receives a stable Hero ID
   through request-specific navigation context, not a roster index. Await a
   process frame before inspecting the resulting screen in tests.
-- Content Resource scripts, `HeroData`, and `PartyData` live under
-  `scripts/models/`. `ExpeditionManager.start_expedition` accepts `PartyData`
-  but remains a stub; the Expedition model and combat types remain deferred,
-  and inventory remains untyped until Milestone 6.
+- Content Resource scripts and runtime Hero, Party, and Expedition models
+  live under `scripts/models/`. `ExpeditionManager.start_expedition` accepts
+  the confirmed `PartyData`; it must not use the draft-oriented
+  `PartyData.copy()` as a frozen Expedition snapshot. Combat types remain
+  deferred, and inventory remains untyped until Milestone 6.
 - `data/balancing/default_balancing.tres` is the single balancing asset. It
   defines the 100-gold recruitment price, design §7 Party Power baseline
   (including divisor 4 and no-front-row factor 0.85), and §9 combat defaults
@@ -202,6 +258,9 @@ pending. See the [milestone evidence](docs/adventurers-march/milestones/02-hero-
 for the tested revision, local results, and remaining checks.
 Party Formation's validation evidence and separate exported-device checklist
 are tracked in its [milestone detail](docs/adventurers-march/milestones/03-party-formation.md).
+First Expedition's automated/export evidence and outstanding physical-device
+offline/lifecycle checks are tracked in its
+[milestone detail](docs/adventurers-march/milestones/04-first-expedition.md).
 
 ## Adventurer's March design & implementation docs
 

@@ -131,7 +131,7 @@ func test_dispatch_rejects_frozen_recovery_deadline_overflow_without_mutation() 
 	party.place_hero(0, GameState.roster[0])
 	assert_true(PartyFormationService.confirm(party, ExpeditionManager.balancing))
 	var before := SaveManager.capture_state()
-	_time = HeroCatalog.MAX_SAFE_INT - 60
+	ExpeditionManager.balancing.base_recovery_seconds = HeroCatalog.MAX_SAFE_INT
 	ExpeditionManager.start_expedition(ExpeditionCatalog.GREEN_HOLLOW, GameState.current_party, 60)
 	assert_false(ExpeditionManager.last_committed)
 	assert_string_contains(ExpeditionManager.last_error, "recovery deadline")

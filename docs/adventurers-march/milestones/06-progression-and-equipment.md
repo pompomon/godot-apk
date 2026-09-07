@@ -187,6 +187,20 @@ project-icon/ADB diagnostics are not new gameplay failures. All source writers
 confirmed they had stopped with no pending edits or queued work before closeout.
 These are local results; physical-device acceptance is still pending below.
 
+**Final code publication and security:** the activated gameplay was committed
+and pushed as **`57bebc2`**, then the working tree was verified clean. Every
+changed file was secret-scanned before its checkpoint; no secrets were found.
+CodeQL was requested after all three gameplay checkpoints, but GDScript was
+not supported, so no CodeQL analysis was performed. The bounded read-only
+review and the existing Godot/GUT tests supplied the code-level validation.
+
+The [Android workflow for `57bebc2`](https://github.com/pompomon/godot-apk/actions/runs/34153484217)
+is **`action_required`**, with zero jobs reported by the logs endpoint.
+This is a remote approval blocker, not a failed or passing CI test run.
+Next bounded action: approve that workflow and perform the physical-device
+check below. No further milestone implementation or new subsystem is pending
+in this task; the top-level box remains open for acceptance evidence.
+
 Progression/recovery uses `xp_award_coefficients`, `xp_threshold_curve`,
 `base_recovery_seconds`, and `recovery_hp_percent` in the existing
 `data/balancing/default_balancing.tres`. The XP fields were unconfigured

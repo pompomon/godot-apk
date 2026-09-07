@@ -137,9 +137,16 @@ func _progress_config_valid() -> bool:
 	if not ExpeditionCatalog.clock_config_valid(balancing):
 		return false
 	for step in _expedition.steps:
-		if step.kind == ExpeditionStep.StepKind.TRAVEL:
-			continue
-		var kind := "Loot" if step.kind == ExpeditionStep.StepKind.LOOT else "Event"
+		var kind: String
+		match step.kind:
+			ExpeditionStep.StepKind.TRAVEL, ExpeditionStep.StepKind.COMBAT:
+				continue
+			ExpeditionStep.StepKind.LOOT:
+				kind = "Loot"
+			ExpeditionStep.StepKind.EVENT:
+				kind = "Event"
+			_:
+				return false
 		if not ExpeditionCatalog.weight(balancing.encounter_kind_weight_multipliers.get(kind)):
 			return false
 	return true
@@ -171,46 +178,76 @@ func start_expedition(region: RegionResource, party: PartyData, duration_seconds
 
 
 func reveal_progress() -> void:
-	if _expedition == null or not is_expedition_active():
+	if not GameState.initialized:
 		return
-	if not _progress_config_valid():
+	var active_run := _expedition != null and is_expedition_active()
+	if active_run and not _progress_config_valid():
 		_fail("Expedition progress configuration is invalid. Correct it and retry.")
 		return
 	var now: Variant = _now()
 	if not ExpeditionCatalog.integer(now):
 		_fail("The current UTC timestamp is invalid. Check the clock and retry.")
 		return
-	if int(now) == _expedition.last_observed_utc:
+	var observe_run := active_run and int(now) != _expedition.last_observed_utc
+	var recovering: Array[HeroData] = []
+	for hero in GameState.roster:
+		if hero != null and hero.status == HeroData.HeroStatus.WOUNDED and hero.recovery_ready_at > 0 and hero.recovery_ready_at <= int(now):
+			recovering.append(hero)
+	if not observe_run and recovering.is_empty():
 		return
 	last_committed = false
 	last_error = ""
 	if not SaveManager.validate_snapshot(SaveManager.capture_state()):
 		_fail("Expedition state is invalid. Reload before retrying progress.")
 		return
-	var delta := clampi(int(now) - _expedition.last_observed_utc, 0, balancing.max_offline_delta_seconds)
-	var elapsed := _expedition.credited_elapsed_seconds + mini(delta, _expedition.duration_seconds - _expedition.credited_elapsed_seconds)
-	var cursor: int = elapsed / _expedition.step_duration_seconds - 1
-	cursor = clampi(cursor, -1, _expedition.steps.size() - 1)
+	var elapsed := 0
+	var cursor := -1
 	var gold := GameState.gold
-	var steps := _expedition.steps
-	for index in range(_expedition.last_revealed_index + 1, cursor + 1):
-		var reward := int(steps[index].result.gold)
-		if reward > HeroCatalog.MAX_SAFE_INT - gold:
-			_fail("Gold capacity would be exceeded. Spend gold, then retry progress.")
-			return
-		gold += reward
+	var finishing := false
+	var final_states := {}
+	var recovery_ready_at := 0
+	if observe_run:
+		var delta := clampi(int(now) - _expedition.last_observed_utc, 0, balancing.max_offline_delta_seconds)
+		var effective_duration := _expedition.effective_end_timestamp - _expedition.start_timestamp
+		elapsed = _expedition.credited_elapsed_seconds + mini(delta, effective_duration - _expedition.credited_elapsed_seconds)
+		cursor = elapsed / _expedition.step_duration_seconds - 1
+		var steps := _expedition.steps
+		for index in range(_expedition.last_revealed_index + 1, cursor + 1):
+			var reward := int(steps[index].result.gold)
+			if reward > HeroCatalog.MAX_SAFE_INT - gold:
+				_fail("Gold capacity would be exceeded. Spend gold, then retry progress.")
+				return
+			gold += reward
+		finishing = cursor == steps.size() - 1
+		if finishing:
+			final_states = _expedition.final_hero_states()
+			for state in final_states.values():
+				if int(state.status) != HeroData.HeroStatus.WOUNDED:
+					continue
+				if not ExpeditionCatalog.integer(balancing.base_recovery_seconds, 1):
+					_fail("Hero recovery configuration is invalid. Correct it and retry.")
+					return
+				if int(now) > HeroCatalog.MAX_SAFE_INT - balancing.base_recovery_seconds:
+					_fail("The Hero recovery deadline exceeds the supported UTC range. Check the clock and retry.")
+					return
+				recovery_ready_at = int(now) + balancing.base_recovery_seconds
+				break
 	var company_before := GameState.checkpoint()
 	var own_before := checkpoint()
+	for hero in recovering:
+		hero.status = HeroData.HeroStatus.IDLE
+		hero.recovery_ready_at = 0
 	GameState.gold = gold
-	_expedition.last_observed_utc = int(now)
-	_expedition.credited_elapsed_seconds = elapsed
-	_expedition.last_revealed_index = cursor
-	var finishing := cursor == steps.size() - 1
+	if observe_run:
+		_expedition.last_observed_utc = int(now)
+		_expedition.credited_elapsed_seconds = elapsed
+		_expedition.last_revealed_index = cursor
 	if finishing:
 		_expedition.status = ExpeditionData.Status.COMPLETED
-		for member in _expedition.party_snapshot.slots.values():
-			if member != null:
-				GameState.find_hero(member.hero_id).status = HeroData.HeroStatus.IDLE
+		for id in final_states:
+			var hero := GameState.find_hero(id)
+			hero.status = int(final_states[id].status) as HeroData.HeroStatus
+			hero.recovery_ready_at = recovery_ready_at if hero.status == HeroData.HeroStatus.WOUNDED else 0
 	if _persist(company_before, own_before, true) and finishing:
 		completed.emit()
 

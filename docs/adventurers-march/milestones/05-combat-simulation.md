@@ -296,9 +296,9 @@ is `action_required`; the job-logs endpoint reports zero jobs. CI approval and
 all physical-device checks remain pending. Both delegated writers confirmed
 they had stopped with no pending writes.
 
-### Remaining implementation handoff
+### Slice 3 handoff (historical)
 
-This session deliberately stops after Slice 3 to preserve a verified checkpoint.
+The Slice 3 session deliberately stopped to preserve a verified checkpoint.
 **Milestone 5 is not complete, and production Green Hollow remains noncombat.**
 No Slice 4/5 production or UI files were edited.
 
@@ -322,6 +322,49 @@ No Slice 4/5 production or UI files were edited.
    Only then activate the authored enemy groups in Green Hollow.
 5. Keep exported-device readability/lifecycle acceptance and workflow approval
    separate and pending until actually performed.
+
+### Slices 4–5 delivery (2026-09-07)
+
+The user accepted Milestones 1–4 and directed that device acceptance be
+considered done externally for now. This delivery resumes at the first
+unfinished code, Slice 4, then proceeds to Slice 5 after a validated checkpoint.
+It does not reopen pure combat or add Milestone 6 progression/equipment.
+
+- **Starting revision:** merged `bbe88d5`, with no unpublished source changes.
+  The [merged Android workflow](https://github.com/pompomon/godot-apk/actions/runs/34135467082)
+  passed 236 tests, Android export and artifact upload; its job/logs were
+  inspected. This supersedes the earlier Slice 3 approval blocker.
+- **Local baseline:** pinned Godot 4.7.2 clean import and the existing GUT suite
+  passed **236 tests / 19,229 assertions** across 20 scripts, with both hooks.
+  Android debug export produced a nonempty **28,444,351-byte** APK. The existing
+  missing-icon and unavailable-ADB diagnostics do not represent new regressions.
+- **Unchanged contracts:** version 4, complete per-Hero HP/status maps, zero
+  Combat gold, frozen logs and eight-byte snapshot probability encoding.
+  Select every encounter before resolving any; draw each Combat seed with the
+  same Expedition RNG. Capture skills only when the selected run has Combat.
+  Keep Green Hollow's existing nonterminal-Retreat default when activating it.
+- **Recovery:** observe due positive deadlines even without a running
+  Expedition. Newly Wounded deadlines start at the observation committing
+  finalization, not the historical effective ending. Rewards, recovery, Hero
+  statuses and run clocks share the existing save commit boundary.
+- **Delivery gates:** validate Slice 4 with controlled Combat fixtures while
+  production remains noncombat. Then add revealed-only logs, spoiler-safe
+  progress, recovery/Party availability updates and production activation.
+  One writer owns each integration file and one validation owner checks the
+  integrated revision; all writers must stop before publication.
+- **Device evidence:** external acceptance is attributed to the user; no
+  physical-device check is claimed by this agent.
+
+**Slice 4 validation:** generation focused checks passed **18 tests / 621
+assertions**; lifecycle focused checks passed **23 / 1,074**. The first integrated
+run exposed a missing null guard for an existing Party UI test subclass.
+The guard was restored without changing that test; its **15 / 244** focused
+checks passed. The corrected integrated revision passed clean import, **260
+tests / 20,027 assertions** across 22 scripts, and Android export with a
+**28,448,447-byte** APK, all exit 0. Both GUT hooks remained enabled. Logs:
+`/tmp/s4r-import.log`, `/tmp/s4r-tests.log`, `/tmp/s4r-export.log`.
+Read-only review found no significant issues and both writers confirmed they
+had stopped. Production activation remains deferred to Slice 5.
 
 For each delivered slice, record its published revision/task or PR, scope,
 agreed decisions, validation commands and actual results, blockers, and next
@@ -508,10 +551,10 @@ integer encodings are rejected.
       effective defender `Evasion`, and are covered by hand-computed tests.
 - [ ] Green Hollow includes at least one Combat encounter using at least
       one enemy group.
-- [ ] HP carries across multiple Combats, and ordered
+- [x] HP carries across multiple Combats, and ordered
       `final_hero_states` merging correctly affects Hero status
       (Idle vs. Wounded) at Expedition finalization.
-- [ ] Terminal combat outcomes end reveal/finalization at the Combat step
+- [x] Terminal combat outcomes end reveal/finalization at the Combat step
       using the unchanged pre-truncation step duration and cannot grant
       rewards from later generated steps.
 - [ ] Expedition Report renders a readable combat log.

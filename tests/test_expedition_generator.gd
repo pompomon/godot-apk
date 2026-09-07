@@ -18,6 +18,8 @@ func test_authored_content_is_ordered_allowlisted_and_noncombat() -> void:
 	assert_eq(region.duration_options_seconds, [60])
 	assert_eq(region.travel_step_count, 5)
 	assert_eq(region.unlock_condition, {"kind": "always"})
+	for entry in region.encounter_pool:
+		assert_true(entry.kind in ["Loot", "Event"])
 	assert_null(ExpeditionCatalog.region_by_id("res://data/regions/green_hollow.tres"))
 	assert_null(ExpeditionCatalog.event_by_id("missing"))
 	assert_null(ExpeditionCatalog.loot_by_id("missing"))
@@ -32,7 +34,6 @@ func test_invalid_region_counts_durations_pool_payloads_and_configuration() -> v
 		["travel_step_count", 0], ["travel_step_count", -1], ["travel_step_count", 513],
 		["recommended_party_power", -1], ["display_name", ""], ["travel_title", ""],
 		["travel_text", ""], ["unlock_condition", {}], ["unlock_condition", {"kind": "gold", "value": 1}],
-		["retreat_ends_expedition", true],
 	]
 	for change in changes:
 		var region: RegionResource = ExpeditionCatalog.GREEN_HOLLOW.duplicate(true)
@@ -46,7 +47,7 @@ func test_invalid_region_counts_durations_pool_payloads_and_configuration() -> v
 		var region: RegionResource = ExpeditionCatalog.GREEN_HOLLOW.duplicate(true)
 		region.encounter_pool[0].weight = value
 		assert_false(ExpeditionCatalog.validate_region(region, BALANCING), str(value))
-	for kind in ["Combat", "Travel", "", "unknown"]:
+	for kind in ["Travel", "", "unknown"]:
 		var region: RegionResource = ExpeditionCatalog.GREEN_HOLLOW.duplicate(true)
 		region.encounter_pool[0].kind = kind
 		assert_false(ExpeditionCatalog.validate_region(region, BALANCING))

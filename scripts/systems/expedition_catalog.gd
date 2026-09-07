@@ -101,7 +101,7 @@ static func validate_region(region: RegionResource, balancing: BalancingConfig) 
 		return false
 	if not text(region.travel_title) or not text(region.travel_text, 4096):
 		return false
-	if region.unlock_condition != {"kind": "always"} or region.retreat_ends_expedition:
+	if region.unlock_condition != {"kind": "always"}:
 		return false
 	if not integer(region.travel_step_count, 1, MAX_STEPS / 2) or region.duration_options_seconds.is_empty():
 		return false
@@ -115,7 +115,7 @@ static func validate_region(region: RegionResource, balancing: BalancingConfig) 
 		return false
 	var total := 0.0
 	for entry in region.encounter_pool:
-		if entry == null or entry.kind not in ["Loot", "Event"] or not weight(entry.weight):
+		if entry == null or entry.kind not in ["Loot", "Event", "Combat"] or not weight(entry.weight):
 			return false
 		if not text(String(entry.content_id)):
 			return false
@@ -125,6 +125,8 @@ static func validate_region(region: RegionResource, balancing: BalancingConfig) 
 		if entry.kind == "Loot" and not validate_loot(loot_by_id(String(entry.content_id))):
 			return false
 		if entry.kind == "Event" and not validate_event(event_by_id(String(entry.content_id))):
+			return false
+		if entry.kind == "Combat" and not CombatCatalog.validate_enemy_group(CombatCatalog.enemy_group_by_id(String(entry.content_id))):
 			return false
 		total += entry.weight * float(multiplier)
 	return is_finite(total) and total > 0.0

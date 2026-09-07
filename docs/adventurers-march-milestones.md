@@ -182,24 +182,23 @@ Detail: [04-first-expedition.md](adventurers-march/milestones/04-first-expeditio
       (derived-stat hit/crit/damage/heal formulas including Evasion, round
       loop, outcome).
 - [x] Author 1–2 enemy-group data definitions for Green Hollow.
-- [ ] Wire Combat encounter steps into `ExpeditionManager`'s step
+- [x] Wire Combat encounter steps into `ExpeditionManager`'s step
       generation/resolution.
-- [ ] Truncate generated steps at Defeat or a Region-terminal Retreat and
+- [x] Truncate generated steps at Defeat or a Region-terminal Retreat and
       persist the terminal step/end timestamp without changing the stored
       pre-truncation step duration.
-- [ ] Carry HP through sequential Combats and merge `final_hero_states` by
+- [x] Carry HP through sequential Combats and merge `final_hero_states` by
       stable Hero ID before Expedition finalization.
 - [ ] Extend Expedition Report to render a readable combat log.
 - [x] Add one active skill per class (Guard / Firebolt / Mend / basic
       Ranger attack variant).
 
-**Status:** delivery slices 1–3 (contracts, pure combat, and persistence) are
-implemented. Version-4 saves validate frozen combat logs and migrate versions
-1–3; recovery deadlines are persisted/checkpointed but not yet observed.
-All 236 tests pass locally, with a successful Android debug export.
-The live encounter pool remains noncombat: slice 4 orchestration and slice 5
-presentation/activation are still pending. See the detail file for the tested
-checkpoints, CI approval blocker, and next bounded action.
+**Status:** delivery slices 1–4 (contracts, pure combat, persistence, and
+orchestration/recovery) are implemented. Version-4 saves preserve frozen combat
+logs and migrate versions 1–3. All 260 tests pass locally, with a successful
+Android debug export. The live encounter pool remains noncombat until slice 5
+presentation/activation is validated. See the detail file for checkpoint
+evidence and the remaining work.
 
 **Definition of done:** Combat steps in Green Hollow resolve
 deterministically via `CombatSimulator`, produce a correct

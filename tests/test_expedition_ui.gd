@@ -489,7 +489,7 @@ func test_terminal_retreat_report_shows_guard_and_releases_survivor_after_reload
 	assert_eq(_visible_text(_node("Journal")), text)
 
 
-func test_combat_log_formats_misses_crits_heals_and_guard_without_mislabeling_amounts() -> void:
+func test_combat_log_formats_overheal_as_healing_power() -> void:
 	await _go(REPORT)
 	var result := {
 		"outcome": "VICTORY", "rounds": [{"round_number": 1, "actions": [
@@ -507,7 +507,7 @@ func test_combat_log_formats_misses_crits_heals_and_guard_without_mislabeling_am
 		"Outcome: Victory", "Round 1",
 		"Ranger · Aimed Shot → Wolf: Miss",
 		"Wizard · Firebolt → Wolf: 17 damage (critical)",
-		"Cleric · Mend → Knight: Heal 9 HP",
+		"Cleric · Mend → Knight: Healing power: 9 HP",
 		"Knight · Guard → Knight: Guard active",
 	]))
 

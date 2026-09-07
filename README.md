@@ -85,7 +85,7 @@ godot --path .
   not store a Party. Other statuses are preserved.
 - Dispatching consumes the confirmed Party. Its Heroes become `On expedition`
   and cannot be reassigned until the Expedition finishes; completion returns
-  them   to `Idle` if they survive with positive HP. Zero-HP Heroes and all Heroes
+  them to `Idle` if they survive with positive HP. Zero-HP Heroes and all Heroes
   after Defeat become `Wounded` until their recovery deadline.
 
 ## First Expedition

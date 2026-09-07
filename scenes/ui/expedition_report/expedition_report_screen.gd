@@ -86,7 +86,7 @@ func _combat_text(result: Dictionary) -> String:
 					"Guard":
 						effect = "Guard active"
 					"Heal":
-						effect = "Heal %d HP" % int(action.damage_or_heal)
+						effect = "Healing power: %d HP" % int(action.damage_or_heal)
 					_:
 						effect = "%d damage%s" % [
 							int(action.damage_or_heal), " (critical)" if action.was_crit else ""]

@@ -79,8 +79,14 @@ func _region(pairs: int = 5, terminal_retreat: bool = false) -> RegionResource:
 
 func _mixed_region() -> RegionResource:
 	var region: RegionResource = ExpeditionCatalog.GREEN_HOLLOW.duplicate(true)
-	region.encounter_pool[3] = _entry("bandit_skirmishers")
-	region.encounter_pool[4] = _entry("forest_wolves")
+	region.encounter_pool.assign([
+		_entry("green_hollow_loot", "Loot", 2.0),
+		_entry("green_hollow_bridge", "Event"),
+		_entry("green_hollow_spring", "Event"),
+		_entry("bandit_skirmishers"),
+		_entry("forest_wolves"),
+		_entry("green_hollow_ruins", "Event"),
+	])
 	return region
 
 
@@ -92,14 +98,16 @@ func _gold(run: ExpeditionData) -> int:
 
 
 func test_catalog_accepts_allowlisted_combat_and_both_retreat_rules() -> void:
+	var production_region := ExpeditionCatalog.GREEN_HOLLOW
+	var original_pool := production_region.encounter_pool.duplicate()
 	for terminal_retreat in [false, true]:
 		var region := _region(5, terminal_retreat)
 		region.encounter_pool.append(_entry("forest_wolves"))
 		assert_true(ExpeditionCatalog.validate_region(region, BALANCING))
 		assert_true(ExpeditionCatalog.validate_catalog(
 			[region], ExpeditionCatalog.events(), ExpeditionCatalog.loot(), BALANCING))
-	for entry in ExpeditionCatalog.GREEN_HOLLOW.encounter_pool:
-		assert_ne(entry.kind, "Combat", "Controlled fixtures must not activate production Combat.")
+	assert_eq(production_region.encounter_pool, original_pool,
+		"Controlled Combat fixtures must not change the production pool.")
 
 
 func test_combat_catalog_preserves_id_enemy_weight_and_numeric_validation() -> void:
@@ -128,8 +136,12 @@ func test_combat_catalog_preserves_id_enemy_weight_and_numeric_validation() -> v
 		_enemies(CombatCatalog.BANDIT_SKIRMISHERS, {"MaxHP": hp})
 		assert_false(ExpeditionCatalog.validate_region(_region(), BALANCING), str(hp))
 		assert_null(ExpeditionGenerator.generate(_region(), _party(), 1, 60, 1000, BALANCING))
-	CombatCatalog.BANDIT_SKIRMISHERS.enemies.clear()
+	var group := CombatCatalog.BANDIT_SKIRMISHERS
+	_enemies(group)
+	assert_true(ExpeditionCatalog.validate_region(_region(), BALANCING))
+	group.enemies.clear()
 	assert_false(ExpeditionCatalog.validate_region(_region(), BALANCING))
+	assert_null(ExpeditionGenerator.generate(_region(), _party(), 1, 60, 1000, BALANCING))
 
 
 func test_skills_and_combat_configuration_are_required_only_for_selected_combat() -> void:
@@ -367,7 +379,8 @@ func test_generation_never_mutates_inputs_and_freezes_json_safe_combat_values() 
 	var region := _region(3)
 	var config := _balancing(1)
 	var before := ExpeditionPartySnapshot.capture(party, true).serialize()
-	var original_enemies := CombatCatalog.BANDIT_SKIRMISHERS.enemies.duplicate(true)
+	var group := CombatCatalog.BANDIT_SKIRMISHERS
+	var original_enemies := group.enemies.duplicate(true)
 	var original_multipliers := config.skill_damage_multipliers.duplicate(true)
 	var run := ExpeditionGenerator.generate(region, party, 27, 60, 1000, config)
 	assert_not_null(run)
@@ -376,7 +389,7 @@ func test_generation_never_mutates_inputs_and_freezes_json_safe_combat_values() 
 	assert_eq(ExpeditionPartySnapshot.capture(party, true).serialize(), before)
 	assert_eq(hero.status, HeroData.HeroStatus.ASSIGNED)
 	assert_same(party.slots[0], hero)
-	assert_eq(CombatCatalog.BANDIT_SKIRMISHERS.enemies, original_enemies)
+	assert_eq(group.enemies, original_enemies)
 	assert_eq(config.skill_damage_multipliers, original_multipliers)
 	assert_eq(config.max_combat_rounds, 1)
 	var original := run.serialize()
@@ -394,7 +407,6 @@ func test_generation_never_mutates_inputs_and_freezes_json_safe_combat_values() 
 	region.retreat_ends_expedition = true
 	config.max_combat_rounds = 99
 	config.skill_damage_multipliers.aimed_shot = 999
-	var group := CombatCatalog.BANDIT_SKIRMISHERS
 	group.display_name = "Changed enemies"
 	group.enemies.clear()
 	var detached_states := run.final_hero_states()

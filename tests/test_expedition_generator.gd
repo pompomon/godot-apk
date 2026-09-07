@@ -1,6 +1,19 @@
 extends GutTest
 
 const BALANCING: BalancingConfig = preload("res://data/balancing/default_balancing.tres")
+var _original_pool: Array[EncounterEntryResource] = []
+
+
+func before_each() -> void:
+	var region := ExpeditionCatalog.GREEN_HOLLOW
+	_original_pool.assign(region.encounter_pool)
+	region.encounter_pool.assign(_original_pool.filter(
+		func(entry: EncounterEntryResource) -> bool: return entry.kind != "Combat"))
+
+
+func after_each() -> void:
+	var region := ExpeditionCatalog.GREEN_HOLLOW
+	region.encounter_pool.assign(_original_pool)
 
 
 func _party() -> PartyData:
@@ -9,7 +22,7 @@ func _party() -> PartyData:
 	return party
 
 
-func test_authored_content_is_ordered_allowlisted_and_noncombat() -> void:
+func test_noncombat_fixture_is_ordered_and_allowlisted() -> void:
 	assert_true(ExpeditionCatalog.validate_catalog(
 		ExpeditionCatalog.regions(), ExpeditionCatalog.events(), ExpeditionCatalog.loot(), BALANCING))
 	assert_eq(ExpeditionCatalog.events().size(), 5)

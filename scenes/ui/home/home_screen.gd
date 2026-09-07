@@ -52,9 +52,9 @@ func _refresh() -> void:
 	else:
 		%ExpeditionLabel.text = "%s · %s\nStep %d / %d · %d seconds remaining" % [
 			expedition.region_name, "Running" if ExpeditionManager.is_expedition_active() else "Completed",
-			expedition.last_revealed_index + 1, expedition.steps.size(),
-			expedition.duration_seconds - expedition.credited_elapsed_seconds]
-	%RetryProgressButton.visible = ExpeditionManager.is_expedition_active() and not ExpeditionManager.last_error.is_empty()
+			expedition.last_revealed_index + 1, expedition.display_step_count(),
+			expedition.seconds_remaining()]
+	%RetryProgressButton.visible = not ExpeditionManager.last_error.is_empty()
 	HeroUI.show_feedback(_feedback_label, ExpeditionManager.last_error)
 	if UIManager.is_current_screen(self) and ExpeditionManager.take_completion_route():
 		UIManager.show_screen(REPORT_SCREEN)

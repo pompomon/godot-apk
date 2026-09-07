@@ -1,11 +1,11 @@
-# Adventurer's March — First Expedition
+# Adventurer's March — Combat Expeditions
 
 A Godot 4.7.2 portrait Android game with a generated Company roster, Hero
-inspection, deterministic recruitment, Party formation, timed non-combat
+inspection, deterministic recruitment, Party formation, timed Combat
 Expeditions, and local JSON saves. The
 application/package name and APK artifact retain their original **Hello World**
-identifiers. Combat simulation and persistence are implemented but encounters
-are not enabled yet; equipment management and XP progression remain future work.
+identifiers. Green Hollow includes deterministic Combat and readable saved
+logs; equipment management and XP progression remain future work.
 
 Contributors and coding agents: start with the
 [agent implementation guidelines](AGENTS.md) for bounded scope, integration
@@ -85,7 +85,8 @@ godot --path .
   not store a Party. Other statuses are preserved.
 - Dispatching consumes the confirmed Party. Its Heroes become `On expedition`
   and cannot be reassigned until the Expedition finishes; completion returns
-  them to `Idle`, ready to form the next Party.
+  them   to `Idle` if they survive with positive HP. Zero-HP Heroes and all Heroes
+  after Defeat become `Wounded` until their recovery deadline.
 
 ## First Expedition
 
@@ -93,16 +94,24 @@ godot --path .
   available and offers one **60-second** Expedition. Recommended Party Power
   is guidance, not an entry requirement; partial and back-row-only Parties
   remain valid.
-- Green Hollow contains five Travel/encounter pairs: **10 steps**, one every
-  **6 seconds**. The encounter pool contains five automatic narrative Events
-  and a Loot definition. Outcomes award modest nonnegative gold; there are no
-  combat encounters, item rewards, XP awards, choices, or resource costs yet.
+- Green Hollow plans five Travel/encounter pairs: **10 steps**, one every
+  **6 seconds**. The weighted pool contains five automatic narrative Events,
+  Loot, Forest Wolves, and Bandit Skirmishers. Loot/Events award modest
+  nonnegative gold; Combat awards no gold. Item rewards, XP awards, choices,
+  and resource costs remain deferred.
+- Combat uses Guard, Aimed Shot, Firebolt, and Mend, with HP carrying between
+  encounters and no automatic healing between them. Defeat ends the Expedition
+  at that Combat step; Retreat continues in Green Hollow. Terminal runs retain
+  their original six-second step duration and cannot award later rewards.
 - At dispatch, the game freezes the Party's starting values and resolves the
   entire journal using a saved seed. Time reveals those stored results; it
   never rerolls them. Later changes to content or roster values do not alter
   an existing journal.
 - Home displays progress and provides access to the Report. Only revealed
-  entries and their earned gold are visible. Progress is checked while the
+  entries and their earned gold are visible. Revealed Combat entries show the
+  outcome and round-by-round actors, actions, targets, misses, critical damage,
+  healing, and Guard. Planned progress hides future early endings until their
+  step is committed. Progress is checked while the
   app is open and when resuming, including from screens other than Home.
 - Closing the app does not require background execution. On return, the
   game credits elapsed UTC time since its previous saved observation.
@@ -119,12 +128,18 @@ godot --path .
   Party is allowed after completion, but the previous report must be
   acknowledged before dispatching another Expedition. Back leaves a report
   available rather than silently dismissing it.
+- Newly Wounded Heroes receive a fixed **60-second** UTC recovery deadline
+  starting at the observation that commits completion, including after a long
+  offline absence. Foreground/resume/load observations return due Heroes to
+  Idle transactionally, even without an active Expedition or report. Failed
+  saves preserve Wounded status and expose retry feedback; Party availability
+  refreshes only after commit. Legacy Wounded Heroes without a deadline remain
+  unchanged. This is a limited placeholder, not the later Resting/injury system.
 - Version-4 saves preserve pending Parties and active/completed Expeditions,
   including frozen combat payloads, planned step counts, terminal rules, and
   Hero recovery deadlines. Versions 1–3 migrate without regenerating Heroes,
   recruitment offers, or historical journals. Combat dispatch, finalization,
-  recovery observation, and presentation still await Milestone 5 integration;
-  the live Green Hollow pool remains noncombat.
+  recovery observation, and presentation share the existing transaction path.
   Legacy `On expedition` statuses become `Idle`: those schemas could not
   store an Expedition to which those Heroes belonged.
 
@@ -195,8 +210,7 @@ excluded from the Android APK.
 - `CombatSimulator` delegates to pure `CombatEngine` functions consuming
   detached Party/skill snapshots, current Hero HP/status, enemy data, a seed,
   and balancing. Guard, Aimed Shot, Firebolt, and Mend are authored and tested;
-  production encounters remain noncombat until the remaining Milestone 5
-  orchestration and presentation slices are validated. `CombatResult` validates
+  Green Hollow resolves authored encounters at dispatch. `CombatResult` validates
   saved logs by applying recorded HP changes, without rerunning simulation or
   reading current combat tuning.
 - `ExpeditionManager` is the sole owner of the active or completed Expedition.
@@ -207,7 +221,7 @@ excluded from the Android APK.
   before resolving their outcomes using the same seeded RNG stream.
   Step duration is computed from the complete candidate count and persisted,
   never recalculated from a potentially truncated journal. Saved `COMBAT`
-  payloads are supported by the model but not yet generated by live content.
+  payloads are generated by live content and carried through sequential Combats.
 - Frozen Party and journal snapshots contain plain, JSON-safe values. They
   do not share mutable roster Heroes or depend on recomputing current content
   when a save is loaded. Pending Party mappings still reference canonical
@@ -233,7 +247,7 @@ excluded from the Android APK.
   with a 20-round cap. Encounter-kind multipliers start at a neutral 1.0; the
   offline cap is provisionally 86400 seconds (24 hours) per observation, not a
   finalized balance decision. Skill multipliers are configured for Combat,
-  with a provisional 60-second recovery coefficient awaiting integration.
+  with a fixed 60-second recovery coefficient for the Milestone 5 placeholder.
   XP remains unconfigured until Milestone 6. Extend this asset rather than
   replace it, preserving unrelated values.
 

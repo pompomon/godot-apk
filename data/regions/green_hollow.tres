@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="RegionResource" load_steps=9 format=3]
+[gd_resource type="Resource" script_class="RegionResource" load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/models/region_resource.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/models/encounter_entry_resource.gd" id="2"]
@@ -39,6 +39,18 @@ kind = "Event"
 content_id = &"green_hollow_ruins"
 weight = 1.0
 
+[sub_resource type="Resource" id="wolves"]
+script = ExtResource("2")
+kind = "Combat"
+content_id = &"forest_wolves"
+weight = 2.0
+
+[sub_resource type="Resource" id="bandits"]
+script = ExtResource("2")
+kind = "Combat"
+content_id = &"bandit_skirmishers"
+weight = 1.0
+
 [resource]
 script = ExtResource("1")
 region_id = &"green_hollow"
@@ -48,5 +60,5 @@ travel_text = "The Party follows the peaceful paths of Green Hollow."
 recommended_party_power = 40
 duration_options_seconds = Array[int]([60])
 travel_step_count = 5
-encounter_pool = Array[ExtResource("2")]([SubResource("loot"), SubResource("bridge"), SubResource("spring"), SubResource("caravan"), SubResource("fireflies"), SubResource("ruins")])
+encounter_pool = Array[ExtResource("2")]([SubResource("loot"), SubResource("bridge"), SubResource("spring"), SubResource("caravan"), SubResource("fireflies"), SubResource("ruins"), SubResource("wolves"), SubResource("bandits")])
 unlock_condition = {"kind": "always"}

@@ -32,7 +32,7 @@ the single place to see overall status at a glance.
 | 2 | Hero roster | 1 | [x] | [02-hero-roster.md](adventurers-march/milestones/02-hero-roster.md) |
 | 3 | Party formation | 2 | [x] | [03-party-formation.md](adventurers-march/milestones/03-party-formation.md) |
 | 4 | First expedition | 3 | [x] | [04-first-expedition.md](adventurers-march/milestones/04-first-expedition.md) |
-| 5 | Combat simulation | 4 | [ ] | [05-combat-simulation.md](adventurers-march/milestones/05-combat-simulation.md) |
+| 5 | Combat simulation | 4 | [x] | [05-combat-simulation.md](adventurers-march/milestones/05-combat-simulation.md) |
 | 6 | Progression and equipment | 5 | [ ] | [06-progression-and-equipment.md](adventurers-march/milestones/06-progression-and-equipment.md) |
 | 7 | Content expansion | 6 | [ ] | [07-content-expansion.md](adventurers-march/milestones/07-content-expansion.md) |
 | 8 | Presentation pass | 7 | [ ] | [08-presentation-pass.md](adventurers-march/milestones/08-presentation-pass.md) |
@@ -45,7 +45,8 @@ Milestones 6–9 build out full MVP scope and release readiness.
 **Acceptance update (2026-09-07):** the user accepted Milestones 1–4 and
 directed that device acceptance be considered complete externally for now.
 Their checked device criteria record that external acceptance, not device tests
-performed by this agent. Milestone 5 slices 4–5 are the next implementation work.
+performed by this agent. Milestone 5 slices 4–5 were subsequently implemented
+and validated as recorded below; Milestone 6 is the next unfinished work.
 
 ---
 
@@ -189,16 +190,17 @@ Detail: [04-first-expedition.md](adventurers-march/milestones/04-first-expeditio
       pre-truncation step duration.
 - [x] Carry HP through sequential Combats and merge `final_hero_states` by
       stable Hero ID before Expedition finalization.
-- [ ] Extend Expedition Report to render a readable combat log.
+- [x] Extend Expedition Report to render a readable combat log.
 - [x] Add one active skill per class (Guard / Firebolt / Mend / basic
       Ranger attack variant).
 
-**Status:** delivery slices 1–4 (contracts, pure combat, persistence, and
-orchestration/recovery) are implemented. Version-4 saves preserve frozen combat
-logs and migrate versions 1–3. All 260 tests pass locally, with a successful
-Android debug export. The live encounter pool remains noncombat until slice 5
-presentation/activation is validated. See the detail file for checkpoint
-evidence and the remaining work.
+**Status:** all five delivery slices are implemented. Green Hollow includes
+Forest Wolves and Bandit Skirmishers; reports render revealed-only combat logs,
+and recovery refreshes Hero/Party availability after commit. Version-4 saves
+preserve frozen logs and migrate versions 1–3. All **267 tests / 20,238 assertions**
+pass locally, with a successful Android debug export. Device acceptance is
+treated as external per the user's direction, not as a device test run by this
+agent. See the detail file for separate local, publication and CI evidence.
 
 **Definition of done:** Combat steps in Green Hollow resolve
 deterministically via `CombatSimulator`, produce a correct

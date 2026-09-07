@@ -299,8 +299,8 @@ they had stopped with no pending writes.
 ### Slice 3 handoff (historical)
 
 The Slice 3 session deliberately stopped to preserve a verified checkpoint.
-**Milestone 5 is not complete, and production Green Hollow remains noncombat.**
-No Slice 4/5 production or UI files were edited.
+At that checkpoint Milestone 5 was incomplete and production Green Hollow
+remained noncombat. No Slice 4/5 production or UI files had been edited.
 
 1. **Next bounded action — Slice 4:** extend `ExpeditionCatalog` to validate
    Combat entries and terminal Retreat; call `CombatEngine.resolve_combat`
@@ -364,7 +364,34 @@ tests / 20,027 assertions** across 22 scripts, and Android export with a
 **28,448,447-byte** APK, all exit 0. Both GUT hooks remained enabled. Logs:
 `/tmp/s4r-import.log`, `/tmp/s4r-tests.log`, `/tmp/s4r-export.log`.
 Read-only review found no significant issues and both writers confirmed they
-had stopped. Production activation remains deferred to Slice 5.
+had stopped. The code was committed and pushed as **`1af1fd5`** and the clean
+working tree verified before starting Slice 5; production was still noncombat.
+
+**Slice 5 validation:** Home/Report use the existing spoiler-safe progress
+helpers, reports render frozen actions/outcomes, and recovery refreshes roster,
+detail and Party availability without replacing a local draft. Home exposes
+recovery retries without a running Expedition. Green Hollow now includes
+Forest Wolves (weight 2) and Bandit Skirmishers (weight 1), preserving its six
+original entries, 60-second planned duration, five pairs and nonterminal Retreat.
+Controlled fixtures retain the exact noncombat selection, timing, rewards and
+migration regressions. New live-content checks cover both groups, fixed-seed
+starter victories against wolves, and full Company save/reload round trips.
+
+Focused UI tests passed **16 / 274 assertions**; activation/regression checks
+passed **46 / 1,685**. The final integrated source revision based on `1af1fd5`
+passed clean import, **267 tests / 20,238 assertions** across 22 scripts, and
+Android debug export producing a signed, nonempty **28,448,447-byte** APK,
+all exit 0. Both GUT hooks remained enabled, with no skipped scripts or GUT
+errors. Logs: `/tmp/s5-final-import.log`, `/tmp/s5-final-tests.log`,
+`/tmp/s5-final-export.log`. The existing missing-icon/unavailable-ADB export
+diagnostics remain unchanged. Read-only review found no significant issues.
+All writers explicitly stopped before integrated validation/publication.
+Device acceptance is treated as external per the user's direction; no
+physical-device test was performed by this agent.
+
+**Scope complete:** slices 4–5 require no new save version, dependencies, or
+alternative validation tools. Milestone 6 progression/equipment and the full
+Resting recovery system remain the next bounded work, not part of this delivery.
 
 For each delivered slice, record its published revision/task or PR, scope,
 agreed decisions, validation commands and actual results, blockers, and next
@@ -549,7 +576,7 @@ integer encodings are rejected.
       correctly implemented and tested.
 - [x] Combat formulas consume the documented derived stats, including an
       effective defender `Evasion`, and are covered by hand-computed tests.
-- [ ] Green Hollow includes at least one Combat encounter using at least
+- [x] Green Hollow includes at least one Combat encounter using at least
       one enemy group.
 - [x] HP carries across multiple Combats, and ordered
       `final_hero_states` merging correctly affects Hero status
@@ -557,7 +584,7 @@ integer encodings are rejected.
 - [x] Terminal combat outcomes end reveal/finalization at the Combat step
       using the unchanged pre-truncation step duration and cannot grant
       rewards from later generated steps.
-- [ ] Expedition Report renders a readable combat log.
+- [x] Expedition Report renders a readable combat log.
 
 ## Risks
 

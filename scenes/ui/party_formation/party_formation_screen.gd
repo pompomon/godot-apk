@@ -31,12 +31,21 @@ func _ready() -> void:
 	%DisbandButton.pressed.connect(_disband)
 	%RemoveButton.pressed.connect(_remove)
 	%MoveButton.pressed.connect(_begin_move)
+	ExpeditionManager.changed.connect(_refresh_expedition_state)
+	ExpeditionManager.operation_failed.connect(_refresh_expedition_state)
 	_refresh()
 
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_RESUMED and is_node_ready():
 		_refresh()
+
+
+func _refresh_expedition_state() -> void:
+	if _leaving or not is_inside_tree():
+		return
+	_feedback_message = ExpeditionManager.last_error
+	_refresh()
 
 
 func _unhandled_input(event: InputEvent) -> void:

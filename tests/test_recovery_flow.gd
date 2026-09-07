@@ -124,3 +124,15 @@ func test_resting_deadline_survives_reload_recovers_only_when_due_and_is_retryab
 	assert_eq(hero.status, HeroData.HeroStatus.IDLE)
 	assert_eq(hero.recovery_ready_at, 0)
 	assert_eq(hero.xp, 100)
+
+
+func test_dispatch_rejects_frozen_recovery_deadline_overflow_without_mutation() -> void:
+	var party := PartyData.new()
+	party.place_hero(0, GameState.roster[0])
+	assert_true(PartyFormationService.confirm(party, ExpeditionManager.balancing))
+	var before := SaveManager.capture_state()
+	_time = HeroCatalog.MAX_SAFE_INT - 60
+	ExpeditionManager.start_expedition(ExpeditionCatalog.GREEN_HOLLOW, GameState.current_party, 60)
+	assert_false(ExpeditionManager.last_committed)
+	assert_string_contains(ExpeditionManager.last_error, "recovery deadline")
+	assert_eq(SaveManager.capture_state(), before)

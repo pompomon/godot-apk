@@ -182,6 +182,10 @@ func test_root_validation_rejects_bad_types_bounds_and_missing_fields() -> void:
 	var extra := snapshot.duplicate(true)
 	extra["selection"] = "hero-1"
 	assert_false(SaveManager.validate_snapshot(extra))
+	var excessive_inventory := snapshot.duplicate(true)
+	excessive_inventory.inventory.resize(SaveManager.MAX_INVENTORY_ITEMS + 1)
+	excessive_inventory.inventory.fill("short_sword")
+	assert_false(SaveManager.validate_snapshot(excessive_inventory))
 
 
 func test_hero_validation_rejects_unknown_resources_ids_attributes_and_equipment() -> void:

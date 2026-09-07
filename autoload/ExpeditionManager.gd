@@ -168,6 +168,15 @@ func start_expedition(region: RegionResource, party: PartyData, duration_seconds
 	if resolved == null:
 		_fail("Could not resolve this Expedition. Check its content and retry.")
 		return
+	if resolved.effective_end_timestamp > HeroCatalog.MAX_SAFE_INT - resolved.recovery_seconds:
+		_fail("The Hero recovery deadline exceeds the supported UTC range. Check the clock and retry.")
+		return
+	var reward_items := 0
+	for step in resolved.steps:
+		reward_items += step.result.get("item_ids", []).size()
+	if reward_items > SaveManager.MAX_INVENTORY_ITEMS - GameState.inventory.size():
+		_fail("Inventory capacity would be exceeded. Equip items, then retry.")
+		return
 	var company_before := GameState.checkpoint()
 	var own_before := checkpoint()
 	_expedition = resolved

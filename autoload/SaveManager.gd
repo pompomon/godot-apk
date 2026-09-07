@@ -4,6 +4,7 @@ extends Node
 
 const SAVE_VERSION := 5
 const MAX_SAVE_BYTES := 1048576
+const MAX_INVENTORY_ITEMS := 1024
 const LEGACY_ROOT_KEYS := [
 	"save_version", "roster", "recruitment_offers", "gold", "inventory",
 	"unlocked_regions", "roster_capacity", "next_hero_id", "recruitment_seed",
@@ -261,6 +262,8 @@ func _validate_schema(data: Variant, version: int, keys: Array) -> bool:
 	if not _integer(data.recruitment_sequence):
 		return false
 	if not data.inventory is Array:
+		return false
+	if data.inventory.size() > MAX_INVENTORY_ITEMS:
 		return false
 	if version < 5 and not data.inventory.is_empty():
 		return false

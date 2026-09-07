@@ -137,6 +137,20 @@ func test_xp_overflow_prevents_first_hero_items_gold_cursor_and_clock_mutation()
 	assert_eq(GameState.roster[1].xp, HeroCatalog.MAX_SAFE_INT)
 
 
+func test_dispatch_rejects_frozen_rewards_over_item_capacity_without_mutation() -> void:
+	var party := PartyData.new()
+	party.place_hero(0, GameState.roster[0])
+	party.place_hero(3, GameState.roster[1])
+	GameState.inventory.resize(SaveManager.MAX_INVENTORY_ITEMS - 4)
+	GameState.inventory.fill(ItemCatalog.SHORT_SWORD)
+	assert_true(PartyFormationService.confirm(party, ExpeditionManager.balancing))
+	var before := SaveManager.capture_state()
+	ExpeditionManager.start_expedition(ExpeditionCatalog.GREEN_HOLLOW, GameState.current_party, 60)
+	assert_false(ExpeditionManager.last_committed)
+	assert_string_contains(ExpeditionManager.last_error, "Inventory capacity")
+	assert_eq(SaveManager.capture_state(), before)
+
+
 func test_zero_frozen_award_skips_relevel_and_current_curve_validation() -> void:
 	var run := _start()
 	var record := run.serialize()

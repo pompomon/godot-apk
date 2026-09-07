@@ -389,6 +389,17 @@ All writers explicitly stopped before integrated validation/publication.
 Device acceptance is treated as external per the user's direction; no
 physical-device test was performed by this agent.
 
+**Publication and security:** final code was committed and pushed as
+**`9e1b6a9`**, with the working tree verified clean. Changed-file secret scans
+found no secrets. CodeQL was requested after each code checkpoint, but no
+changed language was supported, so **no CodeQL analysis was performed**;
+GDScript validation relied on the existing tests and bounded read-only reviews.
+The [Android workflow for `9e1b6a9`](https://github.com/pompomon/godot-apk/actions/runs/34140268503)
+is `action_required`; the job-logs endpoint reports zero jobs. Approve that
+workflow for remote CI verification. This blocker is separate from the passing
+local suite/export and external device acceptance, not a test failure or a
+passed CI run.
+
 **Scope complete:** slices 4–5 require no new save version, dependencies, or
 alternative validation tools. Milestone 6 progression/equipment and the full
 Resting recovery system remain the next bounded work, not part of this delivery.

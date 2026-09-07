@@ -2,9 +2,16 @@ extends GutTest
 
 const BALANCING: BalancingConfig = preload("res://data/balancing/default_balancing.tres")
 var _original_pool: Array[EncounterEntryResource] = []
+var _original_items: Dictionary
+var _original_chance: float
 
 
 func before_each() -> void:
+	var loot := ExpeditionCatalog.LOOT
+	_original_items = loot.item_pool.duplicate()
+	_original_chance = loot.item_drop_chance
+	loot.item_pool = {}
+	loot.item_drop_chance = 0.0
 	var region := ExpeditionCatalog.GREEN_HOLLOW
 	_original_pool.assign(region.encounter_pool)
 	region.encounter_pool.assign(_original_pool.filter(
@@ -12,6 +19,9 @@ func before_each() -> void:
 
 
 func after_each() -> void:
+	var loot := ExpeditionCatalog.LOOT
+	loot.item_pool = _original_items
+	loot.item_drop_chance = _original_chance
 	var region := ExpeditionCatalog.GREEN_HOLLOW
 	region.encounter_pool.assign(_original_pool)
 
@@ -96,7 +106,7 @@ func test_event_and_loot_validation_rejects_unsupported_and_nonfinite_data() -> 
 	assert_false(ExpeditionCatalog.validate_event(null))
 	assert_false(ExpeditionCatalog.validate_loot(null))
 	for value in [{}, {"gold": -1}, {"gold": 1.5}, {"gold": true}, {"gold": INF},
-			{"gold": NAN}, {"gold": HeroCatalog.MAX_SAFE_INT + 1}, {"gold": 0, "item_ids": []},
+			{"gold": NAN}, {"gold": HeroCatalog.MAX_SAFE_INT + 1}, {"gold": 0, "item_ids": ["missing"]},
 			{"xp": 1}, {"gold": Resource.new()}, {"injury": true}]:
 		var event: EventResource = ExpeditionCatalog.events()[0].duplicate(true)
 		event.outcomes[0].result = value

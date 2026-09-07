@@ -34,6 +34,7 @@ func test_exported_resource_contracts() -> void:
 		[LootResource.new(), {
 			"loot_id": TYPE_STRING_NAME, "min_gold": TYPE_INT, "max_gold": TYPE_INT,
 			"display_name": TYPE_STRING, "journal_text": TYPE_STRING,
+			"item_pool": TYPE_DICTIONARY, "item_drop_chance": TYPE_FLOAT,
 		}],
 		[EventOutcomeResource.new(), {
 			"outcome_id": TYPE_STRING_NAME, "journal_text": TYPE_STRING,

@@ -111,6 +111,8 @@ func start_error(region: RegionResource, party: PartyData, duration_seconds: int
 		return "Expedition content or balancing is invalid. Check the configuration and retry."
 	if duration_seconds not in region.duration_options_seconds:
 		return "Choose one of this Region's offered durations."
+	if Leveling.award(region.recommended_party_power, duration_seconds, balancing) < 0:
+		return "Progression configuration is invalid. Correct it and retry."
 	if not ExpeditionCatalog.integer(GameState.expedition_seed) or not ExpeditionCatalog.integer(GameState.expedition_sequence):
 		return "Expedition seed state is invalid."
 	if not SaveManager.validate_snapshot(SaveManager.capture_state()):
@@ -191,7 +193,7 @@ func reveal_progress() -> void:
 	var observe_run := active_run and int(now) != _expedition.last_observed_utc
 	var recovering: Array[HeroData] = []
 	for hero in GameState.roster:
-		if hero != null and hero.status == HeroData.HeroStatus.WOUNDED and hero.recovery_ready_at > 0 and hero.recovery_ready_at <= int(now):
+		if hero != null and hero.status == HeroData.HeroStatus.RESTING and hero.recovery_ready_at > 0 and hero.recovery_ready_at <= int(now):
 			recovering.append(hero)
 	if not observe_run and recovering.is_empty():
 		return
@@ -203,8 +205,11 @@ func reveal_progress() -> void:
 	var elapsed := 0
 	var cursor := -1
 	var gold := GameState.gold
+	var inventory: Array[ItemResource] = GameState.inventory.duplicate()
 	var finishing := false
 	var final_states := {}
+	var progression := {}
+	var resting := {}
 	var recovery_ready_at := 0
 	if observe_run:
 		var delta := clampi(int(now) - _expedition.last_observed_utc, 0, balancing.max_offline_delta_seconds)
@@ -218,26 +223,44 @@ func reveal_progress() -> void:
 				_fail("Gold capacity would be exceeded. Spend gold, then retry progress.")
 				return
 			gold += reward
+			for id in steps[index].result.get("item_ids", []):
+				var item := ItemCatalog.item_by_id(id)
+				if item == null:
+					_fail("An item reward is unavailable. Restore its content and retry.")
+					return
+				inventory.append(item)
 		finishing = cursor == steps.size() - 1
 		if finishing:
 			final_states = _expedition.final_hero_states()
-			for state in final_states.values():
-				if int(state.status) != HeroData.HeroStatus.WOUNDED:
-					continue
-				if not ExpeditionCatalog.integer(balancing.base_recovery_seconds, 1):
-					_fail("Hero recovery configuration is invalid. Correct it and retry.")
-					return
-				if int(now) > HeroCatalog.MAX_SAFE_INT - balancing.base_recovery_seconds:
+			var dispatch_hp := {}
+			for member in _expedition.party_snapshot.slots.values():
+				if member != null:
+					dispatch_hp[member.hero_id] = int(member.derived_stats.MaxHP)
+			for id in final_states:
+				var hero := GameState.find_hero(id)
+				if _expedition.xp_award > 0:
+					var preview := Leveling.preview(hero, _expedition.xp_award, balancing)
+					if preview.has("error"):
+						_fail("Hero progression could not be applied. " + String(preview.error))
+						return
+					progression[id] = preview
+				var state: Dictionary = final_states[id]
+				# Products fit signed int64 for JSON-safe HP and a percentage <= 100.
+				if int(state.status) == HeroData.HeroStatus.WOUNDED or (
+						int(state.hp) > 0 and int(state.hp) * 100 <= int(dispatch_hp[id]) * _expedition.rest_hp_percent):
+					resting[id] = true
+			if not resting.is_empty():
+				if int(now) > HeroCatalog.MAX_SAFE_INT - _expedition.recovery_seconds:
 					_fail("The Hero recovery deadline exceeds the supported UTC range. Check the clock and retry.")
 					return
-				recovery_ready_at = int(now) + balancing.base_recovery_seconds
-				break
+				recovery_ready_at = int(now) + _expedition.recovery_seconds
 	var company_before := GameState.checkpoint()
 	var own_before := checkpoint()
 	for hero in recovering:
 		hero.status = HeroData.HeroStatus.IDLE
 		hero.recovery_ready_at = 0
 	GameState.gold = gold
+	GameState.inventory.assign(inventory)
 	if observe_run:
 		_expedition.last_observed_utc = int(now)
 		_expedition.credited_elapsed_seconds = elapsed
@@ -246,8 +269,11 @@ func reveal_progress() -> void:
 		_expedition.status = ExpeditionData.Status.COMPLETED
 		for id in final_states:
 			var hero := GameState.find_hero(id)
-			hero.status = int(final_states[id].status) as HeroData.HeroStatus
-			hero.recovery_ready_at = recovery_ready_at if hero.status == HeroData.HeroStatus.WOUNDED else 0
+			hero.status = HeroData.HeroStatus.RESTING if resting.has(id) else int(final_states[id].status) as HeroData.HeroStatus
+			hero.recovery_ready_at = recovery_ready_at if resting.has(id) else 0
+			if progression.has(id):
+				hero.xp = progression[id].xp
+				hero.level = progression[id].level
 	if _persist(company_before, own_before, true) and finishing:
 		completed.emit()
 

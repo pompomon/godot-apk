@@ -52,7 +52,7 @@ func test_autoload_construction_and_capture_are_io_free() -> void:
 	assert_false(SaveManager.last_error.is_empty())
 
 
-func test_version_four_round_trip_every_field_and_maximum_seed() -> void:
+func test_version_five_round_trip_every_field_and_maximum_seed() -> void:
 	_boot()
 	GameState.recruitment_seed = HeroCatalog.MAX_SAFE_INT
 	GameState.recruitment_sequence = HeroCatalog.MAX_SAFE_INT
@@ -67,7 +67,7 @@ func test_version_four_round_trip_every_field_and_maximum_seed() -> void:
 		hero.xp = HeroCatalog.MAX_SAFE_INT - index
 		hero.status = index as HeroData.HeroStatus
 		if hero.status == HeroData.HeroStatus.ON_EXPEDITION:
-			hero.status = HeroData.HeroStatus.WOUNDED
+			hero.status = HeroData.HeroStatus.RESTING
 			hero.recovery_ready_at = HeroCatalog.MAX_SAFE_INT
 		hero.traits.assign([HeroCatalog.traits()[index]])
 		index += 1
@@ -145,7 +145,7 @@ func test_original_rolls_survive_range_tuning_while_new_heroes_use_current_range
 
 func test_migration_rejects_unknown_versions_and_types() -> void:
 	var snapshot := _boot()
-	for version in [null, true, "1", -1, 0, 1.5, 5, HeroCatalog.MAX_SAFE_INT]:
+	for version in [null, true, "1", -1, 0, 1.5, 6, HeroCatalog.MAX_SAFE_INT]:
 		var invalid := snapshot.duplicate(true)
 		invalid.save_version = version
 		assert_eq(SaveManager.migrate(invalid), {}, str(version))
@@ -156,7 +156,7 @@ func test_migration_rejects_unknown_versions_and_types() -> void:
 func test_root_validation_rejects_bad_types_bounds_and_missing_fields() -> void:
 	var snapshot := _boot()
 	var changes := [
-		["save_version", "1"], ["save_version", 1], ["save_version", 5], ["save_version", true],
+		["save_version", "1"], ["save_version", 1], ["save_version", 6], ["save_version", true],
 		["gold", -1], ["gold", 1.1], ["gold", true], ["gold", "100"],
 		["gold", INF], ["gold", NAN], ["gold", HeroCatalog.MAX_SAFE_INT + 1],
 		["roster_capacity", 0], ["roster_capacity", 13], ["roster_capacity", 3],
@@ -230,14 +230,14 @@ func test_ids_are_unique_across_roster_and_offers_and_counter_is_ahead() -> void
 	assert_false(SaveManager.validate_snapshot(invalid))
 
 
-func test_recovery_deadline_requires_wounded_but_legacy_wounded_can_remain_inactive() -> void:
+func test_recovery_deadline_requires_resting_but_legacy_states_can_remain_inactive() -> void:
 	var original := _boot()
 	for status in HeroData.HeroStatus.keys():
 		var snapshot := original.duplicate(true)
 		snapshot.roster[0].status = status
 		snapshot.roster[0].recovery_ready_at = HeroCatalog.MAX_SAFE_INT
-		assert_eq(SaveManager.validate_snapshot(snapshot), status == "WOUNDED", status)
-	GameState.roster[0].status = HeroData.HeroStatus.WOUNDED
+		assert_eq(SaveManager.validate_snapshot(snapshot), status == "RESTING", status)
+	GameState.roster[0].status = HeroData.HeroStatus.RESTING
 	for deadline in [0, 1060, HeroCatalog.MAX_SAFE_INT]:
 		GameState.roster[0].recovery_ready_at = deadline
 		SaveManager.save()

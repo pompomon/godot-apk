@@ -13,6 +13,7 @@ const EVENTS: Array[EventResource] = [
 ]
 const MAX_STEPS := 1024
 const MAX_LOOT_GOLD := 2147483647 # RandomNumberGenerator.randi_range's signed range.
+const MAX_EVENT_ITEMS := 16
 
 
 static func regions() -> Array[RegionResource]:
@@ -66,9 +67,32 @@ static func gold_payload(value: Variant) -> bool:
 	return value is Dictionary and HeroCatalog.has_exact_keys(value, ["gold"]) and integer(value.gold)
 
 
+static func reward_payload(value: Variant, maximum_items: int = MAX_EVENT_ITEMS) -> bool:
+	if gold_payload(value):
+		return true
+	if not value is Dictionary or not HeroCatalog.has_exact_keys(value, ["gold", "item_ids"]):
+		return false
+	if not integer(value.gold) or not value.item_ids is Array or value.item_ids.size() > maximum_items:
+		return false
+	for id in value.item_ids:
+		if not text(id) or ItemCatalog.item_by_id(id) == null:
+			return false
+	return true
+
+
 static func validate_loot(entry: LootResource) -> bool:
-	return entry != null and text(String(entry.loot_id)) and text(entry.display_name) and text(entry.journal_text, 4096) and integer(entry.min_gold, 0, MAX_LOOT_GOLD) and integer(
-		entry.max_gold, entry.min_gold, MAX_LOOT_GOLD)
+	if entry == null or not text(String(entry.loot_id)) or not text(entry.display_name) or not text(entry.journal_text, 4096):
+		return false
+	if not integer(entry.min_gold, 0, MAX_LOOT_GOLD) or not integer(entry.max_gold, entry.min_gold, MAX_LOOT_GOLD):
+		return false
+	if not is_finite(entry.item_drop_chance) or entry.item_drop_chance < 0.0 or entry.item_drop_chance > 1.0:
+		return false
+	var total := 0.0
+	for id in entry.item_pool:
+		if not (id is String or id is StringName) or ItemCatalog.item_by_id(String(id)) == null or not weight(entry.item_pool[id]):
+			return false
+		total += float(entry.item_pool[id])
+	return is_finite(total) and (entry.item_pool.is_empty() or entry.item_drop_chance == 0.0 or total > 0.0)
 
 
 static func validate_event(event: EventResource) -> bool:
@@ -81,7 +105,7 @@ static func validate_event(event: EventResource) -> bool:
 	for outcome in event.outcomes:
 		if outcome == null or not text(String(outcome.outcome_id)) or ids.has(outcome.outcome_id):
 			return false
-		if not text(outcome.journal_text, 4096) or not weight(outcome.weight) or not gold_payload(outcome.result):
+		if not text(outcome.journal_text, 4096) or not weight(outcome.weight) or not reward_payload(outcome.result):
 			return false
 		if not text(event.description + "\n" + outcome.journal_text, 4096):
 			return false

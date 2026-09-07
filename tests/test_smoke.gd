@@ -45,7 +45,7 @@ func test_new_company_has_four_typed_heroes_and_starting_gold() -> void:
 	assert_eq(GameState.roster.size(), 4)
 	assert_eq(GameState.roster.get_typed_script(), HeroData)
 	assert_eq(GameState.inventory, [])
-	assert_false(GameState.inventory.is_typed())
+	assert_eq(GameState.inventory.get_typed_script(), ItemResource)
 	assert_eq(GameState.gold, 100)
 	assert_eq(typeof(GameState.gold), TYPE_INT)
 	assert_eq(GameState.roster_capacity, 12)

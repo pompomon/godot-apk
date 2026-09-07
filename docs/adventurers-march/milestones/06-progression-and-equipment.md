@@ -145,6 +145,27 @@ produced **28,462,395 bytes**. Logs: `build/m6-domain-*.log` (ignored build
 artifacts). The domain writer confirmed all messages handled and no pending
 writes before publication. This checkpoint does not yet enable XP rewards,
 inventory persistence, Equipment UI, or the full recovery flow.
+Published as **`eb84828`**, with the working tree verified clean. Changed-file
+secret scanning was clean; CodeQL reported no supported changed language, so
+no CodeQL analysis was performed.
+
+**Persistence/lifecycle and Equipment checkpoint:** version-5 original-schema
+migrations, item ownership, frozen reward/recovery fields, exactly-once
+finalization, Resting recovery, and Equipment draft/preview/confirmation UI are
+implemented. Hero Detail refreshes XP and stat values in place, preserving its
+existing container-identity regression. Controlled Loot/Event fixtures exercise
+item rewards, but production drops remain disabled at this boundary.
+
+Clean import passed. Backend focused checks passed **113 tests / 3,309
+assertions**; Equipment/UI focused checks passed **38 / 794**. The full suite
+passed **312 tests / 21,815 assertions**, with both GUT hooks, and Android
+debug export produced **28,479,394 bytes**. Logs:
+`build/m6-integration-{import,backend,ui,full,export}.log`. Initial iteration
+failures exposed fixture Resource aliasing, a test-local inferred type, and
+the intentional inventory/Loot schema changes; these were fixed without
+removing regression coverage. Read-only review found no significant issues.
+All source writers confirmed they had stopped with no queued work before
+publication. Production activation and mobile acceptance remain separate gates.
 
 Before enabling progression/recovery, configure `xp_award_coefficients`,
 `xp_threshold_curve`, and `base_recovery_seconds` in the existing

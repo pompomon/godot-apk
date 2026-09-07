@@ -171,7 +171,7 @@ func test_traits_xp_status_and_recovery_notice_are_inspectable() -> void:
 	assert_string_contains(text, "Wounded")
 	assert_string_contains(text, "Level 5")
 	assert_string_contains(text, "Cumulative XP: 234")
-	assert_string_contains(text, "Milestone 6")
+	assert_string_contains(text, "Next level:")
 	assert_string_contains(text, "Recovered")
 	hero.traits.append(HeroCatalog.LIGHTFOOTED)
 	UIManager.show_screen(DETAIL, {"hero_id": hero.hero_id})

@@ -2,15 +2,25 @@ extends GutTest
 
 const BALANCING: BalancingConfig = preload("res://data/balancing/default_balancing.tres")
 var _original_groups: Array = []
+var _original_items: Dictionary
+var _original_chance: float
 
 
 func before_each() -> void:
+	var loot := ExpeditionCatalog.LOOT
+	_original_items = loot.item_pool.duplicate()
+	_original_chance = loot.item_drop_chance
+	loot.item_pool = {}
+	loot.item_drop_chance = 0.0
 	_original_groups.clear()
 	for group in CombatCatalog.enemy_groups():
 		_original_groups.append({"name": group.display_name, "enemies": group.enemies.duplicate(true)})
 
 
 func after_each() -> void:
+	var loot := ExpeditionCatalog.LOOT
+	loot.item_pool = _original_items
+	loot.item_drop_chance = _original_chance
 	var groups := CombatCatalog.enemy_groups()
 	for index in range(groups.size()):
 		groups[index].display_name = _original_groups[index].name
@@ -213,7 +223,9 @@ func test_exact_mixed_selection_precedes_resolution_and_combat_uses_same_rng_str
 			expected_outcome = outcome
 			break
 	assert_eq(run.steps[9].serialize().outcome_id, String(expected_outcome.outcome_id))
-	assert_eq(run.steps[9].result, expected_outcome.result)
+	var expected_reward := expected_outcome.result.duplicate(true)
+	expected_reward["item_ids"] = expected_reward.get("item_ids", [])
+	assert_eq(run.steps[9].result, expected_reward)
 	var ids: Array = []
 	for index in [1, 3, 5, 7, 9]:
 		ids.append(run.steps[index].content_id)

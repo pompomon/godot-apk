@@ -4,9 +4,14 @@ const Isolation = preload("res://tests/isolated_state.gd")
 const REGION: RegionResource = preload("res://data/regions/green_hollow.tres")
 var _isolation: RefCounted
 var _time: int = 1000
+var _original_pool: Array[EncounterEntryResource] = []
 
 
 func before_each() -> void:
+	var region := REGION
+	_original_pool.assign(region.encounter_pool)
+	region.encounter_pool.assign(_original_pool.filter(
+		func(entry: EncounterEntryResource) -> bool: return entry.kind != "Combat"))
 	_isolation = Isolation.new()
 	assert_true(_isolation.begin())
 	_time = 1000
@@ -16,6 +21,8 @@ func before_each() -> void:
 
 
 func after_each() -> void:
+	var region := REGION
+	region.encounter_pool.assign(_original_pool)
 	_isolation.finish()
 
 
@@ -59,6 +66,38 @@ func test_running_and_completed_round_trip_without_regeneration() -> void:
 	SaveManager.load_or_create()
 	assert_eq(SaveManager.capture_state(), completed)
 	assert_false(ExpeditionManager.is_expedition_active())
+
+
+func test_live_combat_journals_fit_complete_saves_and_reload_without_log_loss() -> void:
+	var region := REGION
+	region.encounter_pool.assign(_original_pool)
+	var combat_count := 0
+	for seed_value in [1, 2]:
+		assert_true(RecruitmentService.initialize_new_game(12345))
+		GameState.expedition_seed = seed_value
+		var party := PartyData.new()
+		for index in range(GameState.roster.size()):
+			assert_true(party.place_hero(index, GameState.roster[index]))
+		assert_true(PartyFormationService.confirm(party, ExpeditionManager.balancing))
+		ExpeditionManager.start_expedition(region, GameState.current_party, 60)
+		assert_true(ExpeditionManager.last_committed, ExpeditionManager.last_error)
+		var original := SaveManager.capture_state()
+		assert_true(SaveManager.validate_snapshot(original))
+		if original.expedition == null:
+			continue
+		for step in original.expedition.steps:
+			if step.kind == ExpeditionStep.StepKind.COMBAT:
+				combat_count += 1
+				assert_false(step.result.rounds.is_empty())
+		var encoded := JSON.stringify(original, "", true, true)
+		var saved_text := FileAccess.get_file_as_string(SaveManager.get_save_path())
+		assert_lte(saved_text.to_utf8_buffer().size(), SaveManager.MAX_SAVE_BYTES)
+		assert_eq(JSON.parse_string(saved_text), JSON.parse_string(encoded))
+		GameState.reset()
+		SaveManager.load_or_create()
+		assert_true(SaveManager.last_success, SaveManager.last_error)
+		assert_eq(JSON.stringify(SaveManager.capture_state(), "", true, true), encoded)
+	assert_gt(combat_count, 0, "The live-pool save check must include generated Combat logs.")
 
 
 func test_saved_outcomes_and_snapshot_ignore_changed_encounters_and_class_statistics() -> void:

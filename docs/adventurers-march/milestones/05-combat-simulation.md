@@ -296,11 +296,11 @@ is `action_required`; the job-logs endpoint reports zero jobs. CI approval and
 all physical-device checks remain pending. Both delegated writers confirmed
 they had stopped with no pending writes.
 
-### Remaining implementation handoff
+### Slice 3 handoff (historical)
 
-This session deliberately stops after Slice 3 to preserve a verified checkpoint.
-**Milestone 5 is not complete, and production Green Hollow remains noncombat.**
-No Slice 4/5 production or UI files were edited.
+The Slice 3 session deliberately stopped to preserve a verified checkpoint.
+At that checkpoint Milestone 5 was incomplete and production Green Hollow
+remained noncombat. No Slice 4/5 production or UI files had been edited.
 
 1. **Next bounded action — Slice 4:** extend `ExpeditionCatalog` to validate
    Combat entries and terminal Retreat; call `CombatEngine.resolve_combat`
@@ -322,6 +322,87 @@ No Slice 4/5 production or UI files were edited.
    Only then activate the authored enemy groups in Green Hollow.
 5. Keep exported-device readability/lifecycle acceptance and workflow approval
    separate and pending until actually performed.
+
+### Slices 4–5 delivery (2026-09-07)
+
+The user accepted Milestones 1–4 and directed that device acceptance be
+considered done externally for now. This delivery resumes at the first
+unfinished code, Slice 4, then proceeds to Slice 5 after a validated checkpoint.
+It does not reopen pure combat or add Milestone 6 progression/equipment.
+
+- **Starting revision:** merged `bbe88d5`, with no unpublished source changes.
+  The [merged Android workflow](https://github.com/pompomon/godot-apk/actions/runs/34135467082)
+  passed 236 tests, Android export and artifact upload; its job/logs were
+  inspected. This supersedes the earlier Slice 3 approval blocker.
+- **Local baseline:** pinned Godot 4.7.2 clean import and the existing GUT suite
+  passed **236 tests / 19,229 assertions** across 20 scripts, with both hooks.
+  Android debug export produced a nonempty **28,444,351-byte** APK. The existing
+  missing-icon and unavailable-ADB diagnostics do not represent new regressions.
+- **Unchanged contracts:** version 4, complete per-Hero HP/status maps, zero
+  Combat gold, frozen logs and eight-byte snapshot probability encoding.
+  Select every encounter before resolving any; draw each Combat seed with the
+  same Expedition RNG. Capture skills only when the selected run has Combat.
+  Keep Green Hollow's existing nonterminal-Retreat default when activating it.
+- **Recovery:** observe due positive deadlines even without a running
+  Expedition. Newly Wounded deadlines start at the observation committing
+  finalization, not the historical effective ending. Rewards, recovery, Hero
+  statuses and run clocks share the existing save commit boundary.
+- **Delivery gates:** validate Slice 4 with controlled Combat fixtures while
+  production remains noncombat. Then add revealed-only logs, spoiler-safe
+  progress, recovery/Party availability updates and production activation.
+  One writer owns each integration file and one validation owner checks the
+  integrated revision; all writers must stop before publication.
+- **Device evidence:** external acceptance is attributed to the user; no
+  physical-device check is claimed by this agent.
+
+**Slice 4 validation:** generation focused checks passed **18 tests / 621
+assertions**; lifecycle focused checks passed **23 / 1,074**. The first integrated
+run exposed a missing null guard for an existing Party UI test subclass.
+The guard was restored without changing that test; its **15 / 244** focused
+checks passed. The corrected integrated revision passed clean import, **260
+tests / 20,027 assertions** across 22 scripts, and Android export with a
+**28,448,447-byte** APK, all exit 0. Both GUT hooks remained enabled. Logs:
+`/tmp/s4r-import.log`, `/tmp/s4r-tests.log`, `/tmp/s4r-export.log`.
+Read-only review found no significant issues and both writers confirmed they
+had stopped. The code was committed and pushed as **`1af1fd5`** and the clean
+working tree verified before starting Slice 5; production was still noncombat.
+
+**Slice 5 validation:** Home/Report use the existing spoiler-safe progress
+helpers, reports render frozen actions/outcomes, and recovery refreshes roster,
+detail and Party availability without replacing a local draft. Home exposes
+recovery retries without a running Expedition. Green Hollow now includes
+Forest Wolves (weight 2) and Bandit Skirmishers (weight 1), preserving its six
+original entries, 60-second planned duration, five pairs and nonterminal Retreat.
+Controlled fixtures retain the exact noncombat selection, timing, rewards and
+migration regressions. New live-content checks cover both groups, fixed-seed
+starter victories against wolves, and full Company save/reload round trips.
+
+Focused UI tests passed **16 / 274 assertions**; activation/regression checks
+passed **46 / 1,685**. The final integrated source revision based on `1af1fd5`
+passed clean import, **267 tests / 20,238 assertions** across 22 scripts, and
+Android debug export producing a signed, nonempty **28,448,447-byte** APK,
+all exit 0. Both GUT hooks remained enabled, with no skipped scripts or GUT
+errors. Logs: `/tmp/s5-final-import.log`, `/tmp/s5-final-tests.log`,
+`/tmp/s5-final-export.log`. The existing missing-icon/unavailable-ADB export
+diagnostics remain unchanged. Read-only review found no significant issues.
+All writers explicitly stopped before integrated validation/publication.
+Device acceptance is treated as external per the user's direction; no
+physical-device test was performed by this agent.
+
+**Publication and security:** final code was committed and pushed as
+**`9e1b6a9`**, with the working tree verified clean. Changed-file secret scans
+found no secrets. CodeQL was requested after each code checkpoint, but no
+changed language was supported, so **no CodeQL analysis was performed**;
+GDScript validation relied on the existing tests and bounded read-only reviews.
+The [Android workflow for `9e1b6a9`](https://github.com/pompomon/godot-apk/actions/runs/34140268503)
+is `action_required`; the job-logs endpoint reports zero jobs. Approve that
+workflow for remote CI verification. This blocker is separate from the passing
+local suite/export and external device acceptance, not a test failure or a
+passed CI run.
+
+**Scope complete:** slices 4–5 require no new save version, dependencies, or
+alternative validation tools. Milestone 6 progression/equipment and the full
+Resting recovery system remain the next bounded work, not part of this delivery.
 
 For each delivered slice, record its published revision/task or PR, scope,
 agreed decisions, validation commands and actual results, blockers, and next
@@ -506,15 +587,15 @@ integer encodings are rejected.
       correctly implemented and tested.
 - [x] Combat formulas consume the documented derived stats, including an
       effective defender `Evasion`, and are covered by hand-computed tests.
-- [ ] Green Hollow includes at least one Combat encounter using at least
+- [x] Green Hollow includes at least one Combat encounter using at least
       one enemy group.
-- [ ] HP carries across multiple Combats, and ordered
+- [x] HP carries across multiple Combats, and ordered
       `final_hero_states` merging correctly affects Hero status
       (Idle vs. Wounded) at Expedition finalization.
-- [ ] Terminal combat outcomes end reveal/finalization at the Combat step
+- [x] Terminal combat outcomes end reveal/finalization at the Combat step
       using the unchanged pre-truncation step duration and cannot grant
       rewards from later generated steps.
-- [ ] Expedition Report renders a readable combat log.
+- [x] Expedition Report renders a readable combat log.
 
 ## Risks
 

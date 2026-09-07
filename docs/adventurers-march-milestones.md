@@ -28,11 +28,11 @@ the single place to see overall status at a glance.
 
 | # | Milestone | Depends on | Status | Detail |
 |---|---|---|---|---|
-| 1 | Technical foundation | — | [ ] | [01-technical-foundation.md](adventurers-march/milestones/01-technical-foundation.md) |
-| 2 | Hero roster | 1 | [ ] | [02-hero-roster.md](adventurers-march/milestones/02-hero-roster.md) |
-| 3 | Party formation | 2 | [ ] | [03-party-formation.md](adventurers-march/milestones/03-party-formation.md) |
-| 4 | First expedition | 3 | [ ] | [04-first-expedition.md](adventurers-march/milestones/04-first-expedition.md) |
-| 5 | Combat simulation | 4 | [ ] | [05-combat-simulation.md](adventurers-march/milestones/05-combat-simulation.md) |
+| 1 | Technical foundation | — | [x] | [01-technical-foundation.md](adventurers-march/milestones/01-technical-foundation.md) |
+| 2 | Hero roster | 1 | [x] | [02-hero-roster.md](adventurers-march/milestones/02-hero-roster.md) |
+| 3 | Party formation | 2 | [x] | [03-party-formation.md](adventurers-march/milestones/03-party-formation.md) |
+| 4 | First expedition | 3 | [x] | [04-first-expedition.md](adventurers-march/milestones/04-first-expedition.md) |
+| 5 | Combat simulation | 4 | [x] | [05-combat-simulation.md](adventurers-march/milestones/05-combat-simulation.md) |
 | 6 | Progression and equipment | 5 | [ ] | [06-progression-and-equipment.md](adventurers-march/milestones/06-progression-and-equipment.md) |
 | 7 | Content expansion | 6 | [ ] | [07-content-expansion.md](adventurers-march/milestones/07-content-expansion.md) |
 | 8 | Presentation pass | 7 | [ ] | [08-presentation-pass.md](adventurers-march/milestones/08-presentation-pass.md) |
@@ -41,6 +41,12 @@ the single place to see overall status at a glance.
 Milestones 1–5 constitute the
 [first playable vertical slice](adventurers-march-implementation-plan.md#22-first-playable-vertical-slice-and-build-order).
 Milestones 6–9 build out full MVP scope and release readiness.
+
+**Acceptance update (2026-09-07):** the user accepted Milestones 1–4 and
+directed that device acceptance be considered complete externally for now.
+Their checked device criteria record that external acceptance, not device tests
+performed by this agent. Milestone 5 slices 4–5 were subsequently implemented
+and validated as recorded below; Milestone 6 is the next unfinished work.
 
 ---
 
@@ -61,10 +67,9 @@ Milestones 6–9 build out full MVP scope and release readiness.
 - [x] Set up a headless test framework (GUT or GdUnit4) under `tests/`
       with one passing smoke test.
 
-**Status:** implementation and local test/export validation are complete.
-The Android workflow passed on the merged foundation. The top-level milestone
-remains unchecked pending an exported-device portrait-rotation check; see the
-detail file's validation evidence.
+**Status:** accepted. Implementation and local test/export validation are
+complete, the Android workflow passed, and device acceptance was confirmed
+externally by the user on 2026-09-07.
 
 **Definition of done:** the project builds/exports via the existing
 Android workflow, boots to an empty Home screen through `UIManager`, all
@@ -96,9 +101,8 @@ Detail: [01-technical-foundation.md](adventurers-march/milestones/01-technical-f
 
 **Status:** implemented with automated generation, statistics, persistence,
 recruitment, and UI coverage. Three offers use functional flat-stat traits;
-XP progression remains deferred. The overall milestone remains unchecked until
-the exported-device checks and final validation evidence in the detail file
-are complete.
+XP progression remains deferred. Accepted by the user on 2026-09-07 with
+external device acceptance; see the detail file for validation evidence.
 
 **Definition of done:** a new game starts with 4 generated Heroes visible
 in the Company Roster screen; tapping a Hero opens Hero Detail showing
@@ -123,8 +127,8 @@ Detail: [02-hero-roster.md](adventurers-march/milestones/02-hero-roster.md)
 
 **Status:** implemented with draft-only editing, explicit disbanding,
 transactional Party/status persistence, migration, and automated coverage.
-The overall milestone remains unchecked pending exported-device acceptance;
-see the detail file for validation evidence and the remaining checks.
+Accepted by the user on 2026-09-07 with external device acceptance; see the
+detail file for validation evidence.
 
 **Definition of done:** the player can select up to 4 idle Heroes, place
 them in front/back slots, see a live-updating Party Power value, and only
@@ -152,15 +156,15 @@ Detail: [03-party-formation.md](adventurers-march/milestones/03-party-formation.
       Report screen (travel journal).
 - [x] Wire Home screen to show in-progress Expedition status and route to
       the Report screen when complete.
-- [ ] Verify offline/idle progress: closing and reopening the app reveals
+- [x] Verify offline/idle progress: closing and reopening the app reveals
       the correct amount of progress based on elapsed time.
 
 **Status:** implemented with five non-combat Travel/encounter pairs over
 60 seconds, frozen Party/journal snapshots, version-3 saves, transactional
 gold/status updates, and retained reports requiring acknowledgment.
 Clean import, all 182 tests, and the Android debug export passed locally.
-The overall milestone remains unchecked pending the exported-device
-offline/lifecycle checks in its detail file.
+Accepted by the user on 2026-09-07, including external device offline/lifecycle
+acceptance recorded in its detail file.
 
 **Definition of done:** the player can select the Party, start an
 Expedition to Green Hollow, see it progress on Home, and view a correct
@@ -179,24 +183,24 @@ Detail: [04-first-expedition.md](adventurers-march/milestones/04-first-expeditio
       (derived-stat hit/crit/damage/heal formulas including Evasion, round
       loop, outcome).
 - [x] Author 1–2 enemy-group data definitions for Green Hollow.
-- [ ] Wire Combat encounter steps into `ExpeditionManager`'s step
+- [x] Wire Combat encounter steps into `ExpeditionManager`'s step
       generation/resolution.
-- [ ] Truncate generated steps at Defeat or a Region-terminal Retreat and
+- [x] Truncate generated steps at Defeat or a Region-terminal Retreat and
       persist the terminal step/end timestamp without changing the stored
       pre-truncation step duration.
-- [ ] Carry HP through sequential Combats and merge `final_hero_states` by
+- [x] Carry HP through sequential Combats and merge `final_hero_states` by
       stable Hero ID before Expedition finalization.
-- [ ] Extend Expedition Report to render a readable combat log.
+- [x] Extend Expedition Report to render a readable combat log.
 - [x] Add one active skill per class (Guard / Firebolt / Mend / basic
       Ranger attack variant).
 
-**Status:** delivery slices 1–3 (contracts, pure combat, and persistence) are
-implemented. Version-4 saves validate frozen combat logs and migrate versions
-1–3; recovery deadlines are persisted/checkpointed but not yet observed.
-All 236 tests pass locally, with a successful Android debug export.
-The live encounter pool remains noncombat: slice 4 orchestration and slice 5
-presentation/activation are still pending. See the detail file for the tested
-checkpoints, CI approval blocker, and next bounded action.
+**Status:** all five delivery slices are implemented. Green Hollow includes
+Forest Wolves and Bandit Skirmishers; reports render revealed-only combat logs,
+and recovery refreshes Hero/Party availability after commit. Version-4 saves
+preserve frozen logs and migrate versions 1–3. All **267 tests / 20,238 assertions**
+pass locally, with a successful Android debug export. Device acceptance is
+treated as external per the user's direction, not as a device test run by this
+agent. See the detail file for separate local, publication and CI evidence.
 
 **Definition of done:** Combat steps in Green Hollow resolve
 deterministically via `CombatSimulator`, produce a correct

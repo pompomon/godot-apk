@@ -301,17 +301,18 @@ malformed encodings, nonfinite values, and probabilities outside `[0, 1]`.
 
 ### Exported-device acceptance
 
-Automated tests and debug export do not substitute for device checks. Keep the
-overall milestone unchecked until the following evidence is recorded:
+Accepted externally per the user's 2026-09-07 direction to accept Milestones
+1–4 and consider device acceptance done externally for now. These checks
+record that acceptance, not device testing performed by this agent:
 
-- [ ] Complete Party → Region → Expedition → Report → acknowledgment on Android.
-- [ ] Observe foreground progress without navigation, then background/resume
+- [x] Complete Party → Region → Expedition → Report → acknowledgment on Android.
+- [x] Observe foreground progress without navigation, then background/resume
   from Home and another screen.
-- [ ] Force-close during partial progress and verify correct continuation after
+- [x] Force-close during partial progress and verify correct continuation after
   relaunch; repeat after waiting beyond the duration and verify single rewards.
-- [ ] Restart with a completed, unacknowledged report and verify it remains
+- [x] Restart with a completed, unacknowledged report and verify it remains
   available; acknowledge, recruit/form a Party, and start the next Expedition.
-- [ ] Verify Back behavior, long-text wrapping, touch scrolling without
+- [x] Verify Back behavior, long-text wrapping, touch scrolling without
   accidental activation, portrait lock, and effective 48×48 dp touch targets.
 
 ## Implementation and validation evidence
@@ -342,9 +343,8 @@ overall milestone unchecked until the following evidence is recorded:
   `build/validation/`; the APK is `build/android/hello-world.apk`. These generated
   artifacts are ignored, not committed. Local results are not a claim of remote
   CI approval or physical-device acceptance.
-- **Device checks:** no physical Android device checks were performed.
-  The checklist above and earlier milestones' outstanding device checks remain
-  open; headless lifecycle tests do not prove force-quit behavior on a device.
+- **Device acceptance (2026-09-07):** accepted externally by the user as
+  recorded above; no device test was performed by this agent.
 
 ## Risks
 

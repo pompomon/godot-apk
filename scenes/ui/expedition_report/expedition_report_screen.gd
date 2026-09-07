@@ -57,8 +57,8 @@ func _refresh() -> void:
 		ExpeditionManager.mark_report_viewed()
 	_status.text = "%s · %s\nStep %d / %d · %d seconds remaining\nGold credited: %d" % [
 		_report.region_name, "Running" if _report.status == ExpeditionData.Status.RUNNING else "Completed",
-		_report.last_revealed_index + 1, _report.steps.size(),
-		_report.duration_seconds - _report.credited_elapsed_seconds, _report.credited_gold()]
+		_report.last_revealed_index + 1, _report.display_step_count(),
+		_report.seconds_remaining(), _report.credited_gold()]
 	if _shown_cursor != _report.last_revealed_index:
 		HeroUI.clear_children(_journal)
 		_shown_cursor = _report.last_revealed_index
@@ -67,9 +67,32 @@ func _refresh() -> void:
 		var steps := _report.steps
 		for index in range(_shown_cursor + 1):
 			var step := steps[index]
-			_journal.add_child(HeroUI.label("%d. %s\n%s\nGold: +%d" % [
-				index + 1, step.title, step.journal_text, int(step.result.gold)]))
+			var text := "%d. %s\n%s\nGold: +%d" % [
+				index + 1, step.title, step.journal_text, int(step.result.gold)]
+			if step.kind == ExpeditionStep.StepKind.COMBAT:
+				text += "\n" + _combat_text(step.result)
+			_journal.add_child(HeroUI.label(text))
 	HeroUI.show_feedback(_feedback, ExpeditionManager.last_error)
+
+
+func _combat_text(result: Dictionary) -> String:
+	var lines := PackedStringArray(["Outcome: %s" % String(result.outcome).capitalize()])
+	for round_entry in result.rounds:
+		lines.append("Round %d" % int(round_entry.round_number))
+		for action in round_entry.actions:
+			var effect := "Miss"
+			if action.hit:
+				match action.effect:
+					"Guard":
+						effect = "Guard active"
+					"Heal":
+						effect = "Healing power: %d HP" % int(action.damage_or_heal)
+					_:
+						effect = "%d damage%s" % [
+							int(action.damage_or_heal), " (critical)" if action.was_crit else ""]
+			lines.append("%s · %s → %s: %s" % [
+				action.actor_name, action.action_name, action.target_name, effect])
+	return "\n".join(lines)
 
 
 func _retry() -> void:

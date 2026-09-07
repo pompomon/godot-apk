@@ -12,11 +12,23 @@ var _main: Control
 var _root: Control
 var _time: int = 1000
 var _auto_accept_quit: bool
+var _pool: Array[EncounterEntryResource]
+var _enemy_states: Array[Dictionary]
+var _enemy_name: String
+var _terminal_retreat: bool
 
 
 func before_each() -> void:
 	_isolation = Isolation.new()
 	assert_true(_isolation.begin())
+	var region := ExpeditionCatalog.GREEN_HOLLOW
+	_pool = region.encounter_pool.duplicate()
+	_terminal_retreat = region.retreat_ends_expedition
+	region.encounter_pool.assign(_pool.filter(
+		func(entry: EncounterEntryResource) -> bool: return entry.kind != "Combat"))
+	var enemies := CombatCatalog.BANDIT_SKIRMISHERS
+	_enemy_states = enemies.enemies.duplicate(true)
+	_enemy_name = enemies.display_name
 	_auto_accept_quit = get_tree().auto_accept_quit
 	_time = 1000
 	ExpeditionManager.clock = func() -> int: return _time
@@ -31,6 +43,12 @@ func after_each() -> void:
 	_main.free()
 	await get_tree().process_frame
 	get_tree().auto_accept_quit = _auto_accept_quit
+	var region := ExpeditionCatalog.GREEN_HOLLOW
+	region.encounter_pool.assign(_pool)
+	region.retreat_ends_expedition = _terminal_retreat
+	var enemies := CombatCatalog.BANDIT_SKIRMISHERS
+	enemies.enemies.assign(_enemy_states)
+	enemies.display_name = _enemy_name
 	_isolation.finish()
 
 
@@ -376,3 +394,183 @@ func test_successful_navigation_latches_duplicate_transaction_callbacks() -> voi
 	await get_tree().process_frame
 	assert_eq(_screen().scene_file_path, HOME)
 	assert_null(ExpeditionManager.get_active_expedition())
+
+
+func _combat_fixture(outcome: String) -> void:
+	var entry := EncounterEntryResource.new()
+	entry.kind = "Combat"
+	entry.content_id = &"bandit_skirmishers"
+	entry.weight = 1.0
+	var region := ExpeditionCatalog.GREEN_HOLLOW
+	region.encounter_pool.assign([entry])
+	region.retreat_ends_expedition = outcome == "RETREAT"
+	var enemies := CombatCatalog.BANDIT_SKIRMISHERS
+	enemies.display_name = "Hidden ambush"
+	enemies.enemies.assign([{
+		"combatant_id": "hidden-raider", "display_name": "Hidden raider",
+		"row": "Front", "basic_attack_target_rule": "FrontRowFirst",
+		"derived_stats": {"MaxHP": 100000, "Attack": 10000 if outcome == "DEFEAT" else 1,
+			"MagicPower": 0, "Defense": 0, "Evasion": 0.0,
+			"Initiative": 10000, "CritChance": 0.0},
+	}])
+	ExpeditionManager.balancing = ExpeditionManager.DEFAULT_BALANCING.duplicate(true)
+	ExpeditionManager.balancing.base_hit_chance = 1.0
+	ExpeditionManager.balancing.min_hit_chance = 1.0
+	ExpeditionManager.balancing.max_hit_chance = 1.0
+	ExpeditionManager.balancing.max_crit_chance = 0.0
+	ExpeditionManager.balancing.max_combat_rounds = 20 if outcome == "DEFEAT" else 1
+
+
+func test_terminal_combat_is_hidden_until_committed_and_saved_log_survives_retuning() -> void:
+	_combat_fixture("DEFEAT")
+	await _dispatch()
+	var run := ExpeditionManager.get_active_expedition()
+	assert_eq(run.steps.size(), 2)
+	assert_string_contains(_node("ExpeditionLabel").text, "Step 0 / 10")
+	assert_string_contains(_node("ExpeditionLabel").text, "60 seconds remaining")
+	_time = 1011
+	ExpeditionManager.observe_foreground()
+	assert_string_contains(_node("ExpeditionLabel").text, "Step 1 / 10")
+	assert_string_contains(_node("ExpeditionLabel").text, "49 seconds remaining")
+	await _go(REPORT)
+	assert_false(_visible_text(_screen()).contains("Hidden ambush"))
+	assert_false(_visible_text(_screen()).contains("Hidden raider"))
+	assert_false(_visible_text(_screen()).contains("Defeat"))
+	var enemies := CombatCatalog.BANDIT_SKIRMISHERS
+	enemies.display_name = "Retuned group"
+	enemies.enemies.clear()
+	SaveManager.fault_injector = func(stage: String) -> bool: return stage == "before_primary_replace"
+	_time = 1012
+	ExpeditionManager.observe_foreground()
+	assert_eq(run.last_revealed_index, 0)
+	assert_eq(GameState.roster[0].status, HeroData.HeroStatus.ON_EXPEDITION)
+	assert_string_contains(_node("FeedbackLabel").text, "not saved")
+	assert_false(_visible_text(_node("Journal")).contains("Hidden raider"))
+	assert_false(_node("AcknowledgeButton").visible)
+	SaveManager.fault_injector = Callable()
+	_node("RetryButton").pressed.emit()
+	assert_eq(run.status, ExpeditionData.Status.COMPLETED)
+	assert_eq(GameState.roster[0].status, HeroData.HeroStatus.WOUNDED)
+	assert_string_contains(_node("StatusLabel").text, "Step 2 / 2")
+	assert_string_contains(_node("StatusLabel").text, "0 seconds remaining")
+	var journal := _visible_text(_node("Journal"))
+	assert_string_contains(journal, "Hidden ambush")
+	assert_string_contains(journal, "Hidden raider")
+	assert_string_contains(journal, "Outcome: Defeat")
+	assert_string_contains(journal, "Round 1")
+	assert_string_contains(journal, "damage")
+	assert_false(journal.contains("Retuned group"))
+	assert_true(_node("AcknowledgeButton").visible)
+	var gold := GameState.gold
+	SaveManager.load_or_create()
+	await _go(REPORT)
+	assert_eq(_visible_text(_node("Journal")), journal)
+	assert_eq(GameState.gold, gold)
+	_node("HomeButton").pressed.emit()
+	await get_tree().process_frame
+	assert_string_contains(_node("ExpeditionLabel").text, "Step 2 / 2")
+	assert_string_contains(_node("ExpeditionLabel").text, "0 seconds remaining")
+
+
+func test_terminal_retreat_report_shows_guard_and_releases_survivor_after_reload() -> void:
+	_combat_fixture("RETREAT")
+	await _dispatch()
+	await _go(REPORT)
+	_time = 1012
+	ExpeditionManager.observe_foreground()
+	assert_string_contains(_visible_text(_node("Journal")), "Outcome: Retreat")
+	assert_string_contains(_visible_text(_node("Journal")), "Guard active")
+	assert_string_contains(_node("StatusLabel").text, "0 seconds remaining")
+	assert_eq(GameState.roster[0].status, HeroData.HeroStatus.IDLE)
+	assert_eq(GameState.roster[0].recovery_ready_at, 0)
+	var text := _visible_text(_node("Journal"))
+	SaveManager.load_or_create()
+	await _go(REPORT)
+	assert_eq(_visible_text(_node("Journal")), text)
+
+
+func test_combat_log_formats_overheal_as_healing_power() -> void:
+	await _go(REPORT)
+	var result := {
+		"outcome": "VICTORY", "rounds": [{"round_number": 1, "actions": [
+			{"actor_name": "Ranger", "action_name": "Aimed Shot", "target_name": "Wolf",
+				"effect": "Physical", "damage_or_heal": 0, "hit": false, "was_crit": false},
+			{"actor_name": "Wizard", "action_name": "Firebolt", "target_name": "Wolf",
+				"effect": "Magic", "damage_or_heal": 17, "hit": true, "was_crit": true},
+			{"actor_name": "Cleric", "action_name": "Mend", "target_name": "Knight",
+				"effect": "Heal", "damage_or_heal": 9, "hit": true, "was_crit": false},
+			{"actor_name": "Knight", "action_name": "Guard", "target_name": "Knight",
+				"effect": "Guard", "damage_or_heal": 0, "hit": true, "was_crit": false},
+		]}],
+	}
+	assert_eq(_screen().call("_combat_text", result), "\n".join([
+		"Outcome: Victory", "Round 1",
+		"Ranger · Aimed Shot → Wolf: Miss",
+		"Wizard · Firebolt → Wolf: 17 damage (critical)",
+		"Cleric · Mend → Knight: Healing power: 9 HP",
+		"Knight · Guard → Knight: Guard active",
+	]))
+
+
+func test_recovery_refreshes_roster_detail_and_party_draft_only_after_commit() -> void:
+	var first := GameState.roster[0]
+	var second := GameState.roster[1]
+	first.status = HeroData.HeroStatus.WOUNDED
+	first.recovery_ready_at = 1010
+	second.status = HeroData.HeroStatus.WOUNDED
+	second.recovery_ready_at = 1020
+	SaveManager.save()
+	assert_true(SaveManager.last_committed)
+	await _go(ROSTER)
+	var row := _node("RosterList").get_child(0)
+	assert_string_contains(_visible_text(row), "Wounded")
+	_time = 1010
+	ExpeditionManager._timer.timeout.emit()
+	assert_same(_node("RosterList").get_child(0), row)
+	assert_string_contains(_visible_text(row), "Idle")
+	await _go(DETAIL, {"hero_id": second.hero_id})
+	assert_string_contains(_node("HeroSummaryLabel").text, "Wounded")
+	_time = 1020
+	ExpeditionManager._timer.timeout.emit()
+	assert_string_contains(_node("HeroSummaryLabel").text, "Idle")
+	first.status = HeroData.HeroStatus.WOUNDED
+	first.recovery_ready_at = 1030
+	SaveManager.save()
+	await _go(FORMATION)
+	_screen().call("_place", second)
+	var draft: PartyData = _screen().get("draft")
+	var before := draft.slots.duplicate()
+	assert_eq(_node("AvailableList").get_child_count(), 2)
+	SaveManager.fault_injector = func(stage: String) -> bool: return stage == "before_temp_write"
+	_time = 1030
+	ExpeditionManager._timer.timeout.emit()
+	assert_eq(first.status, HeroData.HeroStatus.WOUNDED)
+	assert_eq(_node("AvailableList").get_child_count(), 2)
+	assert_eq(draft.slots, before)
+	assert_string_contains(_node("FeedbackLabel").text, "not saved")
+	SaveManager.fault_injector = Callable()
+	ExpeditionManager._timer.timeout.emit()
+	assert_eq(first.status, HeroData.HeroStatus.IDLE)
+	assert_eq(_node("AvailableList").get_child_count(), 3)
+	assert_same(_screen().get("draft"), draft)
+	assert_eq(draft.slots, before)
+	assert_null(GameState.current_party, "Recovery never confirms the scene-local draft.")
+
+
+func test_home_exposes_recovery_retry_without_an_expedition_or_report() -> void:
+	var hero := GameState.roster[0]
+	hero.status = HeroData.HeroStatus.WOUNDED
+	hero.recovery_ready_at = 1010
+	SaveManager.save()
+	SaveManager.fault_injector = func(stage: String) -> bool: return stage == "before_primary_replace"
+	_time = 1010
+	ExpeditionManager._timer.timeout.emit()
+	assert_null(ExpeditionManager.get_active_expedition())
+	assert_eq(hero.status, HeroData.HeroStatus.WOUNDED)
+	assert_true(_node("RetryProgressButton").visible)
+	assert_string_contains(_node("FeedbackLabel").text, "not saved")
+	SaveManager.fault_injector = Callable()
+	_node("RetryProgressButton").pressed.emit()
+	assert_eq(hero.status, HeroData.HeroStatus.IDLE)
+	assert_eq(hero.recovery_ready_at, 0)
+	assert_false(_node("RetryProgressButton").visible)

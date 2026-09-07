@@ -262,20 +262,21 @@ offer keeps that ID when recruited. Callers reserve the `hero_ids` passed to
       from a missing or invalid primary via `.bak` before restoring the
       primary.
 
-### Exported-device acceptance still required
+### Exported-device acceptance
 
-The implementation and automated checks do not substitute for these manual
-checks. Keep the overall milestone unchecked until they are recorded:
+Accepted externally per the user's 2026-09-07 direction to accept Milestones
+1–4 and consider device acceptance done externally for now. These checks
+record that acceptance, not device testing performed by this agent:
 
-- [ ] Install the exported ARM64 APK and cold-launch a new Company; inspect
+- [x] Install the exported ARM64 APK and cold-launch a new Company; inspect
   each class and confirm name, attributes, traits, status, and inactive XP UI.
-- [ ] Verify scrolling, long-text wrapping, readability, and effective
+- [x] Verify scrolling, long-text wrapping, readability, and effective
   48×48 dp touch targets on a target-density Android device.
-- [ ] Recruit an offer, force-close and relaunch the app, and confirm the same
+- [x] Recruit an offer, force-close and relaunch the app, and confirm the same
   Hero ID, five-Hero roster, zero gold, and unchanged replacement offers.
-- [ ] Verify recovery with a missing and a corrupt primary while retaining a
+- [x] Verify recovery with a missing and a corrupt primary while retaining a
   valid backup; confirm feedback and that the backup is not overwritten.
-- [ ] Enable auto-rotate and rotate the device; the game remains portrait.
+- [x] Enable auto-rotate and rotate the device; the game remains portrait.
   This also closes the foundation's outstanding device check.
 
 ## Implementation and validation evidence
@@ -308,12 +309,14 @@ backup recovery, and Home/Roster/Detail navigation.
 - **Security:** changed-file secret scanning found no secrets. CodeQL was
   invoked for these non-trivial changes, but no changed language is supported
   by its available analyzers; **GDScript was not analyzed**.
-- **CI pending:** the [implementation workflow](https://github.com/pompomon/godot-apk/actions/runs/34018091613)
+- **Historical CI blocker:** the [implementation workflow](https://github.com/pompomon/godot-apk/actions/runs/34018091613)
   for `578c1e5` requires approval (`action_required`); its jobs/logs endpoint
-  reports zero jobs. Approve the existing Android workflow to verify the final
-  isolated suite and CI export. Local export is not a substitute for that run.
-- **Device pending:** no Android device or compatible emulator was connected.
-  Complete the manual checklist above before checking the overall milestone.
+  reported zero jobs at that checkpoint. Subsequently, the
+  [merged workflow on `bbe88d5`](https://github.com/pompomon/godot-apk/actions/runs/34135467082)
+  passed the integrated test/export gate on 2026-09-07; its job and export/upload
+  logs were checked during Combat integration.
+- **Device acceptance (2026-09-07):** accepted externally by the user as
+  recorded above; no device test was performed by this agent.
 
 ## Risks
 

@@ -229,12 +229,14 @@ second recruitment-price constant.
 - [x] App boots to an empty Home screen via `UIManager`.
 - [x] Headless test framework runs with ≥1 passing test.
 - [x] Android debug export CI workflow still passes.
-- [ ] Exported Android app remains portrait while the device rotates.
+- [x] Exported Android app remains portrait while the device rotates.
 
 ## Implementation and validation evidence
 
-Implemented the foundation; its overall milestone remains **pending** until
-the exported-device rotation check above is complete. CI has passed.
+Implemented and accepted. On 2026-09-07 the user accepted Milestones 1–4 and
+directed that device acceptance be considered complete externally for now.
+The checked rotation criterion records that external acceptance; this agent
+did not perform a device test. CI has passed.
 
 - **Resources and structure:** all nine Resource contracts are implemented,
   including typed nested arrays and Inspector hints. Empty future-content/screen
@@ -290,10 +292,9 @@ the exported-device rotation check above is complete. CI has passed.
   passed on `8923be4`, including clean import, headless tests, signed Android
   export, and APK upload. Its build job/logs were verified during Milestone 2.
   This evidence closes the foundation CI check, not the device check.
-- **Device check pending:** no Android device or compatible emulator is
-  connected. Install the exported ARM64 APK, enable auto-rotate, cold-launch
-  Home, and rotate the device. Manifest inspection alone does not complete this
-  acceptance check.
+- **Device acceptance (2026-09-07):** accepted externally per the user's
+  direction above. Earlier sessions had no connected Android device or
+  compatible emulator; manifest inspection was not treated as a device test.
 
 ## Risks
 

@@ -173,17 +173,18 @@ its future effects will flow through that shared calculator.
 
 ### Exported-device acceptance
 
-Automated tests do not substitute for device checks. Keep the overall
-milestone unchecked until these checks and final validation evidence are recorded:
+Accepted externally per the user's 2026-09-07 direction to accept Milestones
+1–4 and consider device acceptance done externally for now. These checks
+record that acceptance, not device testing performed by this agent:
 
-- [ ] Form a partial and full Party, move/remove members, and verify displayed
+- [x] Form a partial and full Party, move/remove members, and verify displayed
   Power and status badges on a target Android device.
-- [ ] Confirm, force-close, and relaunch: identical Heroes occupy the saved
+- [x] Confirm, force-close, and relaunch: identical Heroes occupy the saved
   slots. Cancel an edit and relaunch: the previously confirmed Party remains.
-- [ ] Disband and relaunch: no Party remains and its members are `Idle`.
-- [ ] Verify Android Back cancels edits without disbanding or unexpectedly
+- [x] Disband and relaunch: no Party remains and its members are `Idle`.
+- [x] Verify Android Back cancels edits without disbanding or unexpectedly
   quitting; backgrounding never commits a draft.
-- [ ] Verify long-text wrapping, scrolling without accidental activation,
+- [x] Verify long-text wrapping, scrolling without accidental activation,
   portrait lock, and effective 48×48 dp touch targets at target density.
 
 ## Implementation and validation evidence
@@ -208,10 +209,8 @@ disbanding, and version-2 saves with validated version-1 migration.
 - **Android export:** the existing debug preset exported successfully and
   APK signature verification passed. The pre-existing missing-icon diagnostic
   remains; no application/package identifiers or export presets were changed.
-- **Device checks:** no physical Android device checks were performed.
-  The exported-device checklist above and earlier milestones' outstanding
-  acceptance evidence remain open; headless UI/touch tests do not prove
-  target-density sizing or device lifecycle behavior.
+- **Device acceptance (2026-09-07):** accepted externally by the user as
+  recorded above; no device test was performed by this agent.
 - **Save compatibility:** a valid version-1 primary migrates in memory and is
   written as version 2 on the next save; version-1 backup recovery writes a
   version-2 primary without modifying the valid legacy backup.

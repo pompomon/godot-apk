@@ -164,9 +164,80 @@ func test_authored_combat_catalog_and_class_skills() -> void:
 	var groups: Array[EnemyGroupResource] = CombatCatalog.enemy_groups()
 	groups.clear()
 	assert_eq(CombatCatalog.enemy_groups().size(), 2)
-	assert_true(ExpeditionCatalog.validate_region(ExpeditionCatalog.GREEN_HOLLOW, balancing))
-	for entry in ExpeditionCatalog.GREEN_HOLLOW.encounter_pool:
-		assert_ne(entry.kind, "Combat", "Authoring does not activate Combat.")
+	var region := ExpeditionCatalog.GREEN_HOLLOW
+	assert_true(ExpeditionCatalog.validate_region(region, balancing))
+	assert_eq(region.duration_options_seconds, [60])
+	assert_eq(region.travel_step_count, 5)
+	assert_false(region.retreat_ends_expedition)
+	var pool: Array = []
+	for entry in region.encounter_pool:
+		pool.append([entry.kind, String(entry.content_id), entry.weight])
+		assert_gt(entry.weight, 0.0)
+		if entry.kind == "Combat":
+			var group := CombatCatalog.enemy_group_by_id(String(entry.content_id))
+			assert_not_null(group)
+			assert_true(CombatCatalog.validate_enemy_group(group))
+			if group != null:
+				assert_gt(group.enemies.size(), 0)
+	assert_eq(pool, [
+		["Loot", "green_hollow_loot", 2.0],
+		["Event", "green_hollow_bridge", 1.0],
+		["Event", "green_hollow_spring", 1.0],
+		["Event", "green_hollow_caravan", 1.0],
+		["Event", "green_hollow_fireflies", 1.0],
+		["Event", "green_hollow_ruins", 1.0],
+		["Combat", "forest_wolves", 2.0],
+		["Combat", "bandit_skirmishers", 1.0],
+	])
+
+
+func test_live_green_hollow_is_deterministic_and_starter_party_beats_wolves() -> void:
+	var balancing: BalancingConfig = load("res://data/balancing/default_balancing.tres")
+	var region := ExpeditionCatalog.GREEN_HOLLOW
+	var party := PartyData.new()
+	var classes := HeroCatalog.classes()
+	for index in range(classes.size()):
+		var single_class: Array[HeroClassResource] = [classes[index]]
+		var hero := HeroGenerator.generate_hero("hero-%d" % (index + 1),
+			RecruitmentService.seed_at(12345, index), single_class, HeroCatalog.traits())
+		assert_not_null(hero)
+		assert_true(party.place_hero(index, hero))
+	var snapshot := ExpeditionPartySnapshot.capture(party, true)
+	assert_not_null(snapshot)
+	if snapshot == null:
+		return
+	var selected_groups := {}
+	for seed_value in [0, 1, 2, 42, 12345]:
+		var result := CombatEngine.resolve_combat(snapshot, snapshot.hero_states(),
+			CombatCatalog.FOREST_WOLVES, seed_value, balancing)
+		assert_false(result.has("error"))
+		assert_eq(result.get("outcome"), "VICTORY", "Starter Party versus Forest Wolves, seed %d" % seed_value)
+		var run := ExpeditionGenerator.generate(region, party, seed_value, 60, 1000, balancing)
+		var repeated := ExpeditionGenerator.generate(region, party, seed_value, 60, 1000, balancing)
+		assert_not_null(run)
+		assert_not_null(repeated)
+		if run == null or repeated == null:
+			continue
+		assert_true(ExpeditionData.valid(run.serialize()))
+		var encoded := JSON.stringify(run.serialize(), "", true, true)
+		assert_eq(JSON.stringify(repeated.serialize(), "", true, true), encoded)
+		assert_true(ExpeditionData.valid(JSON.parse_string(encoded)))
+		assert_eq(run.planned_step_count, 10)
+		assert_eq(run.step_duration_seconds, 6)
+		assert_false(run.retreat_ends_expedition)
+		for step in run.steps:
+			if step.kind != ExpeditionStep.StepKind.COMBAT:
+				continue
+			assert_true(step.content_id in ["forest_wolves", "bandit_skirmishers"])
+			selected_groups[step.content_id] = true
+			var group := CombatCatalog.enemy_group_by_id(step.content_id)
+			var expected_enemy_ids: Array = []
+			for enemy in group.enemies:
+				expected_enemy_ids.append(enemy.combatant_id)
+			assert_eq(step.result.enemy_states.keys(), expected_enemy_ids)
+			assert_false(step.result.rounds.is_empty())
+			assert_lte(step.result.rounds.size(), balancing.max_combat_rounds)
+	assert_eq(selected_groups.size(), 2, "Fixed live-pool seeds exercise both authored Combat groups.")
 
 
 func _assert_hint(resource: Resource, field: String, hint: int, hint_string: String) -> void:

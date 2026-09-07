@@ -6,9 +6,14 @@ const STAGES := ["before_temp_write", "after_temp_validation", "after_backup_pre
 	"after_backup_replace", "before_primary_replace", "after_primary_replace"]
 var _isolation: RefCounted
 var _time: int = 1000
+var _original_pool: Array[EncounterEntryResource] = []
 
 
 func before_each() -> void:
+	var region := REGION
+	_original_pool.assign(region.encounter_pool)
+	region.encounter_pool.assign(_original_pool.filter(
+		func(entry: EncounterEntryResource) -> bool: return entry.kind != "Combat"))
 	_isolation = Isolation.new()
 	assert_true(_isolation.begin())
 	_time = 1000
@@ -18,6 +23,8 @@ func before_each() -> void:
 
 
 func after_each() -> void:
+	var region := REGION
+	region.encounter_pool.assign(_original_pool)
 	_isolation.finish()
 
 

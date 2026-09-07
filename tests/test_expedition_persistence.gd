@@ -109,6 +109,9 @@ func test_rejects_malformed_numbers_timing_cursors_state_and_unknown_fields() ->
 		["last_revealed_index", 0], ["last_revealed_index", -2], ["last_revealed_index", 10],
 		["terminal_step_index", 0], ["terminal_step_index", -2], ["status", 1], ["status", 2],
 		["steps", []], ["steps", {}], ["party_snapshot", {}], ["status", "RUNNING"],
+		["planned_step_count", 0], ["planned_step_count", 9], ["planned_step_count", 1026],
+		["planned_step_count", 8], ["planned_step_count", true], ["planned_step_count", 10.5],
+		["retreat_ends_expedition", 0], ["retreat_ends_expedition", "false"],
 	]
 	for change in changes:
 		var bad := original.duplicate(true)
@@ -218,15 +221,19 @@ func test_v2_migration_validates_original_party_before_releasing_legacy_on_exped
 	var legacy := SaveManager.capture_state()
 	for key in ["expedition", "expedition_seed", "expedition_sequence"]:
 		legacy.erase(key)
+	for hero in legacy.roster + legacy.recruitment_offers:
+		hero.erase("recovery_ready_at")
 	legacy.save_version = 2
 	legacy.roster[1].status = "ON_EXPEDITION"
 	legacy.unlocked_regions = ["forest", "arbitrary-old-region"]
 	var expected := legacy.duplicate(true)
-	expected.save_version = 3
+	expected.save_version = 4
 	expected.expedition = null
 	expected.expedition_seed = expected.recruitment_seed
 	expected.expedition_sequence = 0
 	expected.roster[1].status = "IDLE"
+	for hero in expected.roster + expected.recruitment_offers:
+		hero.recovery_ready_at = 0
 	assert_eq(SaveManager.migrate(legacy), expected)
 	_write(SaveManager.get_save_path(), legacy)
 	SaveManager.load_or_create()
@@ -239,6 +246,78 @@ func test_v2_migration_validates_original_party_before_releasing_legacy_on_exped
 	var orphan := legacy.duplicate(true)
 	orphan.roster[2].status = "ASSIGNED"
 	assert_eq(SaveManager.migrate(orphan), {})
+	var future_field := legacy.duplicate(true)
+	future_field.roster[0].recovery_ready_at = 0
+	assert_eq(SaveManager.migrate(future_field), {})
+
+
+func _version_three(snapshot: Dictionary) -> Dictionary:
+	var legacy := snapshot.duplicate(true)
+	legacy.save_version = 3
+	for hero in legacy.roster + legacy.recruitment_offers:
+		hero.erase("recovery_ready_at")
+	if legacy.expedition != null:
+		legacy.expedition.erase("planned_step_count")
+		legacy.expedition.erase("retreat_ends_expedition")
+	return legacy
+
+
+func test_version_three_running_and_completed_records_migrate_without_rewriting_history() -> void:
+	_start()
+	for now in [1025, 1060]:
+		_time = now
+		ExpeditionManager.reveal_progress()
+		var expected := SaveManager.capture_state()
+		var legacy := _version_three(expected)
+		var original := legacy.duplicate(true)
+		var migrated := SaveManager.migrate(legacy)
+		assert_eq(migrated, expected)
+		assert_eq(legacy, original)
+		_write(SaveManager.get_save_path(), legacy)
+		GameState.reset()
+		SaveManager.load_or_create()
+		assert_true(SaveManager.last_success, SaveManager.last_error)
+		assert_eq(SaveManager.capture_state(), expected)
+		assert_eq(JSON.stringify(SaveManager.capture_state(), "", true, true), JSON.stringify(expected, "", true, true))
+		assert_eq(ExpeditionManager.get_active_expedition().planned_step_count, 10)
+		assert_false(ExpeditionManager.get_active_expedition().retreat_ends_expedition)
+		migrated.expedition.steps[0].title = "Detached migration"
+		assert_eq(legacy, original)
+
+
+func test_version_three_rejects_malformed_originals_and_future_fields_before_migration() -> void:
+	var legacy := _version_three(_start())
+	var cases: Array = []
+	for key in legacy.expedition:
+		var bad := legacy.duplicate(true)
+		bad.expedition.erase(key)
+		cases.append(bad)
+	for change in [["planned_step_count", 10], ["retreat_ends_expedition", false],
+			["terminal_step_index", 9], ["effective_end_timestamp", 1012],
+			["last_revealed_index", 0], ["credited_elapsed_seconds", true], ["status", 1]]:
+		var bad := legacy.duplicate(true)
+		bad.expedition[change[0]] = change[1]
+		cases.append(bad)
+	var bad := legacy.duplicate(true)
+	bad.roster[0].recovery_ready_at = 0
+	cases.append(bad)
+	bad = legacy.duplicate(true)
+	bad.roster[0].status = "IDLE"
+	cases.append(bad)
+	bad = legacy.duplicate(true)
+	bad.expedition.steps[1].kind = ExpeditionStep.StepKind.COMBAT
+	cases.append(bad)
+	bad = legacy.duplicate(true)
+	bad.expedition.party_snapshot.FRONT_LEFT.active_skill = CombatCatalog.GUARD.snapshot()
+	cases.append(bad)
+	bad = legacy.duplicate(true)
+	bad.expedition.steps[1].result = {"gold": 0, "outcome": "VICTORY"}
+	cases.append(bad)
+	for invalid in cases:
+		assert_eq(SaveManager.migrate(invalid), {}, str(invalid))
+	var original := legacy.duplicate(true)
+	assert_false(SaveManager.migrate(legacy).is_empty())
+	assert_eq(legacy, original)
 
 
 func test_missing_or_corrupt_primary_recovers_expedition_backup_and_clears_stale_state() -> void:

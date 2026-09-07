@@ -20,6 +20,7 @@ var traits: Array[HeroTraitResource] = []
 var equipped_weapon: ItemResource = null
 var equipped_armor: ItemResource = null
 var status: HeroStatus = HeroStatus.IDLE
+var recovery_ready_at: int = 0
 
 
 func _init(id: String = "") -> void:

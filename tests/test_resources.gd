@@ -6,6 +6,7 @@ func test_exported_resource_contracts() -> void:
 		[HeroClassResource.new(), {
 			"class_id": TYPE_STRING_NAME, "display_name": TYPE_STRING,
 			"basic_attack_target_rule": TYPE_STRING,
+			"active_skill": TYPE_OBJECT,
 			"base_attribute_ranges": TYPE_DICTIONARY, "per_level_growth": TYPE_DICTIONARY,
 			"derived_stat_bases": TYPE_DICTIONARY,
 			"derived_stat_attribute_weights": TYPE_DICTIONARY,
@@ -19,6 +20,13 @@ func test_exported_resource_contracts() -> void:
 			"item_id": TYPE_STRING_NAME, "display_name": TYPE_STRING,
 			"slot": TYPE_STRING, "rarity": TYPE_STRING_NAME,
 			"stat_modifiers": TYPE_DICTIONARY,
+		}],
+		[SkillResource.new(), {
+			"skill_id": TYPE_STRING_NAME, "display_name": TYPE_STRING,
+			"effect": TYPE_STRING, "target_rule": TYPE_STRING, "cooldown_turns": TYPE_INT,
+		}],
+		[EnemyGroupResource.new(), {
+			"group_id": TYPE_STRING_NAME, "display_name": TYPE_STRING, "enemies": TYPE_ARRAY,
 		}],
 		[EncounterEntryResource.new(), {
 			"kind": TYPE_STRING, "content_id": TYPE_STRING_NAME, "weight": TYPE_FLOAT,
@@ -66,6 +74,7 @@ func test_exported_resource_contracts() -> void:
 
 
 func test_nested_collections_are_typed() -> void:
+	assert_eq(EnemyGroupResource.new().enemies.get_typed_builtin(), TYPE_DICTIONARY)
 	assert_eq(HeroTraitResource.new().flags.get_typed_builtin(), TYPE_STRING_NAME)
 	assert_eq(RegionResource.new().duration_options_seconds.get_typed_builtin(), TYPE_INT)
 	assert_eq(RegionResource.new().encounter_pool.get_typed_script(), EncounterEntryResource)
@@ -73,6 +82,9 @@ func test_nested_collections_are_typed() -> void:
 
 
 func test_inspector_hints_and_positive_defaults() -> void:
+	_assert_hint(SkillResource.new(), "effect", PROPERTY_HINT_ENUM, "Physical,Magic,Heal,Guard")
+	_assert_hint(SkillResource.new(), "target_rule", PROPERTY_HINT_ENUM, "FrontRowFirst,AnySlot,LowestHPAlly,Self")
+	assert_eq(SkillResource.new().cooldown_turns, 2)
 	_assert_hint(HeroClassResource.new(), "basic_attack_target_rule",
 		PROPERTY_HINT_ENUM, "FrontRowFirst,AnySlot")
 	_assert_hint(ItemResource.new(), "slot", PROPERTY_HINT_ENUM, "Weapon,Armor")
@@ -112,10 +124,49 @@ func test_default_balancing_asset() -> void:
 	assert_eq(balancing.missing_front_row_factor, 0.85)
 	assert_eq(balancing.party_size_divisor, 4.0)
 	assert_eq(balancing.max_combat_rounds, 20)
+	assert_eq(balancing.skill_damage_multipliers, {
+		"aimed_shot": 1.5, "firebolt": 1.5, "guard": 0.5, "mend": 1.0,
+	})
 	assert_eq(balancing.encounter_kind_weight_multipliers, {
 		"Loot": 1.0, "Event": 1.0, "Combat": 1.0,
 	})
 	assert_eq(balancing.max_offline_delta_seconds, 86400)
+	assert_eq(balancing.base_recovery_seconds, 60)
+
+
+func test_authored_combat_catalog_and_class_skills() -> void:
+	var balancing: BalancingConfig = load("res://data/balancing/default_balancing.tres")
+	assert_true(CombatCatalog.validate_catalog(CombatCatalog.skills(), CombatCatalog.enemy_groups(), balancing))
+	assert_eq(CombatCatalog.skills().size(), 4)
+	assert_eq(CombatCatalog.enemy_groups().size(), 2)
+	assert_null(CombatCatalog.skill_by_id("../skills/unknown"))
+	assert_null(CombatCatalog.enemy_group_by_id("missing"))
+	assert_false(CombatCatalog.validate_enemy_group(null))
+	var expected: Dictionary = {
+		"knight": ["guard", "Guard", "Self", "FrontRowFirst"],
+		"ranger": ["aimed_shot", "Physical", "AnySlot", "AnySlot"],
+		"wizard": ["firebolt", "Magic", "AnySlot", "AnySlot"],
+		"cleric": ["mend", "Heal", "LowestHPAlly", "AnySlot"],
+	}
+	for hero_class in HeroCatalog.classes():
+		var values: Array = expected[String(hero_class.class_id)]
+		var skill: SkillResource = hero_class.active_skill
+		assert_not_null(skill)
+		assert_eq(skill, CombatCatalog.skill_by_id(values[0]))
+		assert_eq(skill.effect, values[1])
+		assert_eq(skill.target_rule, values[2])
+		assert_eq(hero_class.basic_attack_target_rule, values[3])
+		assert_eq(skill.cooldown_turns, 2)
+		assert_true(CombatCatalog.validate_skill_snapshot(skill.snapshot()))
+	for group in CombatCatalog.enemy_groups():
+		assert_eq(CombatCatalog.enemy_group_by_id(String(group.group_id)), group)
+		assert_true(CombatCatalog.validate_enemy_group(group))
+	var groups: Array[EnemyGroupResource] = CombatCatalog.enemy_groups()
+	groups.clear()
+	assert_eq(CombatCatalog.enemy_groups().size(), 2)
+	assert_true(ExpeditionCatalog.validate_region(ExpeditionCatalog.GREEN_HOLLOW, balancing))
+	for entry in ExpeditionCatalog.GREEN_HOLLOW.encounter_pool:
+		assert_ne(entry.kind, "Combat", "Authoring does not activate Combat.")
 
 
 func _assert_hint(resource: Resource, field: String, hint: int, hint_string: String) -> void:

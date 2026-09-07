@@ -54,29 +54,29 @@ Resolve and record the following decisions before dependent code or parallel
 work begins. The interface and formulas below remain normative; unresolved
 details are not permission to replace them with worker-specific assumptions.
 
-- [ ] **Frozen input and state:** reconcile the stale `PartyData` reference in
+- [x] **Frozen input and state:** reconcile the stale `PartyData` reference in
       the Combat autoload stub with the `ExpeditionPartySnapshot` signature.
       The existing `hero_states()` helper supplies HP only; specify where the
       complete per-Hero HP/status map is constructed and what its statuses
       mean. Define which skill values must be detached at dispatch and retained
       for historical results, without consulting live roster state on reload.
-- [ ] **Skill semantics:** agree Guard activation/expiry, cooldown decrement
+- [x] **Skill semantics:** agree Guard activation/expiry, cooldown decrement
       timing, skill availability when no valid target exists, and whether
       cooldown/effect state resets between Combats. Keep multipliers and any
       new global coefficients in the existing balancing asset.
-- [ ] **Result and errors:** settle compatibility between Combat's documented
+- [x] **Result and errors:** settle compatibility between Combat's documented
       result dictionary and generic consumers currently reading `result.gold`.
       Specify required keys, numeric encodings, invalid-input signaling, and
       nonmutation guarantees. An empty dictionary is not a combat outcome;
       do not silently accept invalid data or weaken noncombat validation.
-- [ ] **Terminal metadata and presentation:** agree the frozen data needed to
+- [x] **Terminal metadata and presentation:** agree the frozen data needed to
       validate truncated runs and display progress without revealing future
       defeat/retreat. Keep step duration based on the full candidate list;
       neither loading nor UI may reconstruct historical rules from live content.
-- [ ] **Recovery boundary:** define the limited Wounded placeholder and
+- [x] **Recovery boundary:** define the limited Wounded placeholder and
       Milestone 6 handoff. If mutable recovery fields are introduced, cover
       their persistence, initialization, migration, and rollback together.
-- [ ] **Compatibility and bounds:** decide whether a schema change requires a
+- [x] **Compatibility and bounds:** decide whether a schema change requires a
       version bump, how valid legacy saves remain loadable, and how complete
       combat logs fit `SaveManager.MAX_SAVE_BYTES`. Cover bounded rounds,
       combatants, actions/text, finite numbers, and rejected oversized saves.
@@ -109,6 +109,83 @@ boundary; do not depend on scene-tree or live singleton state.
 **Gate:** focused combat tests and the existing regression suite pass under
 the documented validation sequence. Keep the live Green Hollow encounter
 pool noncombat; authoring an enemy asset does not activate it.
+
+### Implementation decisions (2026-09-06)
+
+These decisions refine the normative interface below. Implementation proceeds
+through the numbered slices, not by enabling encounters before their consumers
+are ready.
+
+- **Inputs:** the autoload delegates to a pure `CombatEngine`. It accepts an
+  `ExpeditionPartySnapshot`, complete current Hero states, an
+  `EnemyGroupResource`, a seed, and `BalancingConfig`. No inputs are mutated.
+  `hero_states()` supplies `{hp, status}` for every stable Hero ID: positive HP
+  starts `IDLE` (0), zero HP is `WOUNDED` (4). These are simulation/finalization
+  statuses, not changes to the live roster's `ON_EXPEDITION` status.
+- **Skills:** each class references one `SkillResource` with `skill_id`,
+  `display_name`, `effect` (`Physical`, `Magic`, `Heal`, `Guard`), `target_rule`
+  (`FrontRowFirst`, `AnySlot`, `LowestHPAlly`, `Self`), and `cooldown_turns`.
+  Combat snapshots detach this definition into `active_skill`; legacy
+  noncombat snapshots need no skill. Multipliers come from the supplied
+  balancing asset during dispatch; saved logs never consult that asset again.
+- **Skill timing:** skills start ready and reset between encounters. A skill
+  sets its cooldown to the authored number of intervening actor turns; each
+  subsequent turn with positive cooldown decrements it and uses a basic
+  attack. Mend selects living injured allies only, including self; if none
+  exists, use a basic attack without consuming the skill cooldown. Guard
+  affects incoming damage immediately until the beginning of the guarding
+  actor's next turn. Its multiplier is applied after mitigation/crit and before
+  the single final floor. Guard cannot reduce successful damage below one.
+  Basic attacks are physical; Firebolt uses MagicPower.
+- **Ordering:** canonical stable-ID order precedes RNG tiebreak assignment
+  each round; descending Initiative, seeded tiebreak, then stable ID determine
+  action order. Target ties use HP percentage then stable ID. Enemies have
+  unique authored IDs, explicit rows/rules, and no active skills in this slice.
+- **Results:** success has exactly `gold` (zero for Combat), `outcome`, `rounds`,
+  `final_hero_states`, and `enemy_states`. Final Hero states cover every input
+  Hero, with zero-HP Heroes Wounded, all Heroes Wounded on Defeat, and other
+  survivors Idle. Frozen `enemy_states` maps each enemy ID to
+  `{name, max_hp, hp, row}` for validation and historical presentation.
+  Each action retains the documented name/amount/crit fields and adds
+  `actor_id`, `target_id`, `effect`, and `hit`. Misses log zero; Heal/Guard
+  always hit and never crit. Amounts are the calculated integers before HP
+  clamping, not the clamped difference. Invalid inputs return only an `error`
+  string; callers abort dispatch, never treat that dictionary as an outcome.
+- **Numbers and bounds:** HP, statuses, rounds, cooldowns, and logged amounts
+  are bounded JSON-safe integers; finite probabilities/multipliers are
+  validated before use. Keep the existing eight-byte hexadecimal encoding of
+  snapshot Evasion/CritChance. Limit enemies to four, rounds to at most 100
+  (authored default 20), and actions to at most eight per round. Bound strings
+  and nested collections; check complete serialized saves against the existing
+  1 MiB limit. Stress the authored five-encounter/20-round case before activation.
+  Reject oversized dispatch without altering the previous save; never remove
+  log entries to make a save fit.
+- **Persistence:** new saves use version 4. Validate supported original schemas
+  before migration; preserve historical noncombat results and exact snapshot
+  doubles. Freeze `planned_step_count` and `retreat_ends_expedition` in new
+  Expedition records; legacy noncombat runs migrate with their full saved step
+  count and nonterminal Retreat. Do not consult today's Region rules on load.
+- **Terminal behavior:** selection still completes before any resolution.
+  A Combat seed is drawn from that same Expedition RNG during ordered
+  resolution. Defeat always terminates; Retreat terminates only under the
+  frozen Region rule. Retain the original slice duration and calculate the
+  effective end from the terminal index. Running UI uses the planned count
+  and duration, concealing early termination until it is revealed.
+- **Recovery boundary:** add only a fixed UTC recovery deadline
+  `recovery_ready_at` to Hero persistence/checkpoints, zero when inactive.
+  Newly Wounded Heroes recover after `base_recovery_seconds` (60 initially)
+  from the observation that commits finalization. Recovery is observed and
+  saved transactionally through ExpeditionManager's existing lifecycle path,
+  including when no Expedition is running. Legacy Heroes migrate with zero;
+  pre-existing reserved Wounded states with no deadline are not reinterpreted.
+  No Resting phase, XP, equipment, injuries, or recovery modifiers are added.
+  Milestone 6 replaces this deliberately limited placeholder.
+
+**Ownership:** one combat writer owns simulation, enemy/skill Resources and
+assets, class skill references, snapshot capture, balancing, and focused combat
+tests. The integration owner owns saved Expedition validation, SaveManager,
+Hero recovery/checkpoints, generation, orchestration, UI, and their regression
+tests. One validation owner runs each integrated revision's existing gates.
 
 ### Slice 3 — Persistence compatibility
 
@@ -157,6 +234,94 @@ Record the manual readable-report and device/lifecycle checks separately;
 unperformed or approval-blocked checks remain pending.
 
 ### Delivery evidence and guideline pilot
+
+Baseline at `3ad8613` (2026-09-06): clean Godot 4.7.2 import exited 0;
+the existing GUT suite passed **182 tests / 17,267 assertions** with both hooks
+enabled; Android debug export exited 0 and produced a nonempty **28,409,368-byte**
+APK. These are local checks, not CI or device acceptance. Contract decisions
+were published separately at `8c7b823`; the gameplay pilot remains pending until
+the pure-combat slice has its own validated, published checkpoint.
+
+**Slice 2 validation (2026-09-06, changes based on `8c7b823`):** the combat
+writer explicitly stopped before validation/publication. Clean import exited 0;
+focused Combat tests passed **36 tests / 1,395 assertions**, Resource tests
+passed **5 tests / 107 assertions**, and the full suite passed **219 tests /
+18,718 assertions**, all exiting 0 with both GUT hooks enabled. Android debug
+export exited 0 and produced a **28,435,984-byte** APK with build-tools 36.1.0
+available. Commands are the README sequence, with
+`-gselect=test_combat_simulator.gd` and `-gselect=test_resources.gd` for focused
+runs. An earlier iteration exposed strict JSON float/integer comparison
+assumptions and an externally shared skill Resource in test fixtures; both were
+fixed without relaxing the exact expected combat result or production behavior.
+Read-only review reported no significant issues. This is the bounded gameplay
+pilot checkpoint; it does not claim complete combat integration or device
+acceptance. Next bounded action: Slice 3 persistence compatibility.
+
+**Publication confirmed:** Slice 2 was committed and pushed as `b13600d`, with
+the writer stopped and validation complete before publication. This completes
+the bounded gameplay guideline pilot without timeout recovery.
+The [Android workflow for that checkpoint](https://github.com/pompomon/godot-apk/actions/runs/34063450150)
+is `action_required`, with zero jobs reported by the logs endpoint; CI approval
+is pending, not a test failure or a passed CI run. No physical-device checks
+were performed.
+
+**Slice 3 validation (2026-09-06, changes based on `b13600d`):** both writers
+explicitly stopped before the integrated checks. Godot 4.7.2 clean import
+exited 0. Focused tests passed: Combat **37 / 1,412 assertions**, Combat
+persistence **12 / 390**, Expedition persistence **11 / 343**, and SaveManager
+**22 / 330**. The full GUT suite passed **236 tests / 19,226 assertions** across
+20 scripts, exit 0, with both standard hooks enabled. Android debug export
+exited 0 and produced a nonempty **28,444,351-byte** APK. The existing README
+commands were used, with `-gselect=<test filename>` for focused runs.
+
+Coverage includes exact combat round trips; v1/v2/v3 original-schema validation
+and migration; frozen terminal clocks; ordered HP-log validation; malformed
+payloads; five complete 20-round/eight-combatant encounters below 1 MiB; exact
+save-size boundary acceptance and oversized-write preservation; and recovery
+deadline checkpoint rollback across every save fault boundary. New tests exposed
+an integral-JSON-float enum-membership bug; both result validation and the pure
+engine now validate integrality before converting statuses to integers. Parser
+issues in new test fixtures were also resolved. No existing baseline failure
+was hidden or unrelated assertion relaxed. Read-only review found no significant
+issues; these results are local validation, not CI or device acceptance.
+
+**Final published code checkpoint:** `753159d` contains the validated Slice 3
+code and the integral-status fixes. Publication succeeded and the working tree
+was verified clean before this documentation-only closeout. Changed-file secret
+scanning found no secrets. CodeQL was requested after committing the code, but
+reported that no changed language was supported, so **no CodeQL analysis was
+performed**; GDScript validation relied on the tests and bounded code reviews.
+The [Android workflow for `753159d`](https://github.com/pompomon/godot-apk/actions/runs/34064464555)
+is `action_required`; the job-logs endpoint reports zero jobs. CI approval and
+all physical-device checks remain pending. Both delegated writers confirmed
+they had stopped with no pending writes.
+
+### Remaining implementation handoff
+
+This session deliberately stops after Slice 3 to preserve a verified checkpoint.
+**Milestone 5 is not complete, and production Green Hollow remains noncombat.**
+No Slice 4/5 production or UI files were edited.
+
+1. **Next bounded action — Slice 4:** extend `ExpeditionCatalog` to validate
+   Combat entries and terminal Retreat; call `CombatEngine.resolve_combat`
+   from the generator's second pass using a seed drawn from the same RNG.
+   Capture optional skills only for Combat runs, carry HP/status maps between
+   encounters, and freeze the planned count and Region terminal rule explicitly.
+2. Wire terminal truncation and effective-duration clock caps through
+   `ExpeditionManager`. Its current finalization still returns everyone Idle;
+   replace that with the ordered `ExpeditionData.final_hero_states()` result.
+   Commit Wounded statuses and `recovery_ready_at` with rewards/cursor/clock,
+   and observe the limited recovery deadline even without a running Expedition.
+   `GameState` already checkpoints these deadlines while preserving Hero identity.
+3. Validate that slice with controlled encounters, offline/retry/fault cases,
+   the full existing GUT suite, and Android export **before** enabling Combat.
+4. **Then Slice 5:** Home/Report should use `display_step_count()` and
+   `seconds_remaining()` to hide future terminal outcomes. Render only revealed
+   logs, refresh committed recovery/Party availability, and add combat-aware UI
+   tests. Preserve old noncombat regression coverage with isolated fixtures.
+   Only then activate the authored enemy groups in Green Hollow.
+5. Keep exported-device readability/lifecycle acceptance and workflow approval
+   separate and pending until actually performed.
 
 For each delivered slice, record its published revision/task or PR, scope,
 agreed decisions, validation commands and actual results, blockers, and next
@@ -270,13 +435,20 @@ func resolve_combat(party: ExpeditionPartySnapshot, current_hero_states: Diction
         enemy_group: EnemyGroupResource, seed: int,
         balancing: BalancingConfig) -> Dictionary
 # {
+#   "gold": 0,
 #   "outcome": "VICTORY" | "DEFEAT" | "RETREAT",
 #   "rounds": [{ "round_number": int, "actions": [{
 #       "actor_name": String, "action_name": String, "target_name": String,
-#       "damage_or_heal": int, "was_crit": bool
+#       "actor_id": String, "target_id": String,
+#       "effect": "Physical" | "Magic" | "Heal" | "Guard",
+#       "damage_or_heal": int, "was_crit": bool, "hit": bool
 #   }]}],
-#   "final_hero_states": { hero_id: { "hp": int, "status": int } }
+#   "final_hero_states": { hero_id: { "hp": int, "status": int } },
+#   "enemy_states": { enemy_id: {
+#       "name": String, "max_hp": int, "hp": int, "row": "Front" | "Back"
+#   } }
 # }
+# Invalid input returns only { "error": String }; this is not an outcome.
 ```
 
 `ExpeditionStep.result` remains a `Dictionary` for every kind. A `COMBAT`
@@ -284,7 +456,12 @@ result uses the nested plain-data shape above, with no `RefCounted` objects
 or object keys, so the active Expedition can be written directly to JSON.
 Both `current_hero_states` and `final_hero_states` use Hero ID strings as
 keys and contain every Party Hero; `resolve_combat` must not mutate its input
-map.
+map. A Combat step's `outcome_id` equals its saved `result.outcome`.
+`CombatResult.valid(result, snapshot, current_hero_states)` validates complete
+rounds and chronological HP provenance without rerolling outcomes or reading
+current enemy statistics, skill assets, or balancing. JSON integer-valued floats
+are validated before normalization; Boolean, string, fractional, and unsafe
+integer encodings are rejected.
 
 ## Testing requirements
 
@@ -323,11 +500,11 @@ map.
 
 ## Acceptance criteria
 
-- [ ] `CombatSimulator.resolve_combat` is deterministic and covered by a
+- [x] `CombatSimulator.resolve_combat` is deterministic and covered by a
       passing exact-output unit test.
-- [ ] Front-row-first targeting and Initiative-based turn order are
+- [x] Front-row-first targeting and Initiative-based turn order are
       correctly implemented and tested.
-- [ ] Combat formulas consume the documented derived stats, including an
+- [x] Combat formulas consume the documented derived stats, including an
       effective defender `Evasion`, and are covered by hand-computed tests.
 - [ ] Green Hollow includes at least one Combat encounter using at least
       one enemy group.

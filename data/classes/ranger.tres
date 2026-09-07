@@ -1,12 +1,14 @@
-[gd_resource type="Resource" script_class="HeroClassResource" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="HeroClassResource" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/models/hero_class_resource.gd" id="1_class"]
+[ext_resource type="Resource" path="res://data/skills/aimed_shot.tres" id="2_skill"]
 
 [resource]
 script = ExtResource("1_class")
 class_id = &"ranger"
 display_name = "Ranger"
 basic_attack_target_rule = "AnySlot"
+active_skill = ExtResource("2_skill")
 base_attribute_ranges = {
 "MIG": Vector2i(8, 12),
 "FOC": Vector2i(2, 4),

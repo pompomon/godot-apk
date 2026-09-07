@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="SkillResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/models/skill_resource.gd" id="1_skill"]
+
+[resource]
+script = ExtResource("1_skill")
+skill_id = &"firebolt"
+display_name = "Firebolt"
+effect = "Magic"
+target_rule = "AnySlot"
+cooldown_turns = 2

@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="EnemyGroupResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/models/enemy_group_resource.gd" id="1_group"]
+
+[resource]
+script = ExtResource("1_group")
+group_id = &"bandit_skirmishers"
+display_name = "Bandit Skirmishers"
+enemies = Array[Dictionary]([{
+"combatant_id": "bandit_blade",
+"display_name": "Bandit Blade",
+"row": "Front",
+"basic_attack_target_rule": "FrontRowFirst",
+"derived_stats": {
+"MaxHP": 45, "Attack": 12, "MagicPower": 0, "Defense": 4,
+"Evasion": 0.03, "Initiative": 8, "CritChance": 0.05
+}
+}, {
+"combatant_id": "bandit_bow",
+"display_name": "Bandit Bow",
+"row": "Back",
+"basic_attack_target_rule": "AnySlot",
+"derived_stats": {
+"MaxHP": 30, "Attack": 10, "MagicPower": 0, "Defense": 2,
+"Evasion": 0.06, "Initiative": 12, "CritChance": 0.08
+}
+}])

@@ -267,15 +267,16 @@ caching; every job performs a clean build. A failing test or rejected test
 discovery stops the job before export/upload. Milestone 9 audits this existing
 gate with the full gameplay suite; it does not introduce a second test pipeline.
 
-Hero Roster's implementation is complete, but final OS-temp-isolated CI
-verification requires workflow approval and exported-device acceptance remains
-pending. See the [milestone evidence](docs/adventurers-march/milestones/02-hero-roster.md#implementation-and-validation-evidence)
-for the tested revision, local results, and remaining checks.
-Party Formation's validation evidence and separate exported-device checklist
-are tracked in its [milestone detail](docs/adventurers-march/milestones/03-party-formation.md).
-First Expedition's automated/export evidence and outstanding physical-device
-offline/lifecycle checks are tracked in its
-[milestone detail](docs/adventurers-march/milestones/04-first-expedition.md).
+Milestones 1–4 were accepted by the user on 2026-09-07, with device acceptance
+considered complete externally for now. This records external acceptance,
+not physical-device testing performed by the coding agent. The
+[merged Android workflow on `bbe88d5`](https://github.com/pompomon/godot-apk/actions/runs/34135467082)
+passed the integrated test/export gate. Historical local results and external
+acceptance are tracked in the
+[Hero Roster](docs/adventurers-march/milestones/02-hero-roster.md#implementation-and-validation-evidence),
+[Party Formation](docs/adventurers-march/milestones/03-party-formation.md), and
+[First Expedition](docs/adventurers-march/milestones/04-first-expedition.md)
+milestone details.
 
 ## Adventurer's March design & implementation docs
 

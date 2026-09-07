@@ -33,7 +33,7 @@ the single place to see overall status at a glance.
 | 3 | Party formation | 2 | [x] | [03-party-formation.md](adventurers-march/milestones/03-party-formation.md) |
 | 4 | First expedition | 3 | [x] | [04-first-expedition.md](adventurers-march/milestones/04-first-expedition.md) |
 | 5 | Combat simulation | 4 | [x] | [05-combat-simulation.md](adventurers-march/milestones/05-combat-simulation.md) |
-| 6 | Progression and equipment | 5 | [x] | [06-progression-and-equipment.md](adventurers-march/milestones/06-progression-and-equipment.md) |
+| 6 | Progression and equipment | 5 | [ ] | [06-progression-and-equipment.md](adventurers-march/milestones/06-progression-and-equipment.md) |
 | 7 | Content expansion | 6 | [ ] | [07-content-expansion.md](adventurers-march/milestones/07-content-expansion.md) |
 | 8 | Presentation pass | 7 | [ ] | [08-presentation-pass.md](adventurers-march/milestones/08-presentation-pass.md) |
 | 9 | Testing and release preparation | 8 | [ ] | [09-testing-and-release.md](adventurers-march/milestones/09-testing-and-release.md) |

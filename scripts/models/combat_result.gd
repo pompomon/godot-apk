@@ -25,7 +25,7 @@ static func valid(data: Variant, snapshot: Variant, current_hero_states: Variant
 	var states: Variant = current_hero_states
 	if states == null:
 		states = ExpeditionPartySnapshot.new(members).hero_states()
-	if not _hero_states_valid(states, heroes) or not _hero_states_valid(data.final_hero_states, heroes):
+	if not _hero_states_valid(states, heroes, true) or not _hero_states_valid(data.final_hero_states, heroes):
 		return false
 	if not data.enemy_states is Dictionary or data.enemy_states.is_empty() or data.enemy_states.size() > CombatCatalog.MAX_ENEMIES:
 		return false
@@ -90,7 +90,7 @@ static func valid(data: Variant, snapshot: Variant, current_hero_states: Variant
 	return true
 
 
-static func _hero_states_valid(states: Variant, heroes: Dictionary) -> bool:
+static func _hero_states_valid(states: Variant, heroes: Dictionary, initial: bool = false) -> bool:
 	if not _keys(states, heroes.keys()):
 		return false
 	for id in heroes:
@@ -102,6 +102,8 @@ static func _hero_states_valid(states: Variant, heroes: Dictionary) -> bool:
 		if not ExpeditionCatalog.integer(state.status) or int(state.status) not in [HeroData.HeroStatus.IDLE, HeroData.HeroStatus.WOUNDED]:
 			return false
 		if int(state.hp) == 0 and int(state.status) != HeroData.HeroStatus.WOUNDED:
+			return false
+		if initial and int(state.hp) > 0 and int(state.status) != HeroData.HeroStatus.IDLE:
 			return false
 	return true
 

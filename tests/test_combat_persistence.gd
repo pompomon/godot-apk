@@ -225,6 +225,8 @@ func test_combat_provenance_carries_hp_and_returns_detached_final_states() -> vo
 	assert_true(CombatResult.valid(result, snapshot, current))
 	result.final_hero_states["hero-2"] = {"hp": 1, "status": HeroData.HeroStatus.IDLE}
 	assert_false(CombatResult.valid(result, snapshot, current))
+	current["hero-1"].status = HeroData.HeroStatus.WOUNDED
+	assert_false(CombatResult.valid(_victory(snapshot, current), snapshot, current))
 	var untouched := first.duplicate(true)
 	assert_true(CombatResult.valid(first, ExpeditionPartySnapshot.new(snapshot)))
 	assert_eq(first, untouched)

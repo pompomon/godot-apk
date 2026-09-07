@@ -89,6 +89,8 @@ static func _validation_error(
 			return "Invalid simulation Hero status."
 		if state.hp == 0 and int(state.status) != HeroData.HeroStatus.WOUNDED:
 			return "Zero-HP Heroes must be Wounded."
+		if state.hp > 0 and int(state.status) != HeroData.HeroStatus.IDLE:
+			return "Positive-HP Heroes must be Idle."
 	for enemy in group.enemies:
 		if enemy.combatant_id in ids:
 			return "Hero and enemy IDs must not collide."

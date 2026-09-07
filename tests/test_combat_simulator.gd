@@ -481,7 +481,8 @@ func test_missing_partial_extra_and_malformed_current_states_are_errors() -> voi
 		{"hero": {"hp": -1, "status": 0}}, {"hero": {"hp": 101, "status": 0}},
 		{"hero": {"hp": 1.5, "status": 0}}, {"hero": {"hp": NAN, "status": 0}},
 		{"hero": {"hp": 100, "status": 1}}, {"hero": {"hp": 100, "status": true}},
-		{"hero": {"hp": 0, "status": 0}}, {"hero": {"hp": 100, "status": 0}, "extra": {"hp": 1, "status": 0}},
+		{"hero": {"hp": 0, "status": 0}}, {"hero": {"hp": 100, "status": HeroData.HeroStatus.WOUNDED}},
+		{"hero": {"hp": 100, "status": 0}, "extra": {"hp": 1, "status": 0}},
 	]:
 		_assert_error(CombatEngine.resolve_combat(party, states, _group(), 1, _balancing()))
 

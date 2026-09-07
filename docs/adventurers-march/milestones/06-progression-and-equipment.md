@@ -165,12 +165,33 @@ failures exposed fixture Resource aliasing, a test-local inferred type, and
 the intentional inventory/Loot schema changes; these were fixed without
 removing regression coverage. Read-only review found no significant issues.
 All source writers confirmed they had stopped with no queued work before
-publication. Production activation and mobile acceptance remain separate gates.
+publication as **`8214d5e`**, with a clean working tree verified. Changed-file
+secret scanning was clean; CodeQL again reported no supported changed language.
+Production activation and mobile acceptance remain separate gates.
 
-Before enabling progression/recovery, configure `xp_award_coefficients`,
-`xp_threshold_curve`, and `base_recovery_seconds` in the existing
-`data/balancing/default_balancing.tres`. These are intentionally unconfigured
-foundation fields. Validate required keys, finite nonnegative XP coefficients,
+**Activated milestone validation (2026-09-07):** Green Hollow's Wayside Cache
+now has a 50% chance of one weighted starter item; Quiet Ruins' coin outcome
+also grants a Short Sword. The live-loop tests demonstrate both authored reward
+paths, fixed-seed repeatability, hidden future rewards, failed-save retry,
+leveling, equipping earned items, and reload/acknowledgment without duplication.
+The historical gold-only persistence fixture temporarily strips/restores Event
+item rewards instead of relaxing original-schema migration validation.
+
+Clean import passed. Live/backend focused tests passed **72 / 2,487 assertions**;
+fixture/live-loop focus passed **14 / 435**. The full GUT suite passed
+**314 tests / 21,874 assertions**, both standard hooks enabled, with no skipped
+scripts or GUT warnings/errors. Android debug export exited successfully and
+produced a nonempty **28,479,394-byte APK**. Logs:
+`build/m6-final-{import,focused,fixtures,full,export}.log`. The existing missing
+project-icon/ADB diagnostics are not new gameplay failures. All source writers
+confirmed they had stopped with no pending edits or queued work before closeout.
+These are local results; physical-device acceptance is still pending below.
+
+Progression/recovery uses `xp_award_coefficients`, `xp_threshold_curve`,
+`base_recovery_seconds`, and `recovery_hp_percent` in the existing
+`data/balancing/default_balancing.tres`. The XP fields were unconfigured
+foundation fields; recovery already had the Milestone 5 default. Validate
+required keys, finite nonnegative XP coefficients,
 a positive threshold base/growth factor, and a positive recovery duration;
 do not consume placeholder zeros or replace unrelated balancing settings.
 
@@ -282,17 +303,21 @@ static func grant_xp(hero: HeroData, amount: int, balancing: BalancingConfig = n
 
 ## Acceptance criteria
 
-- [ ] Heroes gain XP and level up from completed Expeditions with
+- [x] Heroes gain XP and level up from completed Expeditions with
       correctly recomputed stats.
-- [ ] Starter item pool exists and can be equipped/unequipped via the
+- [x] Starter item pool exists and can be equipped/unequipped via the
       Equipment screen with correct stat-delta preview.
-- [ ] Equipped items correctly modify combat-relevant derived stats (
+- [x] Equipped items correctly modify combat-relevant derived stats (
       verifiable via `CombatSimulator` picking up the change).
-- [ ] Wounded Heroes automatically recover to `Idle` after their rest
+- [x] Wounded Heroes automatically recover to `Idle` after their rest
       duration elapses, including across app restarts.
-- [ ] Loot and Event item rewards extend the existing reveal path and
+- [x] Loot and Event item rewards extend the existing reveal path and
       correctly update `GameState.inventory` without duplicating gold or
       item grants.
+- [ ] Physical Android acceptance: complete an Expedition, inspect XP/gold/items,
+      preview/confirm/cancel equipment using touch and Android Back, and verify
+      Resting recovery after backgrounding and a full restart. Automated UI and
+      clock tests do not substitute for this check.
 
 ## Risks
 

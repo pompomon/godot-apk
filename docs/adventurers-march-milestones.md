@@ -214,13 +214,20 @@ Detail: [05-combat-simulation.md](adventurers-march/milestones/05-combat-simulat
 
 **Depends on:** 5 (Combat simulation).
 
-- [ ] Implement Hero XP gain and leveling using class growth curves.
-- [ ] Implement `ItemResource`/inventory model and starter item pool.
-- [ ] Build Equipment screen (assign weapon/armor, show stat deltas).
-- [ ] Apply Wounded/Resting recovery flow after Defeat/heavy-damage
+- [x] Implement Hero XP gain and leveling using class growth curves.
+- [x] Implement `ItemResource`/inventory model and starter item pool.
+- [x] Build Equipment screen (assign weapon/armor, show stat deltas).
+- [x] Apply Wounded/Resting recovery flow after Defeat/heavy-damage
       outcomes.
-- [ ] Extend Milestone 4's existing gold-reward reveal path with item loot
+- [x] Extend Milestone 4's existing gold-reward reveal path with item loot
       updates to inventory, without a second reward handler.
+
+**Status:** implementation and local automated validation are complete:
+**314 tests / 21,874 assertions**, clean import, and a successful Android debug
+export. Version-5 saves preserve equipment copies and frozen rewards while
+migrating versions 1–4. The top-level milestone remains unchecked pending
+physical Android acceptance; see the detail file for contracts, checkpoint
+evidence, and the remaining manual check.
 
 **Definition of done:** Heroes gain XP and level up from completed
 Expeditions with visibly updated stats, items can be equipped/unequipped

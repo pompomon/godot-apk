@@ -7,6 +7,7 @@ var _time: int = 1000
 var _original_pool: Array[EncounterEntryResource] = []
 var _original_items: Dictionary
 var _original_chance: float
+var _original_event_results: Dictionary
 
 
 func before_each() -> void:
@@ -15,6 +16,11 @@ func before_each() -> void:
 	_original_chance = loot.item_drop_chance
 	loot.item_pool = {}
 	loot.item_drop_chance = 0.0
+	_original_event_results.clear()
+	for event in ExpeditionCatalog.events():
+		for outcome in event.outcomes:
+			_original_event_results[outcome] = outcome.result.duplicate(true)
+			outcome.result = {"gold": outcome.result.gold}
 	var region := REGION
 	_original_pool.assign(region.encounter_pool)
 	region.encounter_pool.assign(_original_pool.filter(
@@ -31,6 +37,8 @@ func after_each() -> void:
 	var loot := ExpeditionCatalog.LOOT
 	loot.item_pool = _original_items
 	loot.item_drop_chance = _original_chance
+	for outcome in _original_event_results:
+		outcome.result = _original_event_results[outcome]
 	var region := REGION
 	region.encounter_pool.assign(_original_pool)
 	_isolation.finish()

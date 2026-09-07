@@ -105,7 +105,9 @@ godot --path .
   **6 seconds**. The weighted pool contains five automatic narrative Events,
   Loot, Forest Wolves, and Bandit Skirmishers. Loot/Events award modest
   nonnegative gold; Combat awards no gold. Loot and selected Event outcomes can
-  also grant equipment. Choices and resource costs remain deferred.
+  also grant equipment: each Wayside Cache has a 50% chance of one weighted
+  starter item, and the Quiet Ruins coin outcome includes a Short Sword.
+  Choices and resource costs remain deferred.
 - Combat uses Guard, Aimed Shot, Firebolt, and Mend, with HP carrying between
   encounters and no automatic healing between them. Defeat ends the Expedition
   at that Combat step; Retreat continues in Green Hollow. Terminal runs retain

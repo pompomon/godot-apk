@@ -60,6 +60,7 @@ func test_exported_resource_contracts() -> void:
 			"xp_award_coefficients": TYPE_DICTIONARY, "xp_threshold_curve": TYPE_DICTIONARY,
 			"encounter_kind_weight_multipliers": TYPE_DICTIONARY,
 			"base_recovery_seconds": TYPE_INT, "max_offline_delta_seconds": TYPE_INT,
+			"recovery_hp_percent": TYPE_INT,
 			"recruitment_cost": TYPE_INT,
 		}],
 	]
@@ -132,6 +133,12 @@ func test_default_balancing_asset() -> void:
 	})
 	assert_eq(balancing.max_offline_delta_seconds, 86400)
 	assert_eq(balancing.base_recovery_seconds, 60)
+	assert_eq(balancing.recovery_hp_percent, 25)
+	assert_eq(balancing.xp_award_coefficients, {
+		"recommended_party_power": 0.25, "duration_seconds": 1.0,
+	})
+	assert_eq(balancing.xp_threshold_curve, {"base": 100, "growth_factor": 1.25})
+	assert_eq(Leveling.validation_error(balancing), "")
 
 
 func test_authored_combat_catalog_and_class_skills() -> void:

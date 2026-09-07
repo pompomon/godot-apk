@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/models/item_resource.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+item_id = &"chainmail"
+display_name = "Chainmail"
+slot = "Armor"
+rarity = &"Uncommon"
+stat_modifiers = {
+"Defense": 4.0,
+"Initiative": -1.0,
+"MaxHP": 8.0
+}

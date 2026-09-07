@@ -29,6 +29,14 @@ skill_damage_multipliers = {
 }
 critical_damage_multiplier = 1.5
 max_combat_rounds = 20
+xp_award_coefficients = {
+"duration_seconds": 1.0,
+"recommended_party_power": 0.25
+}
+xp_threshold_curve = {
+"base": 100,
+"growth_factor": 1.25
+}
 encounter_kind_weight_multipliers = {
 "Combat": 1.0,
 "Event": 1.0,
@@ -36,4 +44,5 @@ encounter_kind_weight_multipliers = {
 }
 max_offline_delta_seconds = 86400
 base_recovery_seconds = 60
+recovery_hp_percent = 25
 recruitment_cost = 100

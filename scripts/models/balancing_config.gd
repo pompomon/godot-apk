@@ -24,5 +24,6 @@ extends Resource
 ## { "Loot": float, "Event": float, "Combat": float }
 @export var encounter_kind_weight_multipliers: Dictionary = {}
 @export var base_recovery_seconds: int
+@export var recovery_hp_percent: int = 25
 @export var max_offline_delta_seconds: int
 @export var recruitment_cost: int

@@ -46,6 +46,40 @@ This slice does not close Milestone 7's pending gates or any full-Milestone-8
 acceptance checkbox. Physical-device artwork, touch-target, contrast and
 scrolling acceptance must be recorded separately from local test/export checks.
 
+#### Interrupted-run recovery (2026-09-08)
+
+The [initial implementation run](https://github.com/pompomon/godot-apk/actions/runs/34275098135/job/102226054385)
+failed with `CAPIError: 400 Error while downloading file. Upstream status code:
+404` immediately after reading the two generated contact sheets. The managed
+agent stopped after about 15 minutes, not at its 59-minute timeout. The logs
+identify a file-download service error; they do not establish a broken PNG or
+an Android build failure.
+
+Its recovery commit `5a99d19` preserved recipes, UI integration and partial tests,
+but omitted all 66 runtime PNGs and the manifest. A local read-only bank check
+reproduced `Missing PNG: assets/art/portraits/knight_00.png`. The corresponding
+[Android run](https://github.com/pompomon/godot-apk/actions/runs/34276591792)
+was `action_required`, not a passing or failing test run.
+
+The continuation generates the missing bank, adds generator regressions, and
+fixes two unfinished art tests: the frozen slot key must use `PartyData.SLOT_NAMES`,
+and artwork traversal must exclude Godot's internal overscroll textures without
+excluding authored images. Raw PNG verification decodes file bytes rather than
+using runtime resource loading, avoiding misleading export warnings.
+
+The repository workflow now checks committed artwork without rewriting it,
+publishes contact sheets as a downloadable artifact, and retains validation
+logs. This changes the review/validation path; it does **not** fix the upstream
+managed-agent service or bypass GitHub workflow approval.
+
+Local recovery validation: clean import, **17 focused art tests**, full GUT
+**381 tests / 34,353 assertions**, and Android debug export with a nonempty
+**28,762,614-byte APK** passed. The existing art UI tests also passed **6/6**
+under a desktop Compatibility renderer and generated seven 720×1280 screen
+captures. Captures were not inspected through the failed image transport.
+Visual quality, Android-device acceptance and current-checkpoint CI remain
+separate, unverified gates; these results do not complete Milestone 8.
+
 ### Full presentation milestone
 
 1. Produce/source final Hero class icons, status-effect icons, item-slot

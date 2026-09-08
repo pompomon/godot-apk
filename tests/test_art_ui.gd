@@ -148,7 +148,7 @@ func test_report_portraits_use_frozen_identity_not_live_roster_or_unrevealed_out
 	_dispatch()
 	var report := ExpeditionManager.get_active_expedition()
 	var frozen := report.serialize()
-	var member: Dictionary = report.party_snapshot.slots["front_left"]
+	var member: Dictionary = report.party_snapshot.slots[PartyData.SLOT_NAMES[PartyData.FormationSlot.FRONT_LEFT]]
 	var expected := Art.portrait(member.hero_id, member.class_id)
 	GameState.roster[0].hero_class = HeroCatalog.RANGER
 	await _go(REPORT)
@@ -185,16 +185,26 @@ func test_all_seven_screens_keep_art_crisp_passive_and_inside_portrait_width() -
 func _check_art_bounds() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
-	var images := _screen().find_children("*", "TextureRect", true, false)
+	var images := _art_images(_screen())
 	assert_gt(images.size(), 0)
 	for image in images:
 		assert_not_null(image.texture)
-		assert_eq(image.texture_filter, CanvasItem.TEXTURE_FILTER_NEAREST)
+		assert_eq(image.texture_filter, CanvasItem.TEXTURE_FILTER_NEAREST, str(image.get_path()))
 		assert_eq(image.mouse_filter, Control.MOUSE_FILTER_IGNORE)
 		assert_eq(image.focus_mode, Control.FOCUS_NONE)
-		assert_eq(image.stretch_mode, TextureRect.STRETCH_KEEP_ASPECT_CENTERED)
+		assert_eq(image.stretch_mode, TextureRect.STRETCH_KEEP_ASPECT_CENTERED, str(image.get_path()))
 		assert_lte(image.get_global_rect().end.x, 720.0, image.name)
 		assert_gte(image.get_global_rect().position.x, 0.0, image.name)
+
+
+func _art_images(parent: Node) -> Array[TextureRect]:
+	var images: Array[TextureRect] = []
+	# find_children also returns Godot's internal overscroll TextureRects.
+	for child in parent.get_children():
+		if child is TextureRect:
+			images.append(child)
+		images.append_array(_art_images(child))
+	return images
 
 
 func _capture_preview(name: String) -> void:

@@ -58,7 +58,7 @@ static func check() -> String:
 		if not FileAccess.file_exists(path):
 			return "Missing PNG: %s." % recipe.path
 		var committed := Image.new()
-		if committed.load(path) != OK:
+		if committed.load_png_from_buffer(FileAccess.get_file_as_bytes(path)) != OK:
 			return "Cannot decode PNG: %s." % recipe.path
 		committed.convert(Image.FORMAT_RGBA8)
 		if committed.get_size() != image.get_size() or pixel_sha256(committed) != pixel_sha256(image):

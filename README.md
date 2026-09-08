@@ -372,6 +372,10 @@ godot --headless --path . -s res://tools/art/generate_art.gd -- --preview-dir=/t
 the recipes. Preview output goes to an explicit absolute directory outside the
 checkout, not exported assets. Inspect the native/2× contact sheets before
 approving a recipe change. Running without arguments prints help without writes.
+The Android workflow publishes these sheets as `adventurers-march-art-previews`;
+download that artifact for visual review. In a managed agent session, complete
+validation and publish a checkpoint before attempting image-tool inspection:
+an image-download service error is not evidence that generation failed.
 To deliberately regenerate the bank and manifest after approval:
 
 ```sh
@@ -457,12 +461,18 @@ APK to `build/android/hello-world.apk`.
 `.github/workflows/android-apk.yml` runs on pushes, pull requests, and manual
 dispatches. It installs Java and the required Android SDK components, downloads
 Godot and its matching export templates, imports the project, runs the headless
-tests, performs the debug export, and uploads
+artwork verification and tests, performs the debug export, and uploads
 the APK as the `hello-world-android-apk` workflow artifact.
+
+Artwork verification compares the **committed** PNGs and manifest with their
+recipes; CI never regenerates the runtime bank to hide missing or stale files.
+Contact sheets are uploaded separately before tests, and import/art/test/export
+logs are retained as `art-and-android-validation`, including on failure.
+The preview artifact is review material, not visual or device acceptance.
 
 The workflow intentionally does not use GitHub Actions cache or dependency
 caching; every job performs a clean build. A failing test or rejected test
-discovery stops the job before export/upload. Milestone 9 audits this existing
+discovery stops the job before APK export/upload. Milestone 9 audits this existing
 gate with the full gameplay suite; it does not introduce a second test pipeline.
 
 Milestones 1–4 were accepted by the user on 2026-09-07, with device acceptance

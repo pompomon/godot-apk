@@ -111,8 +111,14 @@ func start_error(region: RegionResource, party: PartyData, duration_seconds: int
 		return "Expedition content or balancing is invalid. Check the configuration and retry."
 	if duration_seconds not in region.duration_options_seconds:
 		return "Choose one of this Region's offered durations."
-	if Leveling.award(region.recommended_party_power, duration_seconds, balancing) < 0:
+	var xp_award := Leveling.award(region.recommended_party_power, duration_seconds, balancing)
+	if xp_award < 0:
 		return "Progression configuration is invalid. Correct it and retry."
+	if xp_award > 0:
+		for hero in party.heroes():
+			var preview := Leveling.preview(hero, xp_award, balancing)
+			if preview.has("error"):
+				return "Hero progression could not be applied. " + String(preview.error)
 	if not ExpeditionCatalog.integer(GameState.expedition_seed) or not ExpeditionCatalog.integer(GameState.expedition_sequence):
 		return "Expedition seed state is invalid."
 	if not SaveManager.validate_snapshot(SaveManager.capture_state()):

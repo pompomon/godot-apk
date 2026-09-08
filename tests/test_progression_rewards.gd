@@ -137,6 +137,58 @@ func test_xp_overflow_prevents_first_hero_items_gold_cursor_and_clock_mutation()
 	assert_eq(GameState.roster[1].xp, HeroCatalog.MAX_SAFE_INT)
 
 
+func test_dispatch_rejects_participant_xp_overflow_without_mutation() -> void:
+	var party := PartyData.new()
+	party.place_hero(0, GameState.roster[0])
+	party.place_hero(3, GameState.roster[1])
+	GameState.roster[1].xp = HeroCatalog.MAX_SAFE_INT
+	assert_true(PartyFormationService.confirm(party, ExpeditionManager.balancing))
+	var confirmed := GameState.current_party
+	var before := SaveManager.capture_state()
+	var saved := FileAccess.get_file_as_string(SaveManager.get_save_path())
+	assert_string_contains(ExpeditionManager.start_error(_region, confirmed, 60), "overflowing XP")
+	ExpeditionManager.start_expedition(_region, confirmed, 60)
+	assert_false(ExpeditionManager.last_committed)
+	assert_string_contains(ExpeditionManager.last_error, "overflowing XP")
+	assert_null(ExpeditionManager.get_active_expedition())
+	assert_same(GameState.current_party, confirmed)
+	assert_eq(SaveManager.capture_state(), before)
+	assert_eq(FileAccess.get_file_as_string(SaveManager.get_save_path()), saved)
+
+
+func test_dispatch_accepts_xp_award_exactly_at_capacity_and_completion_commits() -> void:
+	var amount := Leveling.award(_region.recommended_party_power, 60, ExpeditionManager.balancing)
+	assert_gt(amount, 0)
+	GameState.roster[1].xp = HeroCatalog.MAX_SAFE_INT - amount
+	var run := _start()
+	assert_eq(run.xp_award, amount)
+	assert_eq(GameState.roster[1].xp, HeroCatalog.MAX_SAFE_INT - amount)
+	assert_eq(GameState.roster[1].level, 1)
+	_time = 1060
+	ExpeditionManager.reveal_progress()
+	assert_true(ExpeditionManager.last_committed, ExpeditionManager.last_error)
+	assert_eq(run.status, ExpeditionData.Status.COMPLETED)
+	assert_eq(GameState.roster[1].xp, HeroCatalog.MAX_SAFE_INT)
+	var saved := SaveManager.capture_state()
+	SaveManager.load_or_create()
+	assert_eq(SaveManager.capture_state(), saved)
+
+
+func test_dispatch_accepts_zero_xp_award_at_capacity_without_releveling() -> void:
+	ExpeditionManager.balancing.xp_award_coefficients = {
+		"recommended_party_power": 0.0, "duration_seconds": 0.0}
+	GameState.roster[1].xp = HeroCatalog.MAX_SAFE_INT
+	var run := _start()
+	assert_eq(run.xp_award, 0)
+	assert_eq(GameState.roster[1].level, 1)
+	_time = 1060
+	ExpeditionManager.reveal_progress()
+	assert_true(ExpeditionManager.last_committed, ExpeditionManager.last_error)
+	assert_eq(run.status, ExpeditionData.Status.COMPLETED)
+	assert_eq(GameState.roster[1].xp, HeroCatalog.MAX_SAFE_INT)
+	assert_eq(GameState.roster[1].level, 1)
+
+
 func test_dispatch_rejects_frozen_rewards_over_item_capacity_without_mutation() -> void:
 	var party := PartyData.new()
 	party.place_hero(0, GameState.roster[0])

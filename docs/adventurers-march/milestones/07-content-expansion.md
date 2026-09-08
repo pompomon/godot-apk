@@ -255,9 +255,109 @@ Frostbound has slightly worse attrition. These trade-offs remain visible rather
 than being treated as waived acceptance criteria. The largest development
 journal remains **146,023 bytes**, a sampled measurement, not an exhaustive bound.
 
-This candidate is frozen for publication before the first evaluation of
+The candidate was published as **`644a96c`** before the first evaluation of
 **92001, 92002, 92003**. Development success alone does not complete balance
-acceptance; fresh holdouts and integrated validation follow.
+acceptance; the frozen verdict follows.
+
+#### Second-cycle verdict (644a96c)
+
+**Balance acceptance remains blocked.** The tested gameplay revision is
+[`644a96c`](https://github.com/pompomon/godot-apk/commit/644a96c52e3815d4893be98f171f1bef6d6679ca).
+Development passes **9/9**, and the one-time fresh holdout evaluation passes
+**8/9**. Frostbound-above reaches **86.20%**, exceeding the unchanged 85%
+ceiling. Its confidence interval does not waive that failure. All numerical
+inputs stayed frozen after publication; no tuning followed evaluation.
+
+Development combines seeds 7001, 7002, 9001, 91001, 91002, 91003 (**1,536
+trials per row**); holdout combines 92001, 92002, 92003 (**768 per row**).
+Each seed/Region/tier contains 256 distinct full-HP Party trials from the fixed
+16,000-Party population. Distinctness is enforced within each seed/row, not
+claimed across seeds. All report processes exit 0 for valid data; the separate
+acceptance verdict is failure. Counts below are **Victory / Retreat / Defeat**;
+brackets show Wilson 95% Victory-rate intervals from summed counts.
+
+| Region / tier | Development V/R/D | Victory % [95% interval] | Holdout V/R/D | Victory % [95% interval] |
+|---|---:|---:|---:|---:|
+| Green Hollow / below | 638/56/842 | 41.54 [39.10, 44.02] | 315/23/430 | 41.02 [37.59, 44.53] |
+| Green Hollow / at | 1127/59/350 | 73.37 [71.11, 75.52] | 553/25/190 | 72.01 [68.73, 75.06] |
+| Green Hollow / above | 1262/66/208 | 82.16 [80.17, 84.00] | 645/25/98 | 83.98 [81.22, 86.41] |
+| Ashen Reach / below | 748/71/717 | 48.70 [46.20, 51.20] | 365/39/364 | 47.53 [44.02, 51.06] |
+| Ashen Reach / at | 1112/79/345 | 72.40 [70.11, 74.57] | 545/43/180 | 70.96 [67.66, 74.06] |
+| Ashen Reach / above | 1112/34/390 | 72.40 [70.11, 74.57] | 558/26/184 | 72.66 [69.40, 75.69] |
+| Frostbound Pass / below | 630/60/846 | 41.02 [38.58, 43.49] | 313/41/414 | 40.76 [37.33, 44.27] |
+| Frostbound Pass / at | 1116/51/369 | 72.66 [70.37, 74.83] | 577/26/165 | 75.13 [71.95, 78.06] |
+| Frostbound Pass / above | 1299/72/165 | 84.57 [82.68, 86.29] | 662/29/77 | **86.20 [83.58, 88.46] — fails** |
+
+Per-enemy counts retain authored encounter-weight sampling. Each cell lists
+**below; at; above** V/R/D counts, not equal-sized enemy-group samples.
+
+| Enemy group | Trials per tier, development / holdout | Development V/R/D | Holdout V/R/D |
+|---|---:|---|---|
+| Forest Wolves | 1016 / 518 | 464/25/527; 765/38/213; 879/48/89 | 228/9/281; 398/15/105; 453/15/50 |
+| Bandit Skirmishers | 520 / 250 | 174/31/315; 362/21/137; 383/18/119 | 87/14/149; 155/10/85; 192/10/48 |
+| Ash-road Raiders | 908 / 472 | 428/31/449; 652/43/213; 659/16/233 | 209/19/244; 343/23/106; 344/13/115 |
+| Cinder Jackals | 628 / 296 | 320/40/268; 460/36/132; 453/18/157 | 156/20/120; 202/20/74; 214/13/69 |
+| Icebound Sentinels | 952 / 490 | 294/46/612; 597/34/321; 759/48/145 | 154/31/305; 324/19/147; 402/19/69 |
+| Snowcrest Prowlers | 584 / 278 | 336/14/234; 519/17/48; 540/24/20 | 159/10/109; 253/7/18; 260/10/8 |
+
+Separate complete-Expedition trials retain HP carryover. Each cell below lists
+**completed Expeditions / trials; resting Heroes / participating Heroes; largest
+sampled journal in bytes**. These are diagnostics, not isolated Combat rates.
+
+| Region / tier | Development completion; resting; bytes | Holdout completion; resting; bytes |
+|---|---|---|
+| Green Hollow / below | 585/1536; 2119/3095; 80,100 | 277/768; 1095/1548; 77,057 |
+| Green Hollow / at | 969/1536; 1814/3610; 83,214 | 462/768; 981/1806; 83,561 |
+| Green Hollow / above | 1104/1536; 1543/3451; 78,524 | 560/768; 759/1715; 57,367 |
+| Ashen Reach / below | 640/1536; 2851/4028; 104,693 | 337/768; 1407/1993; 100,041 |
+| Ashen Reach / at | 830/1536; 2679/4631; 109,719 | 392/768; 1379/2313; 112,749 |
+| Ashen Reach / above | 741/1536; 3450/5396; 139,536 | 381/768; 1713/2694; 117,251 |
+| Frostbound Pass / below | 354/1536; 4105/4736; 116,882 | 178/768; 2063/2376; 116,385 |
+| Frostbound Pass / at | 543/1536; 3883/5184; 146,023 | 255/768; 1967/2608; 133,324 |
+| Frostbound Pass / above | 766/1536; 3185/5007; 136,934 | 388/768; 1607/2507; 131,123 |
+
+**Validation on the frozen revision:** clean import, focused **167 tests /
+6,005 assertions**, full **361 tests / 23,684 assertions**, and Android debug
+export all exit 0. Both GUT hooks remain enabled; no empty discovery,
+skipped/pending scripts or GUT warnings/errors. The existing authored-reward
+normal-play regression reaches and dispatches to all Regions without editing
+gold, XP or saves. Existing full-save fixtures across all six enemy groups at
+levels 1/3/6, with twenty Heroes, three offers and 1,024 inventory entries, pass
+the unchanged **1,048,576-byte** limit. Journal and full-save fixtures are
+sampled checks, not exhaustive maxima.
+
+The APK is **28,521,467 bytes**, SHA256
+`aedce56a5e3113c9c09b05d0bbaa829aa9e50b14780f909843708cd5f7a2a1ab`.
+Nonempty, v2/v3 signature, archive-integrity and exclusion checks pass: tests,
+GUT, balance tools and local validation artifacts are absent. Existing
+missing-icon and unavailable-ADB diagnostics remain. Source-only scoped
+correctness/game-quality review found no significant issues; it did not
+certify physical gameplay.
+
+Reproduce using the README's Godot 4.7.2 clean-import, GUT and Android-export
+commands and the existing balance CLI with `--trials=256`, once per listed
+seed. Aggregate the six development reports and three holdout reports
+separately. **92001, 92002, 92003 are now known evaluation data**, not fresh
+holdouts for another cycle. No new harness, simulator, dependency or sampling
+rule was introduced. Local development logs are under `/tmp/m7-cycle2/candidate11`;
+the validation owner's commands/statuses and integrated evidence are under
+ignored `.validation/m7-cycle2/integrated-644a96c/`. The tables and revision here
+are the durable published evidence, not those local artifact paths.
+
+Changed-file secret scans are clean. Post-commit CodeQL was requested but
+reported no supported changed language and performed no analysis; this is not
+a passing CodeQL scan. The [candidate Android run](https://github.com/pompomon/godot-apk/actions/runs/34253035542)
+is **`action_required`**, with zero jobs and no executed job logs: maintainer
+approval is needed, not a test fix. Baseline CI success does not establish
+candidate CI.
+
+All validation processes and writes stopped before this documentation-only
+handoff. Balance and physical Android acceptance stay unchecked. **Next bounded
+action:** agree a new development/holdout protocol before any further numerical
+changes, address Frostbound-above without losing the passing at-band, and
+obtain the documented Android normal-play acceptance on the eventual final
+build. Do not retune this frozen candidate against its holdouts, mark Milestone
+7 complete, or begin Milestone 8.
 
 ### Balance-only follow-up protocol (2026-09-08)
 

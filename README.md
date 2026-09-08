@@ -186,14 +186,14 @@ godot --path .
   rerolling journals, changing equipment, or awarding historical rewards.
 - This milestone does not add skills, event choices, crafting, a shop, or
   conditional trait effects.
-- Current recommended Power is **330 / 850 / 1000**. Balance remains
-  **provisional**: calibration passes **9/9**, but the frozen candidate's
-  held-out aggregate passes **7/9**. Ashen Reach-above (85.94%) and Frostbound
-  Pass-above (86.98%) exceed the 85% target. See
-  [Milestone 7's follow-up verdict](docs/adventurers-march/milestones/07-content-expansion.md#follow-up-verdict-633d1de)
+- Current recommended Power is **330 / 800 / 1000**. Balance remains
+  **provisional**: second-cycle development passes **9/9**, but the frozen
+  candidate's fresh held-out aggregate passes **8/9**. Frostbound Pass-above
+  (86.20%) exceeds the 85% target. No retuning followed evaluation. See
+  [Milestone 7's second-cycle verdict](docs/adventurers-march/milestones/07-content-expansion.md#second-cycle-verdict-644a96c)
   for measured uncertainty, attrition, and the outstanding balance/device gates.
-- Ashen Reach's recommendation change increases future 120-second Expedition
-  awards from **325 to 332 XP** per Hero. Already-dispatched runs retain their
+- Ashen Reach's recommendation change decreases future 120-second Expedition
+  awards from **332 to 320 XP** per Hero. Already-dispatched runs retain their
   frozen award; existing saves need no migration.
 
 ### Reproduce the balance report
@@ -233,6 +233,10 @@ A held-out miss ends the cycle without further numerical tuning. See the
 [second-cycle protocol](docs/adventurers-march/milestones/07-content-expansion.md#second-balance-cycle-protocol-2026-09-08).
 The previous holdouts were evaluated on `633d1de`; their two failed bands are
 historical blockers, not fresh evaluation data for this cycle.
+The second-cycle holdouts have now been evaluated once on `644a96c`: **8/9**
+bands pass. They are also known data now, not fresh holdouts for future tuning.
+Frostbound-above remains a balance-acceptance blocker; Android device acceptance
+is still pending.
 
 ## Run the tests
 

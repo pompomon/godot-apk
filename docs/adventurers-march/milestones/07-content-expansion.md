@@ -207,6 +207,58 @@ The [Android workflow for the merged baseline](https://github.com/pompomon/godot
 has completed successfully. Candidate validation and the previous cycle's
 historical evidence remain separate.
 
+#### Second-cycle frozen candidate
+
+Fresh baseline validation on unchanged `6562427` passed clean import, all
+**361 tests / 23,678 assertions**, and Android debug export/signature/archive
+checks. All six known reports reproduced the previous verdict's raw Region and
+per-enemy counts exactly. Their combined development aggregate passed **8/9**
+bands, missing Frostbound-above (85.68%). The baseline APK was **28,521,467
+bytes**, SHA256 `0feaadfbbb03800f40ea93f892a63e55b9b6f17684a3a10272fc1c92e2f2907e`.
+Existing missing-icon and unavailable-ADB diagnostics remained; no device was
+tested.
+
+Eleven development candidates were evaluated on the six known seeds only.
+Profile-only adjustments either missed Ashen-below/at or left very narrow
+margins. Raising Ashen's recommendation to 880 selected substantially more
+three-Hero Parties above recommendation and exceeded the Victory ceiling.
+The retained recommendation is **800**, with these authored HP/Attack pairs:
+
+| Group | Combatants in authored order: HP / Attack |
+|---|---|
+| Ash-road Raiders | 208 / 60; 138 / 43; 138 / 43 |
+| Cinder Jackals | 188 / 48; 140 / 43; 140 / 43 |
+| Snowcrest Prowlers | 280 / 56; 190 / 43 |
+
+Icebound Sentinels, Green Hollow, global coefficients, classes/skills, targeting,
+encounter weights, durations, unlocks, capacities and save version 6 are
+unchanged. Ashen's recommendation is advisory in Region Select and changes
+future 120-second awards from **332 to 320 XP**. Regression coverage explicitly
+retains both historical **820 / 325 XP** and **850 / 332 XP** snapshots. No saved
+award or historical encounter is recomputed.
+
+All nine development aggregate bands pass, with **1,536 trials per row**:
+
+| Region | Below | At | Above |
+|---|---:|---:|---:|
+| Green Hollow | 41.54% | 73.37% | 82.16% |
+| Ashen Reach | 48.70% | 72.40% | 72.40% |
+| Frostbound Pass | 41.02% | 72.66% | 84.57% |
+
+At recommendation, complete-Expedition completion/resting-Hero counts change
+from **46.55% / 3,533 of 5,366** to **54.04% / 2,679 of 4,631** for Ashen, and
+from **36.20% / 3,842 of 5,184** to **35.35% / 3,883 of 5,184** for Frostbound.
+Ashen's changed recommendation also changes Party composition, so its before/
+after rates are not matched-Party causal estimates. Its above-band completion
+falls from 63.28% to 48.24%; an isolated Combat target is not a completion target.
+Frostbound has slightly worse attrition. These trade-offs remain visible rather
+than being treated as waived acceptance criteria. The largest development
+journal remains **146,023 bytes**, a sampled measurement, not an exhaustive bound.
+
+This candidate is frozen for publication before the first evaluation of
+**92001, 92002, 92003**. Development success alone does not complete balance
+acceptance; fresh holdouts and integrated validation follow.
+
 ### Balance-only follow-up protocol (2026-09-08)
 
 - Calibration: seeds **7001, 7002 and 9001**, **256 distinct Parties per

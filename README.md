@@ -352,6 +352,60 @@ GUT addon are excluded from the Android APK.
   costs and bounded XP without introducing a second derived-stat calculator.
   Extend this asset rather than replace it, preserving unrelated values.
 
+## Procedural pixel art
+
+The initial visual pack is original, static pixel art generated offline with
+Godot's built-in CPU image facilities. No additional art dependencies, network
+services, runtime generation or save migration are required. Editable recipes,
+the palette and the versioned pixel-checksum manifest live in `tools/art/`;
+the 66 runtime PNGs live in `assets/art/`. The existing launcher branding is
+unchanged. Tools and tests remain excluded from the Android APK.
+
+After a clean import, run from the repository root:
+
+```sh
+godot --headless --path . -s res://tools/art/generate_art.gd -- --check
+godot --headless --path . -s res://tools/art/generate_art.gd -- --preview-dir=/tmp/adventurers-art-preview
+```
+
+`--check` is read-only and verifies decoded pixels and manifest metadata against
+the recipes. Preview output goes to an explicit absolute directory outside the
+checkout, not exported assets. Inspect the native/2× contact sheets before
+approving a recipe change. Running without arguments prints help without writes.
+To deliberately regenerate the bank and manifest after approval:
+
+```sh
+godot --headless --path . -s res://tools/art/generate_art.gd -- --write
+godot --headless --path . --editor --import
+```
+
+Commit the recipes, manifest, PNGs and `.import` sidecars together. Do not edit
+the generated PNGs by hand. Each asset has an independent seed, so adding or
+reordering recipes does not change other artwork. Keep recipe/palette versions
+explicit and review changed pixel checksums.
+
+`scenes/ui/art_catalog.gd` is the presentation-only texture allowlist. Hero
+appearance uses the first byte of SHA-256 of UTF-8
+`portrait-v1|<class_id>|<hero_id>`, modulo **8**, indexing the fixed `00`–`07`
+bank. That mapping and ordering are permanent: do not use the bank's current
+size or gameplay RNG. Recruitment, reordering, leveling and equipment/status
+changes retain appearance. Reused portraits are intentional; portraits depict
+class clothing, not currently equipped gear. Historical reports use frozen
+Hero/class IDs and only decorate revealed journal entries.
+
+Artwork uses lossless imports without mipmaps and nearest-neighbor sampling;
+text retains the existing fonts and labels. Native sizes are 64×64 for portraits,
+24×24 for small icons, 32×32 for items and 320×144 for banners. Aspect-preserving
+display targets integer artwork scales where space permits; `canvas_items`
+scaling can still produce fractional physical pixels on Android. Texture
+clarity, ≥48×48dp touch areas, contrast and scrolling require device inspection,
+not an inference from the 720×1280 design viewport.
+
+This is an initial visual slice, **not completion of Milestone 8**. Audio,
+Settings, animation, per-enemy/event illustrations, a full accessibility audit
+and physical-device visual acceptance remain separate work. No balancing or
+Milestone 7 acceptance criteria are changed.
+
 ## Build the Android APK
 
 Install the matching Godot 4.7.2 export templates, OpenJDK 17, and the Android

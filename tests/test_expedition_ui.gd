@@ -1,6 +1,7 @@
 extends GutTest
 
 const Isolation = preload("res://tests/isolated_state.gd")
+const Art = preload("res://scenes/ui/art_catalog.gd")
 const HOME := "res://scenes/ui/home/home_screen.tscn"
 const REGION := "res://scenes/ui/region_select/region_select_screen.tscn"
 const REPORT := "res://scenes/ui/expedition_report/expedition_report_screen.tscn"
@@ -436,6 +437,7 @@ func test_terminal_combat_is_hidden_until_committed_and_saved_log_survives_retun
 	assert_false(_visible_text(_screen()).contains("Hidden ambush"))
 	assert_false(_visible_text(_screen()).contains("Hidden raider"))
 	assert_false(_visible_text(_screen()).contains("Defeat"))
+	assert_null(_node("OutcomeIcon"), "Hidden outcomes must not leak through art.")
 	var enemies := CombatCatalog.BANDIT_SKIRMISHERS
 	enemies.display_name = "Retuned group"
 	enemies.enemies.clear()
@@ -447,6 +449,7 @@ func test_terminal_combat_is_hidden_until_committed_and_saved_log_survives_retun
 	assert_string_contains(_node("FeedbackLabel").text, "not saved")
 	assert_false(_visible_text(_node("Journal")).contains("Hidden raider"))
 	assert_false(_node("AcknowledgeButton").visible)
+	assert_null(_node("OutcomeIcon"), "A failed save must not reveal an outcome icon.")
 	SaveManager.fault_injector = Callable()
 	_node("RetryButton").pressed.emit()
 	assert_eq(run.status, ExpeditionData.Status.COMPLETED)
@@ -459,6 +462,7 @@ func test_terminal_combat_is_hidden_until_committed_and_saved_log_survives_retun
 	assert_string_contains(journal, "Outcome: Defeat")
 	assert_string_contains(journal, "Round 1")
 	assert_string_contains(journal, "damage")
+	assert_same(_node("OutcomeIcon").texture, Art.outcome_icon("DEFEAT"))
 	assert_false(journal.contains("Retuned group"))
 	assert_true(_node("AcknowledgeButton").visible)
 	var gold := GameState.gold
@@ -524,10 +528,19 @@ func test_recovery_refreshes_roster_detail_and_party_draft_only_after_commit() -
 	await _go(ROSTER)
 	var row := _node("RosterList").get_child(0)
 	assert_string_contains(_visible_text(row), "Resting")
+	var status_icon: TextureRect = row.find_child("StatusIcon", true, false)
+	assert_same(status_icon.texture, Art.status_icon(HeroData.HeroStatus.RESTING))
+	SaveManager.fault_injector = func(stage: String) -> bool: return stage == "before_temp_write"
 	_time = 1010
+	ExpeditionManager._timer.timeout.emit()
+	assert_same(status_icon.texture, Art.status_icon(HeroData.HeroStatus.RESTING))
+	assert_same(_node("RosterList").get_child(0), row)
+	SaveManager.fault_injector = Callable()
 	ExpeditionManager._timer.timeout.emit()
 	assert_same(_node("RosterList").get_child(0), row)
 	assert_string_contains(_visible_text(row), "Idle")
+	assert_same(row.find_child("StatusIcon", true, false), status_icon)
+	assert_same(status_icon.texture, Art.status_icon(HeroData.HeroStatus.IDLE))
 	await _go(DETAIL, {"hero_id": second.hero_id})
 	assert_string_contains(_node("HeroSummaryLabel").text, "Resting")
 	_time = 1020

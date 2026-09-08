@@ -855,7 +855,11 @@ App boot (main.tscn)
 
 ## 14. UI and art direction
 
-- **Style:** stylized 2D flat/painterly fantasy portraits and icons; the
+- **Style:** restrained, non-gory procedural pixel-art fantasy portraits and icons;
+  retain the navy/gold/cream branding, a compact shared palette, deliberate
+  pixel clusters, consistent outlines and upper-left lighting. Generate static
+  PNGs offline with Godot, not on players' devices. Keep legible UI fonts rather
+  than requiring pixel fonts. The
   simulation nature of the game means most "action" is read from text/
   numbers/icons rather than animated combat, so art budget should prioritize
   **Hero portraits, class icons, item icons, and Region backdrops** over
@@ -868,6 +872,14 @@ App boot (main.tscn)
   and cheaper to produce.
 - **Iconography:** consistent icon language for classes, status effects,
   item slots, and Region difficulty, reused across all screens.
+- **Initial asset slice:** eight fixed 64×64 portraits per class, 24×24
+  class/status/slot/journal/utility icons, 32×32 equipment icons, and 320×144
+  Region banners, with neutral fallbacks. Apply nearest-neighbor sampling to
+  artwork only; preserve aspect ratios, readable labels and touch scrolling.
+  Appearance is cosmetic: derive portrait selection from existing Hero/class
+  IDs using a pinned mapping; no save fields, gameplay RNG, equipped-item
+  promises or live roster lookups for historical report portraits.
+  See the [asset workflow](../README.md#procedural-pixel-art) for regeneration.
 - **Color:** limited, high-contrast palette per class/status for quick
   scanning of the roster grid; pair every color cue with an icon/label for
   accessibility (§2).

@@ -9,6 +9,8 @@ var _journal: VBoxContainer
 var _acknowledge: Button
 var _shown_cursor: int = -2
 var _leaving: bool = false
+var _backdrop: TextureRect
+var _party_art: HBoxContainer
 
 
 func _ready() -> void:
@@ -16,6 +18,8 @@ func _ready() -> void:
 	_report = ExpeditionManager.get_active_expedition()
 	var content := HeroUI.scrollable_content(self)
 	content.add_child(HeroUI.label("Expedition Report", 44))
+	_backdrop = HeroUI.region_banner(_report.region_id if _report != null else "")
+	content.add_child(_backdrop)
 	_status = HeroUI.label("")
 	_status.name = "StatusLabel"
 	content.add_child(_status)
@@ -34,6 +38,19 @@ func _ready() -> void:
 	home.name = "HomeButton"
 	home.pressed.connect(cancel_draft)
 	content.add_child(home)
+	_party_art = HBoxContainer.new()
+	_party_art.name = "DispatchedPartyArt"
+	_party_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	content.add_child(_party_art)
+	if _report != null:
+		for member in _report.party_snapshot.slots.values():
+			if member == null:
+				continue
+			var portrait := HeroUI.artwork(
+				HeroUI.Art.portrait(member.hero_id, member.class_id), Vector2(64, 64))
+			portrait.set_meta("hero_id", member.hero_id)
+			portrait.tooltip_text = "%s · %s (at dispatch)" % [member.hero_name, member.class_name]
+			_party_art.add_child(portrait)
 	_journal = VBoxContainer.new()
 	_journal.name = "Journal"
 	content.add_child(_journal)
@@ -48,6 +65,8 @@ func _refresh() -> void:
 		return
 	var available := _report != null and _report == ExpeditionManager.get_active_expedition()
 	_acknowledge.visible = available and _report.status == ExpeditionData.Status.COMPLETED
+	_backdrop.visible = available
+	_party_art.visible = available
 	if not available:
 		_status.text = "No report is available. Return Home."
 		HeroUI.clear_children(_journal)
@@ -76,7 +95,23 @@ func _refresh() -> void:
 			for id in step.result.get("item_ids", []):
 				var item := ItemCatalog.item_by_id(id)
 				text += "\nItem: %s" % (item.display_name if item != null else id)
-			_journal.add_child(HeroUI.label(text))
+			var entry := HBoxContainer.new()
+			entry.name = "Step%d" % index
+			entry.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			var icons := VBoxContainer.new()
+			icons.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			entry.add_child(icons)
+			var kind_icon := HeroUI.artwork(HeroUI.Art.journal_icon(step.kind))
+			kind_icon.name = "StepKindIcon"
+			icons.add_child(kind_icon)
+			if step.kind == ExpeditionStep.StepKind.COMBAT:
+				var outcome_icon := HeroUI.artwork(HeroUI.Art.outcome_icon(step.result.outcome))
+				outcome_icon.name = "OutcomeIcon"
+				icons.add_child(outcome_icon)
+			for id in step.result.get("item_ids", []):
+				icons.add_child(HeroUI.artwork(HeroUI.Art.item_icon(id), Vector2(64, 64)))
+			entry.add_child(HeroUI.label(text))
+			_journal.add_child(entry)
 	HeroUI.show_feedback(_feedback, ExpeditionManager.last_error)
 
 

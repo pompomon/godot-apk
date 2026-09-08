@@ -27,6 +27,27 @@ scoping PRs and code review).
 
 ## Tasks
 
+### Initial procedural-art slice
+
+The initial implementation uses offline-generated pixel art, replacing the
+earlier painterly direction without changing gameplay-facing contracts. Its
+bounded inventory is 32 class portraits, 29 icons, three Region banners and
+two additional portrait/banner fallbacks (66 PNGs total; the unknown icon is
+included in the 29). The seven existing screens receive presentation-only
+integration; Settings and audio are not part of this slice.
+
+Recipes and the pixel-checksum manifest remain under `tools/art/`, separate
+from exported textures. The [README workflow](../../../README.md#procedural-pixel-art)
+owns regeneration and validation instructions. Hero appearance is selected
+from existing stable identities without new save fields; reports use frozen
+identities and never disclose unrevealed results through art.
+
+This slice does not close Milestone 7's pending gates or any full-Milestone-8
+acceptance checkbox. Physical-device artwork, touch-target, contrast and
+scrolling acceptance must be recorded separately from local test/export checks.
+
+### Full presentation milestone
+
 1. Produce/source final Hero class icons, status-effect icons, item-slot
    icons, and Region backdrop art (or a clearly documented placeholder-art
    licensing plan if final art is sourced from an asset pack — note

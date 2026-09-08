@@ -5,6 +5,11 @@ const ROSTER_SCREEN := "res://scenes/ui/roster/roster_screen.tscn"
 const EQUIPMENT_SCREEN := "res://scenes/ui/equipment/equipment_screen.tscn"
 
 var _hero_id: String = ""
+var _portrait: TextureRect
+var _class_icon: TextureRect
+var _status_icon: TextureRect
+var _weapon_icon: TextureRect
+var _armor_icon: TextureRect
 
 @onready var _hero_name_label: Label = %HeroNameLabel
 @onready var _feedback_label: Label = %FeedbackLabel
@@ -27,6 +32,23 @@ func configure(context: Dictionary) -> void:
 
 func _ready() -> void:
 	HeroUI.apply_theme(self)
+	var identity := HBoxContainer.new()
+	identity.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hero_content.add_child(identity)
+	_hero_content.move_child(identity, 0)
+	_portrait = HeroUI.portrait(null, 192)
+	identity.add_child(_portrait)
+	_class_icon = HeroUI.artwork(HeroUI.Art.UNKNOWN_ICON)
+	_class_icon.name = "ClassIcon"
+	identity.add_child(_class_icon)
+	_status_icon = HeroUI.artwork(HeroUI.Art.UNKNOWN_ICON)
+	_status_icon.name = "StatusIcon"
+	identity.add_child(_status_icon)
+	_weapon_icon = HeroUI.decorate_label(_weapon_label,
+		HeroUI.Art.equipment_icon(null, "Weapon"), "WeaponIcon")
+	_armor_icon = HeroUI.decorate_label(_armor_label,
+		HeroUI.Art.equipment_icon(null, "Armor"), "ArmorIcon")
+	HeroUI.decorate_label(_xp_label, HeroUI.Art.utility_icon("xp"), "XPIcon")
 	%BackButton.pressed.connect(_go_back)
 	%EquipmentButton.pressed.connect(_open_equipment)
 	ExpeditionManager.changed.connect(_refresh_expedition_state)
@@ -53,6 +75,13 @@ func _refresh() -> void:
 		return
 	_hero_name_label.text = hero.hero_name
 	_hero_summary_label.text = HeroUI.hero_summary(hero)
+	_portrait.texture = HeroUI.portrait_texture(hero)
+	_class_icon.texture = HeroUI.class_icon_for(hero)
+	_status_icon.texture = HeroUI.Art.status_icon(hero.status)
+	_weapon_icon.texture = HeroUI.Art.equipment_icon(hero.equipped_weapon, "Weapon")
+	_armor_icon.texture = HeroUI.Art.equipment_icon(hero.equipped_armor, "Armor")
+	_weapon_icon.custom_minimum_size = _weapon_icon.texture.get_size() * 2
+	_armor_icon.custom_minimum_size = _armor_icon.texture.get_size() * 2
 	HeroUI.clear_children(_traits)
 	if _attributes_and_stats.get_child_count() == 0:
 		HeroUI.add_attributes_and_stats(_attributes_and_stats, hero)

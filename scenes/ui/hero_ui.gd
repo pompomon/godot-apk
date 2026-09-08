@@ -1,6 +1,7 @@
 extends RefCounted
 ## Shared presentation only: hero values always come from the domain calculators.
 
+const Art = preload("res://scenes/ui/art_catalog.gd")
 const TEXT_COLOR := Color("#edf0f7")
 const MUTED_COLOR := Color("#bdc7da")
 const NOTICE_COLOR := Color("#f8d58b")
@@ -62,6 +63,64 @@ static func button(text: String) -> Button:
 	return result
 
 
+static func artwork(texture: Texture2D, extent: Vector2 = Vector2(48, 48)) -> TextureRect:
+	var image := TextureRect.new()
+	image.texture = texture
+	image.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	image.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	image.custom_minimum_size = extent
+	image.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	image.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	image.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return image
+
+
+static func portrait(hero: HeroData, pixels: int = 128) -> TextureRect:
+	var image := artwork(portrait_texture(hero), Vector2(pixels, pixels))
+	image.name = "Portrait"
+	return image
+
+
+static func portrait_texture(hero: HeroData) -> Texture2D:
+	if hero == null or hero.hero_class == null:
+		return Art.UNKNOWN_PORTRAIT
+	return Art.portrait(hero.hero_id, String(hero.hero_class.class_id))
+
+
+static func region_banner(region_id: String) -> TextureRect:
+	var image := artwork(Art.region(region_id), Vector2(0, 288))
+	image.name = "RegionBackdrop"
+	image.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	return image
+
+
+static func set_button_icon(target: Button, texture: Texture2D) -> void:
+	target.icon = texture
+	target.expand_icon = true
+	if texture != null:
+		target.add_theme_constant_override("icon_max_width", texture.get_width() * 2)
+		target.custom_minimum_size.y = maxf(target.custom_minimum_size.y, texture.get_height() * 2 + 40)
+	target.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+
+
+static func decorate_label(target: Label, texture: Texture2D, icon_name: String) -> TextureRect:
+	var parent := target.get_parent()
+	var index := target.get_index()
+	var line := HBoxContainer.new()
+	line.name = "%sLine" % target.name
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(line)
+	parent.move_child(line, index)
+	var image := artwork(texture)
+	image.name = icon_name
+	line.add_child(image)
+	target.reparent(line)
+	target.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	target.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return image
+
+
 static func scrollable_content(screen: Control) -> VBoxContainer:
 	var margin := MarginContainer.new()
 	margin.name = "Margin"
@@ -85,8 +144,8 @@ static func class_name_for(hero: HeroData) -> String:
 	return hero.hero_class.display_name if hero.hero_class != null else "Unknown class"
 
 
-static func class_icon_for(hero: HeroData) -> String:
-	return "[%s]" % class_name_for(hero).left(3).to_upper()
+static func class_icon_for(hero: HeroData) -> Texture2D:
+	return Art.class_icon(String(hero.hero_class.class_id)) if hero.hero_class != null else Art.UNKNOWN_ICON
 
 
 static func status_name(hero: HeroData) -> String:
@@ -108,8 +167,8 @@ static func status_name(hero: HeroData) -> String:
 
 
 static func hero_summary(hero: HeroData) -> String:
-	return "%s %s · Level %d\nStatus: %s" % [
-		class_icon_for(hero), class_name_for(hero), hero.level, status_name(hero)
+	return "%s · Level %d\nStatus: %s" % [
+		class_name_for(hero), hero.level, status_name(hero)
 	]
 
 
@@ -127,7 +186,43 @@ static func status_badge(hero: HeroData) -> Label:
 	return badge
 
 
-static func hero_row(hero: HeroData, open_detail: Callable) -> Button:
+static func hero_header(hero: HeroData) -> HBoxContainer:
+	var header := HBoxContainer.new()
+	header.name = "HeroHeader"
+	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	header.add_child(portrait(hero))
+	var content := VBoxContainer.new()
+	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	header.add_child(content)
+	var name_label := label(hero.hero_name, 34)
+	name_label.name = "HeroName"
+	content.add_child(name_label)
+	var summary := label(hero_summary(hero))
+	summary.name = "HeroSummary"
+	content.add_child(summary)
+	var badges := HBoxContainer.new()
+	badges.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	content.add_child(badges)
+	var class_image := artwork(class_icon_for(hero))
+	class_image.name = "ClassIcon"
+	badges.add_child(class_image)
+	var status_image := artwork(Art.status_icon(hero.status))
+	status_image.name = "StatusIcon"
+	badges.add_child(status_image)
+	badges.add_child(status_badge(hero))
+	return header
+
+
+static func refresh_hero_header(parent: Node, hero: HeroData) -> void:
+	parent.find_child("HeroSummary", true, false).text = hero_summary(hero)
+	parent.find_child("StatusBadge", true, false).text = status_name(hero)
+	parent.find_child("StatusIcon", true, false).texture = Art.status_icon(hero.status)
+
+
+static func hero_row(
+	hero: HeroData, open_detail: Callable, hint: String = "View hero details"
+) -> Button:
 	var row := button("")
 	row.set_meta("hero_id", hero.hero_id)
 	row.tooltip_text = "View %s's details" % hero.hero_name
@@ -140,14 +235,9 @@ static func hero_row(hero: HeroData, open_detail: Callable) -> Button:
 	var content := VBoxContainer.new()
 	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(content)
-	var name_label := label(hero.hero_name, 34)
-	name_label.name = "HeroName"
-	content.add_child(name_label)
-	var summary := label(hero_summary(hero))
-	summary.name = "HeroSummary"
-	content.add_child(summary)
-	content.add_child(status_badge(hero))
-	var detail_hint := label("View hero details", 24)
+	content.add_child(hero_header(hero))
+	var detail_hint := label(hint, 24)
+	detail_hint.name = "DetailHint"
 	detail_hint.add_theme_color_override("font_color", MUTED_COLOR)
 	content.add_child(detail_hint)
 	margin.minimum_size_changed.connect(func() -> void:

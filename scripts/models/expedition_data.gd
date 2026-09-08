@@ -5,7 +5,8 @@ extends RefCounted
 enum Status { RUNNING, COMPLETED }
 const LEGACY_RESOLVED_KEYS := ["region_id", "region_name", "party_snapshot", "seed", "start_timestamp",
 	"duration_seconds", "step_duration_seconds", "steps", "terminal_step_index", "effective_end_timestamp"]
-const RESOLVED_KEYS := LEGACY_RESOLVED_KEYS + ["planned_step_count", "retreat_ends_expedition"]
+const V4_RESOLVED_KEYS := LEGACY_RESOLVED_KEYS + ["planned_step_count", "retreat_ends_expedition"]
+const RESOLVED_KEYS := V4_RESOLVED_KEYS + ["xp_award", "recovery_seconds", "rest_hp_percent"]
 const CLOCK_KEYS := ["last_observed_utc", "credited_elapsed_seconds", "last_revealed_index", "status"]
 var _resolved: Dictionary
 var last_observed_utc: int
@@ -30,6 +31,12 @@ var planned_step_count: int:
 	get: return int(_resolved.planned_step_count)
 var retreat_ends_expedition: bool:
 	get: return _resolved.retreat_ends_expedition
+var xp_award: int:
+	get: return int(_resolved.xp_award)
+var recovery_seconds: int:
+	get: return int(_resolved.recovery_seconds)
+var rest_hp_percent: int:
+	get: return int(_resolved.rest_hp_percent)
 var terminal_step_index: int:
 	get: return int(_resolved.terminal_step_index)
 var effective_end_timestamp: int:
@@ -53,11 +60,15 @@ func _init(data: Dictionary = {}) -> void:
 		_resolved.planned_step_count = data.get("steps", []).size()
 	if not _resolved.has("retreat_ends_expedition"):
 		_resolved.retreat_ends_expedition = false
+	for key in {"xp_award": 0, "recovery_seconds": 60, "rest_hp_percent": 0}:
+		if not _resolved.has(key):
+			_resolved[key] = {"xp_award": 0, "recovery_seconds": 60, "rest_hp_percent": 0}[key]
 	if _resolved.has("party_snapshot"):
 		_resolved.party_snapshot = ExpeditionPartySnapshot.new(_resolved.party_snapshot).slots
 	# Restore JSON's integer-valued floats without rounding safe integer IDs/rewards.
 	for key in ["seed", "start_timestamp", "duration_seconds", "step_duration_seconds",
-			"terminal_step_index", "effective_end_timestamp", "planned_step_count"]:
+			"terminal_step_index", "effective_end_timestamp", "planned_step_count",
+			"xp_award", "recovery_seconds", "rest_hp_percent"]:
 		if _resolved.has(key):
 			_resolved[key] = int(_resolved[key])
 	if _resolved.has("steps"):
@@ -124,16 +135,23 @@ func seconds_remaining() -> int:
 
 
 static func valid(data: Variant) -> bool:
-	return _valid(data, false)
+	return _valid(data, 5)
 
 
 static func valid_legacy(data: Variant) -> bool:
-	return _valid(data, true)
+	return _valid(data, 3)
 
 
-static func _valid(data: Variant, legacy: bool) -> bool:
-	var resolved_keys := LEGACY_RESOLVED_KEYS if legacy else RESOLVED_KEYS
+static func valid_version_four(data: Variant) -> bool:
+	return _valid(data, 4)
+
+
+static func _valid(data: Variant, version: int) -> bool:
+	var legacy := version == 3
+	var resolved_keys := LEGACY_RESOLVED_KEYS if legacy else (V4_RESOLVED_KEYS if version == 4 else RESOLVED_KEYS)
 	if not data is Dictionary or not HeroCatalog.has_exact_keys(data, resolved_keys + CLOCK_KEYS):
+		return false
+	if version == 5 and (not ExpeditionCatalog.integer(data.xp_award) or not ExpeditionCatalog.integer(data.recovery_seconds, 1) or not ExpeditionCatalog.integer(data.rest_hp_percent, 0, 100)):
 		return false
 	if not ExpeditionCatalog.text(data.region_id) or ExpeditionCatalog.region_by_id(data.region_id) == null or not ExpeditionCatalog.text(data.region_name):
 		return false
@@ -187,7 +205,7 @@ static func _valid(data: Variant, legacy: bool) -> bool:
 	var expected_terminal := -1
 	for index in range(data.steps.size()):
 		var step: Variant = data.steps[index]
-		if not ExpeditionStep.valid(step, index, snapshot, states):
+		if not ExpeditionStep.valid(step, index, snapshot, states, version < 5):
 			return false
 		if int(step.kind) == ExpeditionStep.StepKind.COMBAT:
 			if legacy:

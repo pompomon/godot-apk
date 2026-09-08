@@ -59,6 +59,8 @@ func _refresh() -> void:
 		_report.region_name, "Running" if _report.status == ExpeditionData.Status.RUNNING else "Completed",
 		_report.last_revealed_index + 1, _report.display_step_count(),
 		_report.seconds_remaining(), _report.credited_gold()]
+	if _report.status == ExpeditionData.Status.COMPLETED:
+		_status.text += "\nXP credited: +%d per participating Hero" % _report.xp_award
 	if _shown_cursor != _report.last_revealed_index:
 		HeroUI.clear_children(_journal)
 		_shown_cursor = _report.last_revealed_index
@@ -71,6 +73,9 @@ func _refresh() -> void:
 				index + 1, step.title, step.journal_text, int(step.result.gold)]
 			if step.kind == ExpeditionStep.StepKind.COMBAT:
 				text += "\n" + _combat_text(step.result)
+			for id in step.result.get("item_ids", []):
+				var item := ItemCatalog.item_by_id(id)
+				text += "\nItem: %s" % (item.display_name if item != null else id)
 			_journal.add_child(HeroUI.label(text))
 	HeroUI.show_feedback(_feedback, ExpeditionManager.last_error)
 

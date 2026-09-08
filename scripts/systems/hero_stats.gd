@@ -1,6 +1,6 @@
 class_name HeroStats
 extends RefCounted
-## Pure roster statistics. Equipment effects are deferred to the equipment milestone.
+## Pure roster statistics, including slot-compatible equipment.
 
 
 static func effective_attributes(hero: HeroData) -> Dictionary:
@@ -30,6 +30,11 @@ static func compute_derived_stats(hero: HeroData) -> Dictionary:
 		if not HeroCatalog.validate_trait(hero_trait) or trait_ids.has(hero_trait.trait_id):
 			return {}
 		trait_ids[hero_trait.trait_id] = true
+	var equipment: Array[ItemResource] = []
+	if ItemCatalog.validate_item(hero.equipped_weapon) and hero.equipped_weapon.slot == "Weapon":
+		equipment.append(hero.equipped_weapon)
+	if ItemCatalog.validate_item(hero.equipped_armor) and hero.equipped_armor.slot == "Armor":
+		equipment.append(hero.equipped_armor)
 	var result := {}
 	for stat in HeroCatalog.STATS:
 		var value: float = hero.hero_class.derived_stat_bases[stat]
@@ -37,6 +42,8 @@ static func compute_derived_stats(hero: HeroData) -> Dictionary:
 			value += attributes[attribute] * hero.hero_class.derived_stat_attribute_weights[stat][attribute]
 		for hero_trait in hero.traits:
 			value += hero_trait.stat_modifiers.get(stat, 0.0)
+		for item in equipment:
+			value += item.stat_modifiers.get(stat, 0.0)
 		if not is_finite(value):
 			return {}
 		if stat in ["Evasion", "CritChance"]:

@@ -1,11 +1,11 @@
-# Adventurer's March — Combat Expeditions
+# Adventurer's March — Progression and Equipment
 
 A Godot 4.7.2 portrait Android game with a generated Company roster, Hero
 inspection, deterministic recruitment, Party formation, timed Combat
-Expeditions, and local JSON saves. The
+Expeditions, Hero leveling, equipment, and local JSON saves. The
 application/package name and APK artifact retain their original **Hello World**
 identifiers. Green Hollow includes deterministic Combat and readable saved
-logs; equipment management and XP progression remain future work.
+logs; completed Expeditions award XP and revealed Loot/Events can award equipment.
 
 Contributors and coding agents: start with the
 [agent implementation guidelines](AGENTS.md) for bounded scope, integration
@@ -43,12 +43,19 @@ godot --path .
 - Heroes retain their original stable IDs when recruited and after reload.
   Each has zero or one flat-stat trade-off trait. Conditional combat/recovery
   traits are deferred, not represented as working effects.
-- Hero Detail shows attributes, derived stats, traits, status, and cumulative
-  XP. The XP bar is inactive until progression is implemented in Milestone 6;
-  weapon and armor slots are empty placeholders.
+- Hero Detail shows attributes, derived stats, traits, status, cumulative XP and
+  next-level progress. **Manage equipment** opens a weapon/armor draft with
+  before/after stat changes. Confirm saves ownership; Cancel/Android Back
+  discards the draft. All classes can use either slot's items while Idle,
+  Assigned or Resting, but equipment is locked during an Expedition.
+- Inventory holds unequipped item copies, including duplicates. Equipping
+  consumes one copy and replacing/unequipping returns one. The starter pool
+  contains Short Sword, Hunting Bow, Apprentice Staff, Leather Armor, Chainmail
+  and Robes with Common/Uncommon flat-stat modifiers; no crafting or shop is added.
 - Saves live in Godot's app-private user-data directory as `save.json`.
   New-game creation, recruitment, confirmed Party changes, Expedition starts,
-  progress observations/rewards, and report acknowledgment save immediately;
+  progress observations/rewards, equipment confirmation, and report acknowledgment
+  save immediately;
   initialized state is also saved on application pause/close. Failed
   pre-commit mutations roll back and show retry feedback.
 - Versioned saves validate the complete state and known content IDs. Writes
@@ -85,8 +92,8 @@ godot --path .
   not store a Party. Other statuses are preserved.
 - Dispatching consumes the confirmed Party. Its Heroes become `On expedition`
   and cannot be reassigned until the Expedition finishes; completion returns
-  them to `Idle` if they survive with positive HP. Zero-HP Heroes and all Heroes
-  after Defeat become `Wounded` until their recovery deadline.
+  them to `Idle` if healthy. Frozen Wounded outcomes (zero HP or Defeat) become
+  `Resting`; survivors at or below 25% of dispatch MaxHP also rest.
 
 ## First Expedition
 
@@ -97,8 +104,10 @@ godot --path .
 - Green Hollow plans five Travel/encounter pairs: **10 steps**, one every
   **6 seconds**. The weighted pool contains five automatic narrative Events,
   Loot, Forest Wolves, and Bandit Skirmishers. Loot/Events award modest
-  nonnegative gold; Combat awards no gold. Item rewards, XP awards, choices,
-  and resource costs remain deferred.
+  nonnegative gold; Combat awards no gold. Loot and selected Event outcomes can
+  also grant equipment: each Wayside Cache has a 50% chance of one weighted
+  starter item, and the Quiet Ruins coin outcome includes a Short Sword.
+  Choices and resource costs remain deferred.
 - Combat uses Guard, Aimed Shot, Firebolt, and Mend, with HP carrying between
   encounters and no automatic healing between them. Defeat ends the Expedition
   at that Combat step; Retreat continues in Green Hollow. Terminal runs retain
@@ -120,26 +129,40 @@ godot --path .
   This is an offline clock policy, not protection against repeated clock
   manipulation.
 - Each observation persists clock accounting together with any newly
-  revealed gold, cursor, and final Hero-status changes before displaying
-  them. Failed pre-commit saves restore the previous state and can be retried;
+  revealed gold/items, cursor, and final Hero XP/level/status changes before
+  displaying them. Failed pre-commit saves restore the previous state and can be retried;
   post-commit warnings do not undo saved rewards.
+- Every participating Hero gains the same frozen XP award when completion
+  commits, including after Defeat/terminal Retreat. The initial formula is
+  `floor(recommended_party_power * 0.25 + selected_duration_seconds)`.
+  Level costs start at 100 XP and grow by 1.25, individually rounded up;
+  thresholds are cumulative and a single award can advance multiple levels.
+  Growth never overwrites generated attributes. Saved levels are not recomputed
+  on load; later positive awards use the current threshold curve.
 - A completed report remains available across restarts until explicitly
-  acknowledged. Acknowledgment does **not** award gold again. Forming a new
-  Party is allowed after completion, but the previous report must be
+  acknowledged. Acknowledgment does **not** award gold, items or XP again.
+  Forming a new Party is allowed after completion, but the previous report must be
   acknowledged before dispatching another Expedition. Back leaves a report
   available rather than silently dismissing it.
-- Newly Wounded Heroes receive a fixed **60-second** UTC recovery deadline
+- Newly injured Heroes enter Resting with a **60-second** UTC recovery deadline
   starting at the observation that commits completion, including after a long
   offline absence. Foreground/resume/load observations return due Heroes to
   Idle transactionally, even without an active Expedition or report. Failed
-  saves preserve Wounded status and expose retry feedback; Party availability
+  saves preserve Resting status and expose retry feedback; Party availability
   refreshes only after commit. Legacy Wounded Heroes without a deadline remain
-  unchanged. This is a limited placeholder, not the later Resting/injury system.
-- Version-4 saves preserve pending Parties and active/completed Expeditions,
+  unchanged. Recovery duration and the heavy-damage percentage are frozen at
+  dispatch; subsequent content changes do not alter a pending run's policy.
+- Version-5 saves preserve inventory copies, equipped item IDs, pending Parties
+  and active/completed Expeditions,
   including frozen combat payloads, planned step counts, terminal rules, and
-  Hero recovery deadlines. Versions 1–3 migrate without regenerating Heroes,
+  Hero recovery deadlines and frozen progression rewards. Versions 1–4 migrate
+  without regenerating Heroes,
   recruitment offers, or historical journals. Combat dispatch, finalization,
-  recovery observation, and presentation share the existing transaction path.
+  recovery observation, equipment and presentation share the existing transaction
+  boundary.
+  Old Expeditions gain no retroactive XP or items. Existing positive Wounded
+  deadlines migrate to Resting without restarting their timer; legacy
+  Wounded/Resting states with no deadline remain unchanged.
   Legacy `On expedition` statuses become `Idle`: those schemas could not
   store an Expedition to which those Heroes belonged.
 
@@ -190,8 +213,8 @@ excluded from the Android APK.
 
 - `GameState` owns the typed Hero roster and offers, nullable confirmed
   `current_party`, gold, roster capacity, ID/seed state, inventory, and unlocked
-  Region IDs. Inventory and unlocked
-  Regions remain empty until their owning milestones.
+  Region IDs. Inventory contains typed, immutable `ItemResource` references;
+  unlocked Regions remain reserved for the content-expansion milestone.
 - `HeroData` is a `RefCounted` runtime model. Generation and derived-stat
   calculation are pure; generated attributes are not overwritten by growth.
   Class-specific stat bases and weights live on authored class Resources.
@@ -201,11 +224,11 @@ excluded from the Android APK.
 - `PartyData` is a `RefCounted` four-slot model referencing canonical roster
   Heroes. Drafts copy only its mapping; deterministic slot order is front-left,
   front-right, back-left, back-right. `PartyEvaluator` is pure and consumes
-  `HeroStats`, so future equipment effects need no duplicate Power formula.
+  `HeroStats`, so equipment effects need no duplicate Power formula.
 - `PartyFormationService` validates and commits Party/status changes together.
   `GameState` checkpoints retain Hero identity while restoring mutable
-  statuses and the previous formation on pre-commit failure. A post-commit
-  warning never undoes saved changes. Version-2 validation rejects orphan
+  XP, level, equipment, recovery, statuses and the previous formation on pre-commit
+  failure. A post-commit warning never undoes saved changes. Version-2 validation rejects orphan
   `Assigned` statuses and Party members not belonging to the roster.
 - `CombatSimulator` delegates to pure `CombatEngine` functions consuming
   detached Party/skill snapshots, current Hero HP/status, enemy data, a seed,
@@ -227,8 +250,8 @@ excluded from the Android APK.
   when a save is loaded. Pending Party mappings still reference canonical
   roster Heroes.
 - Expedition start, reveal/finalization, and acknowledgment use the existing
-  save commit boundary. Gold, cursor, clock state, and Hero statuses are one
-  saved snapshot; only committed state is presented.
+  save commit boundary. Gold/items, XP/level, cursor, clock state and Hero
+  recovery/statuses are one saved snapshot; only committed state is presented.
 - `UIManager.bind_screen_root()` is bootstrap-only; screens navigate using
   `UIManager.show_screen()`. Navigation before binding is rejected, not queued.
   Accepted requests run after tree callbacks finish; requests belonging to a
@@ -239,17 +262,19 @@ excluded from the Android APK.
   live under `scripts/models/`. `ExpeditionManager.start_expedition` accepts
   the confirmed `PartyData`; it must not use the draft-oriented
   `PartyData.copy()` as a frozen Expedition snapshot. Combat enemy and skill
-  Resources are detached before simulation; inventory remains untyped until
-  Milestone 6.
+  Resources are detached before simulation. `ItemCatalog` resolves saved IDs
+  through an explicit allowlist. Equipment drafts use detached stat previews
+  and revalidate canonical Hero identity and current item quantities on confirm.
 - `data/balancing/default_balancing.tres` is the single balancing asset. It
   defines the 100-gold recruitment price, design §7 Party Power baseline
   (including divisor 4 and no-front-row factor 0.85), and §9 combat defaults
   with a 20-round cap. Encounter-kind multipliers start at a neutral 1.0; the
   offline cap is provisionally 86400 seconds (24 hours) per observation, not a
   finalized balance decision. Skill multipliers are configured for Combat,
-  with a fixed 60-second recovery coefficient for the Milestone 5 placeholder.
-  XP remains unconfigured until Milestone 6. Extend this asset rather than
-  replace it, preserving unrelated values.
+  with XP weights/thresholds and 60-second/25%-HP recovery defaults for progression.
+  `Leveling` caches numeric threshold runs, handles cumulative ceiling-rounded
+  costs and bounded XP without introducing a second derived-stat calculator.
+  Extend this asset rather than replace it, preserving unrelated values.
 
 ## Build the Android APK
 

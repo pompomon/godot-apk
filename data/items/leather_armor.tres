@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ItemResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/models/item_resource.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+item_id = &"leather_armor"
+display_name = "Leather Armor"
+slot = "Armor"
+rarity = &"Common"
+stat_modifiers = {
+"Defense": 2.0,
+"MaxHP": 4.0
+}

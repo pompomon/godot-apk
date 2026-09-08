@@ -94,7 +94,7 @@ func test_custom_nonnegative_attributes_need_not_match_generation_ranges() -> vo
 	assert_false(HeroStats.compute_derived_stats(hero).is_empty())
 
 
-func test_stats_are_pure_and_equipment_status_xp_identity_do_not_affect_them() -> void:
+func test_stats_are_pure_and_only_equipment_not_status_xp_identity_affects_them() -> void:
 	var hero := _fractional_hero()
 	var attributes_before := hero.attributes.duplicate(true)
 	var traits_before := hero.traits.duplicate()
@@ -107,8 +107,14 @@ func test_stats_are_pure_and_equipment_status_xp_identity_do_not_affect_them() -
 	var returned_attributes := HeroStats.effective_attributes(hero)
 	returned_attributes["MIG"] = 999
 	var weapon := ItemResource.new()
+	weapon.item_id = &"fixture_weapon"
+	weapon.display_name = "Fixture Weapon"
+	weapon.rarity = &"Common"
 	weapon.stat_modifiers = {"Attack": 5000.0}
 	var armor := ItemResource.new()
+	armor.item_id = &"fixture_armor"
+	armor.display_name = "Fixture Armor"
+	armor.rarity = &"Common"
 	armor.slot = "Armor"
 	armor.stat_modifiers = {"Defense": 5000.0}
 	hero.equipped_weapon = weapon
@@ -116,7 +122,10 @@ func test_stats_are_pure_and_equipment_status_xp_identity_do_not_affect_them() -
 	hero.xp = 250
 	hero.hero_name = "Renamed"
 	hero.status = HeroData.HeroStatus.WOUNDED
-	assert_eq(HeroStats.compute_derived_stats(hero), first)
+	var equipped := first.duplicate()
+	equipped["Attack"] += 5000
+	equipped["Defense"] += 5000
+	assert_eq(HeroStats.compute_derived_stats(hero), equipped)
 	first["MaxHP"] = -999
 	assert_eq(HeroStats.compute_derived_stats(hero)["MaxHP"], 6)
 	assert_eq(hero.attributes, attributes_before)

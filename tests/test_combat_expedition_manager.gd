@@ -108,7 +108,7 @@ func _rewarding_defeat() -> ExpeditionData:
 
 
 func _wound(hero: HeroData, deadline: int) -> void:
-	hero.status = HeroData.HeroStatus.WOUNDED
+	hero.status = HeroData.HeroStatus.RESTING if deadline > 0 else HeroData.HeroStatus.WOUNDED
 	hero.recovery_ready_at = deadline
 
 
@@ -146,7 +146,7 @@ func test_combat_states_remain_frozen_and_on_expedition_until_final_observation(
 	assert_eq(run.serialize().party_snapshot, frozen.party_snapshot)
 
 
-func test_zero_hp_is_wounded_on_victory_and_retreat_while_survivors_become_idle() -> void:
+func test_zero_hp_rests_on_victory_and_retreat_while_survivors_become_idle() -> void:
 	for outcome in ["VICTORY", "RETREAT"]:
 		_time = 1000
 		assert_true(RecruitmentService.initialize_new_game(12345))
@@ -161,7 +161,7 @@ func test_zero_hp_is_wounded_on_victory_and_retreat_while_survivors_become_idle(
 		assert_eq(GameState.find_hero("hero-1").status, HeroData.HeroStatus.ON_EXPEDITION)
 		_observe(1060)
 		assert_true(ExpeditionManager.last_committed, ExpeditionManager.last_error)
-		assert_eq(GameState.find_hero("hero-1").status, HeroData.HeroStatus.WOUNDED)
+		assert_eq(GameState.find_hero("hero-1").status, HeroData.HeroStatus.RESTING)
 		assert_eq(GameState.find_hero("hero-1").recovery_ready_at, 1120)
 		assert_eq(GameState.find_hero("hero-2").status, HeroData.HeroStatus.IDLE)
 		assert_eq(GameState.find_hero("hero-2").recovery_ready_at, 0)
@@ -189,7 +189,7 @@ func test_early_defeat_after_long_absence_caps_elapsed_and_starts_recovery_at_ob
 	assert_eq(run.status, ExpeditionData.Status.COMPLETED)
 	assert_eq(GameState.gold, expected_gold)
 	for id in run.final_hero_states():
-		assert_eq(GameState.find_hero(id).status, HeroData.HeroStatus.WOUNDED)
+		assert_eq(GameState.find_hero(id).status, HeroData.HeroStatus.RESTING)
 		assert_eq(GameState.find_hero(id).recovery_ready_at, 1000060)
 	assert_eq(run.serialize().steps, frozen_steps)
 	var saved := SaveManager.capture_state()
@@ -252,7 +252,7 @@ func test_due_recovery_without_a_run_preserves_legacy_states_and_avoids_tick_wri
 	watch_signals(ExpeditionManager)
 	for now in [1000, 1059, 900]:
 		_observe(now)
-		assert_eq(wounded.status, HeroData.HeroStatus.WOUNDED)
+		assert_eq(wounded.status, HeroData.HeroStatus.RESTING)
 	assert_eq(writes, [])
 	ExpeditionManager._lifecycle_enabled = true
 	ExpeditionManager._foreground = false
@@ -397,7 +397,7 @@ func test_all_save_fault_stages_restore_or_commit_combat_finalization_and_recove
 			var deadline := (5060 if stage == "after_primary_replace" else 5160) if action == "finalize" else 0
 			for id in run.final_hero_states():
 				var hero := GameState.find_hero(id)
-				assert_eq(hero.status, HeroData.HeroStatus.WOUNDED if action == "finalize" else HeroData.HeroStatus.IDLE, label)
+				assert_eq(hero.status, HeroData.HeroStatus.RESTING if action == "finalize" else HeroData.HeroStatus.IDLE, label)
 				assert_eq(hero.recovery_ready_at, deadline, label)
 			assert_eq(GameState.roster[2].status, HeroData.HeroStatus.IDLE, label)
 			assert_eq(GameState.roster[2].recovery_ready_at, 0, label)
@@ -418,16 +418,19 @@ func test_all_save_fault_stages_restore_or_commit_combat_finalization_and_recove
 
 func test_recovery_deadline_bounds_reject_before_mutation_and_accept_maximum_exactly() -> void:
 	_configure("DEFEAT")
-	var run := _start()
+	var party := _confirm()
+	var before := SaveManager.capture_state()
+	for invalid in [0, -1, HeroCatalog.MAX_SAFE_INT + 1]:
+		ExpeditionManager.balancing.base_recovery_seconds = invalid
+		ExpeditionManager.start_expedition(REGION, party, 60)
+		assert_false(ExpeditionManager.last_committed)
+		assert_eq(SaveManager.capture_state(), before)
+	ExpeditionManager.balancing.base_recovery_seconds = 60
+	var run := _dispatch(party)
 	_wound(GameState.roster[2], 1001)
 	SaveManager.save()
 	var saved := SaveManager.capture_state()
-	for invalid in [0, -1, HeroCatalog.MAX_SAFE_INT + 1]:
-		ExpeditionManager.balancing.base_recovery_seconds = invalid
-		_observe(5000)
-		assert_false(ExpeditionManager.last_committed)
-		assert_eq(SaveManager.capture_state(), saved)
-	ExpeditionManager.balancing.base_recovery_seconds = 60
+	ExpeditionManager.balancing.base_recovery_seconds = -1
 	for now in [HeroCatalog.MAX_SAFE_INT, HeroCatalog.MAX_SAFE_INT - 59]:
 		_observe(now)
 		assert_false(ExpeditionManager.last_committed)
@@ -468,7 +471,7 @@ func test_gold_overflow_blocks_terminal_finalization_and_due_recovery_together()
 	assert_eq(GameState.gold, HeroCatalog.MAX_SAFE_INT)
 	assert_eq(run.status, ExpeditionData.Status.COMPLETED)
 	for id in run.final_hero_states():
-		assert_eq(GameState.find_hero(id).recovery_ready_at, 5007)
+		assert_eq(GameState.find_hero(id).recovery_ready_at, 5060)
 	assert_eq(GameState.roster[2].status, HeroData.HeroStatus.IDLE)
 	assert_eq(GameState.roster[2].recovery_ready_at, 0)
 

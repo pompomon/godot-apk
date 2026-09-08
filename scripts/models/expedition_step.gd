@@ -34,7 +34,7 @@ func serialize() -> Dictionary:
 	return _data.duplicate(true)
 
 
-static func valid(data: Variant, index: int, snapshot: Variant = null, current_hero_states: Variant = null) -> bool:
+static func valid(data: Variant, index: int, snapshot: Variant = null, current_hero_states: Variant = null, legacy: bool = false) -> bool:
 	if not data is Dictionary or not HeroCatalog.has_exact_keys(
 			data, ["kind", "content_id", "title", "journal_text", "outcome_id", "result"]):
 		return false
@@ -46,10 +46,13 @@ static func valid(data: Variant, index: int, snapshot: Variant = null, current_h
 		if index % 2 == 0 or not ExpeditionCatalog.text(data.content_id) or CombatCatalog.enemy_group_by_id(data.content_id) == null:
 			return false
 		return CombatResult.valid(data.result, snapshot, current_hero_states) and data.outcome_id == data.result.outcome
-	if not ExpeditionCatalog.gold_payload(data.result):
-		return false
 	if index % 2 == 0:
-		return int(data.kind) == StepKind.TRAVEL and data.content_id == "" and data.outcome_id == "" and data.result.gold == 0
+		return int(data.kind) == StepKind.TRAVEL and data.content_id == "" and data.outcome_id == "" and ExpeditionCatalog.gold_payload(data.result) and data.result.gold == 0
+	if legacy:
+		if not ExpeditionCatalog.gold_payload(data.result):
+			return false
+	elif not ExpeditionCatalog.reward_payload(data.result, 1 if int(data.kind) == StepKind.LOOT else ExpeditionCatalog.MAX_EVENT_ITEMS):
+		return false
 	match int(data.kind):
 		StepKind.LOOT:
 			return ExpeditionCatalog.loot_by_id(data.content_id) != null and data.outcome_id == ""

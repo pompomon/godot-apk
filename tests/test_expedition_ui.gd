@@ -450,7 +450,7 @@ func test_terminal_combat_is_hidden_until_committed_and_saved_log_survives_retun
 	SaveManager.fault_injector = Callable()
 	_node("RetryButton").pressed.emit()
 	assert_eq(run.status, ExpeditionData.Status.COMPLETED)
-	assert_eq(GameState.roster[0].status, HeroData.HeroStatus.WOUNDED)
+	assert_eq(GameState.roster[0].status, HeroData.HeroStatus.RESTING)
 	assert_string_contains(_node("StatusLabel").text, "Step 2 / 2")
 	assert_string_contains(_node("StatusLabel").text, "0 seconds remaining")
 	var journal := _visible_text(_node("Journal"))
@@ -515,25 +515,25 @@ func test_combat_log_formats_overheal_as_healing_power() -> void:
 func test_recovery_refreshes_roster_detail_and_party_draft_only_after_commit() -> void:
 	var first := GameState.roster[0]
 	var second := GameState.roster[1]
-	first.status = HeroData.HeroStatus.WOUNDED
+	first.status = HeroData.HeroStatus.RESTING
 	first.recovery_ready_at = 1010
-	second.status = HeroData.HeroStatus.WOUNDED
+	second.status = HeroData.HeroStatus.RESTING
 	second.recovery_ready_at = 1020
 	SaveManager.save()
 	assert_true(SaveManager.last_committed)
 	await _go(ROSTER)
 	var row := _node("RosterList").get_child(0)
-	assert_string_contains(_visible_text(row), "Wounded")
+	assert_string_contains(_visible_text(row), "Resting")
 	_time = 1010
 	ExpeditionManager._timer.timeout.emit()
 	assert_same(_node("RosterList").get_child(0), row)
 	assert_string_contains(_visible_text(row), "Idle")
 	await _go(DETAIL, {"hero_id": second.hero_id})
-	assert_string_contains(_node("HeroSummaryLabel").text, "Wounded")
+	assert_string_contains(_node("HeroSummaryLabel").text, "Resting")
 	_time = 1020
 	ExpeditionManager._timer.timeout.emit()
 	assert_string_contains(_node("HeroSummaryLabel").text, "Idle")
-	first.status = HeroData.HeroStatus.WOUNDED
+	first.status = HeroData.HeroStatus.RESTING
 	first.recovery_ready_at = 1030
 	SaveManager.save()
 	await _go(FORMATION)
@@ -544,7 +544,7 @@ func test_recovery_refreshes_roster_detail_and_party_draft_only_after_commit() -
 	SaveManager.fault_injector = func(stage: String) -> bool: return stage == "before_temp_write"
 	_time = 1030
 	ExpeditionManager._timer.timeout.emit()
-	assert_eq(first.status, HeroData.HeroStatus.WOUNDED)
+	assert_eq(first.status, HeroData.HeroStatus.RESTING)
 	assert_eq(_node("AvailableList").get_child_count(), 2)
 	assert_eq(draft.slots, before)
 	assert_string_contains(_node("FeedbackLabel").text, "not saved")
@@ -559,14 +559,14 @@ func test_recovery_refreshes_roster_detail_and_party_draft_only_after_commit() -
 
 func test_home_exposes_recovery_retry_without_an_expedition_or_report() -> void:
 	var hero := GameState.roster[0]
-	hero.status = HeroData.HeroStatus.WOUNDED
+	hero.status = HeroData.HeroStatus.RESTING
 	hero.recovery_ready_at = 1010
 	SaveManager.save()
 	SaveManager.fault_injector = func(stage: String) -> bool: return stage == "before_primary_replace"
 	_time = 1010
 	ExpeditionManager._timer.timeout.emit()
 	assert_null(ExpeditionManager.get_active_expedition())
-	assert_eq(hero.status, HeroData.HeroStatus.WOUNDED)
+	assert_eq(hero.status, HeroData.HeroStatus.RESTING)
 	assert_true(_node("RetryProgressButton").visible)
 	assert_string_contains(_node("FeedbackLabel").text, "not saved")
 	SaveManager.fault_injector = Callable()

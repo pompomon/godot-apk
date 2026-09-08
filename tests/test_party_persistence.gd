@@ -59,7 +59,7 @@ func test_null_partial_back_row_and_full_parties_round_trip_with_exact_roster_id
 		if not mapping.is_empty():
 			assert_true(PartyFormationService.confirm(party, BALANCING))
 		var expected := SaveManager.capture_state()
-		assert_eq(expected.save_version, 4)
+		assert_eq(expected.save_version, 5)
 		assert_true(SaveManager.validate_snapshot(expected))
 		GameState.reset()
 		SaveManager.load_or_create()
@@ -150,7 +150,7 @@ func test_version_one_migration_preserves_all_old_data_except_orphan_assigned() 
 	var untouched := legacy.duplicate(true)
 	var migrated := SaveManager.migrate(legacy)
 	var expected := untouched.duplicate(true)
-	expected.save_version = 4
+	expected.save_version = 5
 	expected.current_party = null
 	expected.expedition = null
 	expected.expedition_seed = expected.recruitment_seed

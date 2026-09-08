@@ -2,8 +2,9 @@ extends Node
 ## Versioned, validated snapshots and best-effort same-directory replacement.
 ## No fsync or cross-platform atomicity guarantees are available through these APIs.
 
-const SAVE_VERSION := 4
+const SAVE_VERSION := 5
 const MAX_SAVE_BYTES := 1048576
+const MAX_INVENTORY_ITEMS := 1024
 const LEGACY_ROOT_KEYS := [
 	"save_version", "roster", "recruitment_offers", "gold", "inventory",
 	"unlocked_regions", "roster_capacity", "next_hero_id", "recruitment_seed",
@@ -104,14 +105,14 @@ func migrate(data: Variant) -> Dictionary:
 	if not data is Dictionary or not _integer(data.get("save_version"), 1, HeroCatalog.MAX_SAFE_INT):
 		return {}
 	match int(data.save_version):
-		1, 2, 3:
+		1, 2, 3, 4:
 			var version := int(data.save_version)
 			var keys := LEGACY_ROOT_KEYS if version == 1 else (V2_ROOT_KEYS if version == 2 else ROOT_KEYS)
 			if not _validate_schema(data, version, keys):
 				return {}
 			if version >= 2 and not _validate_party(data):
 				return {}
-			if version == 3 and (not _integer(data.expedition_seed) or not _integer(data.expedition_sequence) or not _validate_expedition_relations(data, true)):
+			if version >= 3 and (not _integer(data.expedition_seed) or not _integer(data.expedition_sequence) or not _validate_expedition_relations(data, version)):
 				return {}
 			var migrated: Dictionary = data.duplicate(true)
 			migrated.save_version = SAVE_VERSION
@@ -124,11 +125,18 @@ func migrate(data: Variant) -> Dictionary:
 				for hero in migrated.roster:
 					if hero.status == "ON_EXPEDITION" or (version == 1 and hero.status == "ASSIGNED"):
 						hero.status = "IDLE"
-			elif migrated.expedition != null:
+			elif version == 3 and migrated.expedition != null:
 				migrated.expedition.planned_step_count = migrated.expedition.steps.size()
 				migrated.expedition.retreat_ends_expedition = false
+			if migrated.expedition != null:
+				migrated.expedition.xp_award = 0
+				migrated.expedition.recovery_seconds = 60
+				migrated.expedition.rest_hp_percent = 0
 			for hero in migrated.roster + migrated.recruitment_offers:
-				hero.recovery_ready_at = 0
+				if version < 4:
+					hero.recovery_ready_at = 0
+				elif hero.status == "WOUNDED" and hero.recovery_ready_at > 0:
+					hero.status = "RESTING"
 			return migrated if validate_snapshot(migrated) else {}
 		SAVE_VERSION:
 			return data if validate_snapshot(data) else {}
@@ -146,9 +154,12 @@ func capture_state() -> Dictionary:
 	var regions: Array = []
 	for id in GameState.unlocked_regions:
 		regions.append(String(id))
+	var inventory: Array = []
+	for item in GameState.inventory:
+		inventory.append(_serialize_item(item))
 	return {
 		"save_version": SAVE_VERSION, "roster": heroes, "recruitment_offers": offers,
-		"gold": GameState.gold, "inventory": GameState.inventory.duplicate(true),
+		"gold": GameState.gold, "inventory": inventory,
 		"unlocked_regions": regions, "roster_capacity": GameState.roster_capacity,
 		"next_hero_id": GameState.next_hero_id, "recruitment_seed": GameState.recruitment_seed,
 		"recruitment_sequence": GameState.recruitment_sequence,
@@ -173,6 +184,12 @@ func _serialize_party(party: PartyData) -> Variant:
 	return result
 
 
+func _serialize_item(item: ItemResource) -> Variant:
+	if item == null:
+		return null
+	return String(item.item_id) if ItemCatalog.item_by_id(String(item.item_id)) == item else ""
+
+
 func _serialize_hero(hero: HeroData) -> Dictionary:
 	if hero == null or hero.hero_class == null:
 		return {}
@@ -190,8 +207,8 @@ func _serialize_hero(hero: HeroData) -> Dictionary:
 		"attributes": hero.attributes.duplicate(), "trait_ids": traits,
 		"status": statuses[hero.status],
 		"recovery_ready_at": hero.recovery_ready_at,
-		"equipped_weapon": null if hero.equipped_weapon == null else "unsupported",
-		"equipped_armor": null if hero.equipped_armor == null else "unsupported",
+		"equipped_weapon": _serialize_item(hero.equipped_weapon),
+		"equipped_armor": _serialize_item(hero.equipped_armor),
 	}
 
 
@@ -203,11 +220,13 @@ func validate_snapshot(data: Variant) -> bool:
 	return _validate_expedition_relations(data)
 
 
-func _validate_expedition_relations(data: Dictionary, legacy: bool = false) -> bool:
+func _validate_expedition_relations(data: Dictionary, version: int = SAVE_VERSION) -> bool:
 	var participants := {}
 	var running := false
 	if data.expedition != null:
-		if not (ExpeditionData.valid_legacy(data.expedition) if legacy else ExpeditionData.valid(data.expedition)):
+		var valid_run := ExpeditionData.valid(data.expedition) if version == SAVE_VERSION else (
+			ExpeditionData.valid_legacy(data.expedition) if version == 3 else ExpeditionData.valid_version_four(data.expedition))
+		if not valid_run:
 			return false
 		running = int(data.expedition.status) == ExpeditionData.Status.RUNNING
 		if running and data.current_party != null:
@@ -242,8 +261,18 @@ func _validate_schema(data: Variant, version: int, keys: Array) -> bool:
 		return false
 	if not _integer(data.recruitment_sequence):
 		return false
-	if not data.inventory is Array or not data.inventory.is_empty():
+	if not data.inventory is Array:
 		return false
+	if data.inventory.size() > MAX_INVENTORY_ITEMS:
+		return false
+	if version < 5 and not data.inventory.is_empty():
+		return false
+	if version >= 5:
+		if not ItemCatalog.validate_catalog():
+			return false
+		for id in data.inventory:
+			if not _text(id) or ItemCatalog.item_by_id(id) == null:
+				return false
 	if not data.unlocked_regions is Array or data.unlocked_regions.size() > 1024:
 		return false
 	var regions := {}
@@ -269,7 +298,7 @@ func _validate_schema(data: Variant, version: int, keys: Array) -> bool:
 			return false
 		ids[hero.hero_id] = true
 	for hero in data.recruitment_offers:
-		if hero.status != "IDLE":
+		if hero.status != "IDLE" or hero.equipped_weapon != null or hero.equipped_armor != null:
 			return false
 	return true
 
@@ -301,7 +330,7 @@ func _validate_party(data: Dictionary) -> bool:
 
 
 func _validate_hero(data: Variant, version: int = SAVE_VERSION) -> bool:
-	if not data is Dictionary or not HeroCatalog.has_exact_keys(data, HERO_KEYS if version == SAVE_VERSION else LEGACY_HERO_KEYS):
+	if not data is Dictionary or not HeroCatalog.has_exact_keys(data, HERO_KEYS if version >= 4 else LEGACY_HERO_KEYS):
 		return false
 	if not _text(data.hero_id) or not _text(data.hero_name) or not _text(data.class_id):
 		return false
@@ -312,11 +341,17 @@ func _validate_hero(data: Variant, version: int = SAVE_VERSION) -> bool:
 		return false
 	if not data.status is String or data.status not in HeroData.HeroStatus.keys():
 		return false
-	if version == SAVE_VERSION:
-		if not _integer(data.recovery_ready_at) or (data.recovery_ready_at > 0 and data.status != "WOUNDED"):
+	if version >= 4:
+		if not _integer(data.recovery_ready_at) or (data.recovery_ready_at > 0 and data.status != ("RESTING" if version >= 5 else "WOUNDED")):
 			return false
-	if data.equipped_weapon != null or data.equipped_armor != null:
-		return false
+	for key in ["equipped_weapon", "equipped_armor"]:
+		if data[key] == null:
+			continue
+		if version < 5 or not _text(data[key]):
+			return false
+		var item := ItemCatalog.item_by_id(data[key])
+		if item == null or item.slot != ("Weapon" if key == "equipped_weapon" else "Armor"):
+			return false
 	if not data.attributes is Dictionary or not HeroCatalog.has_exact_keys(data.attributes, HeroCatalog.ATTRIBUTES):
 		return false
 	for attribute in HeroCatalog.ATTRIBUTES:
@@ -387,7 +422,9 @@ func _apply_validated(data: Dictionary) -> void:
 	GameState.unlocked_regions.clear()
 	for id in data.unlocked_regions:
 		GameState.unlocked_regions.append(StringName(id))
-	GameState.inventory = []
+	GameState.inventory.clear()
+	for id in data.inventory:
+		GameState.inventory.append(ItemCatalog.item_by_id(id))
 	GameState.initialized = true
 
 
@@ -403,6 +440,8 @@ func _deserialize_hero(data: Dictionary) -> HeroData:
 		hero.traits.append(HeroCatalog.trait_by_id(id))
 	hero.status = HeroData.HeroStatus.keys().find(data.status) as HeroData.HeroStatus
 	hero.recovery_ready_at = int(data.recovery_ready_at)
+	hero.equipped_weapon = ItemCatalog.item_by_id(data.equipped_weapon) if data.equipped_weapon != null else null
+	hero.equipped_armor = ItemCatalog.item_by_id(data.equipped_armor) if data.equipped_armor != null else null
 	return hero
 
 

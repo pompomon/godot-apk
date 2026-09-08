@@ -5,9 +5,22 @@ const REGION: RegionResource = preload("res://data/regions/green_hollow.tres")
 var _isolation: RefCounted
 var _time: int = 1000
 var _original_pool: Array[EncounterEntryResource] = []
+var _original_items: Dictionary
+var _original_chance: float
+var _original_event_results: Dictionary
 
 
 func before_each() -> void:
+	var loot := ExpeditionCatalog.LOOT
+	_original_items = loot.item_pool.duplicate()
+	_original_chance = loot.item_drop_chance
+	loot.item_pool = {}
+	loot.item_drop_chance = 0.0
+	_original_event_results.clear()
+	for event in ExpeditionCatalog.events():
+		for outcome in event.outcomes:
+			_original_event_results[outcome] = outcome.result.duplicate(true)
+			outcome.result = {"gold": outcome.result.gold}
 	var region := REGION
 	_original_pool.assign(region.encounter_pool)
 	region.encounter_pool.assign(_original_pool.filter(
@@ -21,6 +34,11 @@ func before_each() -> void:
 
 
 func after_each() -> void:
+	var loot := ExpeditionCatalog.LOOT
+	loot.item_pool = _original_items
+	loot.item_drop_chance = _original_chance
+	for outcome in _original_event_results:
+		outcome.result = _original_event_results[outcome]
 	var region := REGION
 	region.encounter_pool.assign(_original_pool)
 	_isolation.finish()
@@ -266,7 +284,7 @@ func test_v2_migration_validates_original_party_before_releasing_legacy_on_exped
 	legacy.roster[1].status = "ON_EXPEDITION"
 	legacy.unlocked_regions = ["forest", "arbitrary-old-region"]
 	var expected := legacy.duplicate(true)
-	expected.save_version = 4
+	expected.save_version = 5
 	expected.expedition = null
 	expected.expedition_seed = expected.recruitment_seed
 	expected.expedition_sequence = 0
@@ -298,6 +316,10 @@ func _version_three(snapshot: Dictionary) -> Dictionary:
 	if legacy.expedition != null:
 		legacy.expedition.erase("planned_step_count")
 		legacy.expedition.erase("retreat_ends_expedition")
+		for key in ["xp_award", "recovery_seconds", "rest_hp_percent"]:
+			legacy.expedition.erase(key)
+		for step in legacy.expedition.steps:
+			step.result.erase("item_ids")
 	return legacy
 
 
@@ -308,6 +330,10 @@ func test_version_three_running_and_completed_records_migrate_without_rewriting_
 		ExpeditionManager.reveal_progress()
 		var expected := SaveManager.capture_state()
 		var legacy := _version_three(expected)
+		expected.expedition.xp_award = 0
+		expected.expedition.rest_hp_percent = 0
+		for step in expected.expedition.steps:
+			step.result.erase("item_ids")
 		var original := legacy.duplicate(true)
 		var migrated := SaveManager.migrate(legacy)
 		assert_eq(migrated, expected)

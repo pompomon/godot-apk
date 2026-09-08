@@ -125,6 +125,7 @@ func _record(snapshot: Dictionary, results: Array, planned: int = 0, terminal_re
 		"party_snapshot": ExpeditionPartySnapshot.new(snapshot).serialize(),
 		"seed": 42, "start_timestamp": 1000, "duration_seconds": 60,
 		"planned_step_count": planned, "retreat_ends_expedition": terminal_retreat,
+		"xp_award": 0, "recovery_seconds": 60, "rest_hp_percent": 0,
 		"step_duration_seconds": slice, "steps": steps, "terminal_step_index": terminal,
 		"effective_end_timestamp": 1060 if terminal == -1 else 1000 + (terminal + 1) * slice,
 		"last_observed_utc": 1000, "credited_elapsed_seconds": 0,
@@ -149,7 +150,9 @@ func _install(record: Dictionary) -> void:
 	for id in final:
 		var hero := GameState.find_hero(id)
 		hero.status = HeroData.HeroStatus.ON_EXPEDITION if run.status == ExpeditionData.Status.RUNNING else int(final[id].status) as HeroData.HeroStatus
-		hero.recovery_ready_at = 2000 if hero.status == HeroData.HeroStatus.WOUNDED else 0
+		if hero.status == HeroData.HeroStatus.WOUNDED:
+			hero.status = HeroData.HeroStatus.RESTING
+		hero.recovery_ready_at = 2000 if hero.status == HeroData.HeroStatus.RESTING else 0
 
 
 func _read(path: String) -> String:

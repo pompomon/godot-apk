@@ -5,7 +5,7 @@ var roster: Array[HeroData] = []
 var current_party: PartyData = null
 var recruitment_offers: Array[HeroData] = []
 var gold: int = 0
-var inventory: Array = []
+var inventory: Array[ItemResource] = []
 var unlocked_regions: Array[StringName] = []
 var roster_capacity: int = 12
 var next_hero_id: int = 1
@@ -32,14 +32,16 @@ func reserve_hero_id() -> String:
 	return result
 
 
-## Retain Hero identity while snapshotting statuses, recovery and formation slots.
+## Retain Hero identity while snapshotting mutable transactional fields.
 func checkpoint() -> Dictionary:
 	var statuses := {}
 	var recovery_deadlines := {}
+	var progression := {}
 	for hero in roster + recruitment_offers:
 		if hero != null:
 			statuses[hero] = hero.status
 			recovery_deadlines[hero] = hero.recovery_ready_at
+			progression[hero] = [hero.xp, hero.level, hero.equipped_weapon, hero.equipped_armor]
 	return {
 		"roster": roster.duplicate(), "recruitment_offers": recruitment_offers.duplicate(),
 		"gold": gold, "inventory": inventory.duplicate(),
@@ -50,6 +52,7 @@ func checkpoint() -> Dictionary:
 		"initialized": initialized,
 		"hero_statuses": statuses,
 		"hero_recovery_deadlines": recovery_deadlines,
+		"hero_progression": progression,
 		"party_slots": current_party.slots.duplicate() if current_party != null else null,
 		"party_identity": current_party,
 	}
@@ -61,12 +64,16 @@ func restore_checkpoint(state: Dictionary) -> void:
 	for hero in state.hero_statuses:
 		hero.status = state.hero_statuses[hero]
 		hero.recovery_ready_at = state.hero_recovery_deadlines[hero]
+		hero.xp = state.hero_progression[hero][0]
+		hero.level = state.hero_progression[hero][1]
+		hero.equipped_weapon = state.hero_progression[hero][2]
+		hero.equipped_armor = state.hero_progression[hero][3]
 	current_party = null
 	if state.party_slots != null:
 		current_party = state.party_identity
 		current_party.slots = state.party_slots.duplicate()
 	gold = state.gold
-	inventory = state.inventory.duplicate()
+	inventory.assign(state.inventory)
 	unlocked_regions.assign(state.unlocked_regions)
 	roster_capacity = state.roster_capacity
 	next_hero_id = state.next_hero_id

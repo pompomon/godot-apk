@@ -6,6 +6,15 @@
 script = ExtResource("1")
 loot_id = &"green_hollow_loot"
 display_name = "Wayside cache"
-journal_text = "The Party finds a few forgotten coins beside the trail."
+journal_text = "The Party searches a wayside cache for coins and usable equipment."
 min_gold = 2
 max_gold = 6
+item_pool = {
+"short_sword": 3.0,
+"hunting_bow": 3.0,
+"apprentice_staff": 2.0,
+"leather_armor": 3.0,
+"chainmail": 1.0,
+"robes": 2.0
+}
+item_drop_chance = 0.5

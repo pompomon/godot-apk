@@ -6,9 +6,9 @@
 [sub_resource type="Resource" id="a"]
 script = ExtResource("2")
 outcome_id = &"coins"
-journal_text = "A loose stone hides a handful of old coins."
+journal_text = "A loose stone hides old coins and a serviceable short sword."
 weight = 1.0
-result = {"gold": 6}
+result = {"gold": 6, "item_ids": ["short_sword"]}
 
 [sub_resource type="Resource" id="b"]
 script = ExtResource("2")

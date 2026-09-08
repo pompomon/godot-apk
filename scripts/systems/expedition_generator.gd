@@ -12,6 +12,9 @@ static func generate(
 		return null
 	if start_timestamp > HeroCatalog.MAX_SAFE_INT - duration_seconds:
 		return null
+	var xp_award := Leveling.award(region.recommended_party_power, duration_seconds, balancing)
+	if xp_award < 0:
+		return null
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed
 	var weights: Array[float] = []
@@ -40,7 +43,13 @@ static func generate(
 			var loot := ExpeditionCatalog.loot_by_id(String(entry.content_id))
 			step.title = loot.display_name
 			step.journal_text = loot.journal_text
-			step.result = {"gold": rng.randi_range(loot.min_gold, loot.max_gold)}
+			step.result = {"gold": rng.randi_range(loot.min_gold, loot.max_gold), "item_ids": []}
+			if not loot.item_pool.is_empty() and loot.item_drop_chance > 0.0:
+				if rng.randf() < loot.item_drop_chance:
+					var item_weights: Array[float] = []
+					for weight in loot.item_pool.values():
+						item_weights.append(float(weight))
+					step.result.item_ids.append(String(loot.item_pool.keys()[_weighted_index(item_weights, rng)]))
 		elif entry.kind == "Event":
 			var event := ExpeditionCatalog.event_by_id(String(entry.content_id))
 			var outcome_weights: Array[float] = []
@@ -52,6 +61,8 @@ static func generate(
 			step.journal_text = event.description + "\n" + outcome.journal_text
 			step.outcome_id = String(outcome.outcome_id)
 			step.result = outcome.result.duplicate(true)
+			if not step.result.has("item_ids"):
+				step.result.item_ids = []
 		else:
 			var enemies := CombatCatalog.enemy_group_by_id(String(entry.content_id))
 			var combat := CombatEngine.resolve_combat(snapshot, hero_states, enemies, rng.randi(), balancing)
@@ -74,6 +85,8 @@ static func generate(
 		"seed": seed, "start_timestamp": start_timestamp, "duration_seconds": duration_seconds,
 		"step_duration_seconds": step_duration_seconds, "steps": steps, "terminal_step_index": terminal_step_index,
 		"planned_step_count": candidate_count, "retreat_ends_expedition": region.retreat_ends_expedition,
+		"xp_award": xp_award, "recovery_seconds": balancing.base_recovery_seconds,
+		"rest_hp_percent": balancing.recovery_hp_percent,
 		"effective_end_timestamp": start_timestamp + effective_duration,
 	})
 	return result if ExpeditionData.valid(result.serialize()) else null

@@ -3,8 +3,9 @@
 A Godot 4.7.2 portrait Android game with a generated Company roster, Hero
 inspection, deterministic recruitment, Party formation, timed Combat
 Expeditions, Hero leveling, equipment, unlockable Regions, and local JSON saves. The
-application/package name and APK artifact retain their original **Hello World**
-identifiers. Green Hollow includes deterministic Combat and readable saved
+app is named **Adventurer's March**, with a navy-and-gold compass/shield icon.
+Its package ID and APK artifact retain their original **Hello World**
+identifiers for compatibility. Green Hollow includes deterministic Combat and readable saved
 logs; completed Expeditions award XP and revealed Loot/Events can award equipment.
 
 Contributors and coding agents: start with the
@@ -362,6 +363,35 @@ godot --headless --path . --export-debug "Android" build/android/hello-world.apk
 
 The preset uses the package identifier `com.example.helloworld` and writes the
 APK to `build/android/hello-world.apk`.
+
+### App branding and compatibility
+
+- `project.godot` and the Android preset both use **Adventurer's March**.
+  The package ID, APK filename, and workflow artifact name intentionally stay
+  unchanged; changing the package ID would install a separate app.
+- Custom user-data directory settings preserve the old `Hello World` save
+  location without moving or rewriting saves: `godot/app_userdata/Hello World`
+  under the Linux data directory (`XDG_DATA_HOME`, or `~/.local/share`), and
+  `Godot/app_userdata/Hello World` under Windows `%APPDATA%` and macOS
+  `~/Library/Application Support`. Preserve the platform-specific casing.
+  Android continues using the same package-private storage.
+- Original artwork lives in [assets/branding/](assets/branding/).
+  `compass-shield.svg` is the editable source: `background` is the opaque navy
+  layer and `foreground` is the gold shield/compass. The supplied PNGs are the
+  1024×1024 project icon, 192×192 legacy launcher icon, and separate 432×432
+  adaptive background, foreground, and white-alpha monochrome layers.
+  When revising the SVG, regenerate all PNGs; keep adaptive artwork inside the
+  central 264-pixel safe circle. Do not bake a launcher mask into the layers.
+- Godot 4.7.2's existing non-Gradle Android exporter supports these adaptive and
+  monochrome icons. Android 13+ launchers can use the monochrome layer when
+  themed icons are enabled. Launcher support and label truncation vary by device.
+- For acceptance, inspect the exported APK's label, package ID, and legacy/
+  adaptive/monochrome resources with the Android SDK tools. Check launcher masks,
+  themed icons, and app info on a device, then install an update over a saved
+  Company and verify progress. Use the **same signing certificate** for both
+  APKs: CI currently generates a fresh debug keystore each run, so separate CI
+  downloads are not guaranteed to update one another. Do not uninstall or clear
+  app data to work around an upgrade-signature mismatch.
 
 ## Continuous integration
 

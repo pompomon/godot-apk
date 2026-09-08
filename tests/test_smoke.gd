@@ -75,6 +75,9 @@ func test_real_main_scene_boots_to_home() -> void:
 		screen_root.get_child(0).scene_file_path,
 		"res://scenes/ui/home/home_screen.tscn")
 	assert_null(main.get_node_or_null("HelloWorld"))
+	assert_eq(
+		screen_root.get_child(0).get_node("Margin/Scroll/Content/Title").text,
+		ProjectSettings.get_setting("application/config/name"))
 
 
 func test_mobile_project_settings_are_preserved() -> void:
@@ -92,3 +95,82 @@ func test_mobile_project_settings_are_preserved() -> void:
 	}
 	for setting in expected:
 		assert_eq(ProjectSettings.get_setting(setting), expected[setting], setting)
+
+
+func test_application_branding_preserves_android_identity() -> void:
+	assert_eq(ProjectSettings.get_setting("application/config/name"), "Adventurer's March")
+	var preset := ConfigFile.new()
+	assert_eq(preset.load("res://export_presets.cfg"), OK)
+	assert_eq(preset.get_value("preset.0", "name"), "Android")
+	assert_eq(preset.get_value("preset.0", "export_path"), "build/android/hello-world.apk")
+	assert_eq(preset.get_value("preset.0.options", "package/name"), "Adventurer's March")
+	assert_eq(preset.get_value("preset.0.options", "package/unique_name"), "com.example.helloworld")
+	assert_true(preset.get_value("preset.0.options", "package/signed"))
+	assert_false(preset.get_value("preset.0.options", "gradle_build/use_gradle_build"))
+
+
+func test_branding_preserves_legacy_user_data_directory() -> void:
+	assert_true(ProjectSettings.get_setting("application/config/use_custom_user_dir"))
+	for suffix in ["", ".windows", ".macos"]:
+		var directory := "godot" if suffix.is_empty() else "Godot"
+		assert_eq(
+			ProjectSettings.get_setting("application/config/custom_user_dir_name" + suffix),
+			directory.path_join("app_userdata/Hello World"))
+	var current_directory := OS.get_user_data_dir()
+	var current_name: String = ProjectSettings.get_setting("application/config/name")
+	var current_custom: bool = ProjectSettings.get_setting("application/config/use_custom_user_dir")
+	ProjectSettings.set_setting("application/config/name", "Hello World")
+	ProjectSettings.set_setting("application/config/use_custom_user_dir", false)
+	var legacy_directory := OS.get_user_data_dir()
+	ProjectSettings.set_setting("application/config/name", current_name)
+	ProjectSettings.set_setting("application/config/use_custom_user_dir", current_custom)
+	assert_eq(current_directory, legacy_directory)
+
+
+func test_project_and_launcher_icons_are_imported_at_export_sizes() -> void:
+	var project_icon: String = ProjectSettings.get_setting("application/config/icon")
+	assert_eq(project_icon, "res://assets/branding/icon_1024.png")
+	var image := _load_branding_image(project_icon, 1024)
+	if image != null:
+		assert_eq(image.detect_alpha(), Image.ALPHA_NONE)
+	var preset := ConfigFile.new()
+	assert_eq(preset.load("res://export_presets.cfg"), OK)
+	var expected := {
+		"main_192x192": ["icon_192.png", 192],
+		"adaptive_foreground_432x432": ["adaptive_foreground_432.png", 432],
+		"adaptive_background_432x432": ["adaptive_background_432.png", 432],
+		"adaptive_monochrome_432x432": ["adaptive_monochrome_432.png", 432],
+	}
+	for option in expected:
+		var path: String = preset.get_value("preset.0.options", "launcher_icons/" + option)
+		assert_eq(path, "res://assets/branding/" + expected[option][0])
+		image = _load_branding_image(path, expected[option][1])
+		if image == null:
+			continue
+		if option in ["main_192x192", "adaptive_background_432x432"]:
+			assert_eq(image.detect_alpha(), Image.ALPHA_NONE, option)
+		else:
+			assert_ne(image.get_used_rect(), Rect2i(), option + " must not be empty")
+			assert_true(_fits_adaptive_safe_circle(image), option)
+
+
+func _load_branding_image(path: String, size: int) -> Image:
+	var texture := load(path) as Texture2D
+	assert_not_null(texture, path)
+	if texture == null:
+		return null
+	var image := texture.get_image()
+	assert_eq(image.get_size(), Vector2i(size, size), path)
+	return image
+
+
+func _fits_adaptive_safe_circle(image: Image) -> bool:
+	# Android's guaranteed safe zone is a 66 dp circle on a 108 dp layer.
+	var center := Vector2(image.get_size()) / 2.0
+	var radius := image.get_width() * 66.0 / 108.0 / 2.0
+	for y in image.get_height():
+		for x in image.get_width():
+			if image.get_pixel(x, y).a > 0.0:
+				if Vector2(x + 0.5, y + 0.5).distance_squared_to(center) > radius * radius:
+					return false
+	return true

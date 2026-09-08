@@ -16,6 +16,18 @@ func test_seeded_parties_are_repeatable_and_use_authored_levels_and_equipment() 
 			assert_false(HeroStats.compute_derived_stats(hero).is_empty())
 
 
+func test_seeded_valid_report_has_repeatable_accounted_rows() -> void:
+	var tuning: BalancingConfig = load("res://data/balancing/default_balancing.tres")
+	var regions: Array[RegionResource] = [ExpeditionCatalog.region_by_id("green_hollow")]
+	var first := BalanceReport.run(regions, 2, 9001, tuning)
+	var repeated := BalanceReport.run(regions, 2, 9001, tuning)
+	assert_false(first.has("error"))
+	assert_eq(first.rows, repeated.rows)
+	for row in first.rows:
+		assert_eq(row.trials, 2)
+		assert_eq(row.outcomes.VICTORY + row.outcomes.RETREAT + row.outcomes.DEFEAT, row.trials)
+
+
 func test_invalid_report_parameters_fail_without_touching_company() -> void:
 	var before := GameState.checkpoint()
 	var tuning: BalancingConfig = load("res://data/balancing/default_balancing.tres")

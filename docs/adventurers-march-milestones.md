@@ -242,14 +242,22 @@ Detail: [06-progression-and-equipment.md](adventurers-march/milestones/06-progre
 
 **Depends on:** 6 (Progression and equipment).
 
-- [ ] Author 2 additional Regions (different encounter mixes/difficulty
+- [x] Author 2 additional Regions (different encounter mixes/difficulty
       tiers).
-- [ ] Expand trait pool and event-card tables.
-- [ ] Add Region-unlock conditions and roster-cap increases tied to
+- [x] Expand trait pool and event-card tables.
+- [x] Add Region-unlock conditions and roster-cap increases tied to
       progression.
 - [ ] Run scripted balance simulations (per
       [plan §16](adventurers-march-implementation-plan.md#16-balancing))
       against new Regions and tune `BalancingConfig`.
+
+**Status:** runtime features are implemented: three Regions, fifteen Events,
+eight traits, permanent gold-threshold unlocks, roster capacities 12/16/20,
+version-6 saves and multi-Region selection. Clean import, **357 tests / 23,635
+assertions** and Android debug export pass locally. Reproducible balance
+reports exist, but only **6/9 calibration bands** meet their targets; further
+tuning and physical Android acceptance remain pending. This is an incomplete
+milestone checkpoint, not a claim of full acceptance.
 
 **Definition of done:** at least 3 total Regions are unlockable through
 normal play progression, each with a distinct encounter/event mix, and

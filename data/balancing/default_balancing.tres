@@ -4,11 +4,11 @@
 
 [resource]
 script = ExtResource("1_balancing")
-party_power_level_weight = 10.0
+party_power_level_weight = 30.0
 party_power_stat_weights = {
 "Attack": 1.0,
 "CritChance": 0.0,
-"Defense": 0.5,
+"Defense": 3.0,
 "Evasion": 0.0,
 "Initiative": 0.0,
 "MagicPower": 1.0,

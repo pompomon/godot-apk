@@ -6,6 +6,9 @@ var _heroes: Array[HeroData]
 
 func before_each() -> void:
 	_balancing = load("res://data/balancing/default_balancing.tres").duplicate(true)
+	# Keep the original hand-computed formula fixture independent of authored tuning.
+	_balancing.party_power_level_weight = 10.0
+	_balancing.party_power_stat_weights.Defense = 0.5
 	_heroes = [
 		_hero("knight", HeroCatalog.KNIGHT, HeroCatalog.HEARTY,
 			{"MIG": 10, "FOC": 2, "GRT": 11, "GUI": 3, "FTH": 3}),

@@ -186,6 +186,10 @@ godot --path .
   rerolling journals, changing equipment, or awarding historical rewards.
 - This milestone does not add skills, event choices, crafting, a shop, or
   conditional trait effects.
+- Current recommended Power is **330 / 820 / 1000**. Balance remains
+  **provisional**: not all measured win-rate bands meet their targets.
+  See [Milestone 7's recorded results](docs/adventurers-march/milestones/07-content-expansion.md#recorded-balance-results)
+  for the outstanding tuning and device-acceptance gates.
 
 ### Reproduce the balance report
 
@@ -250,8 +254,8 @@ update this pin, and repeat clean-import, test, and export checks.
 
 The CLI does not require enabling the optional GUT editor plugin. Godot's import
 cache is already ignored under `.godot/`; GUT's editor scratch files live under
-`user://gut_temp_directory/`, outside the checkout. Tests and the GUT addon are
-excluded from the Android APK.
+`user://gut_temp_directory/`, outside the checkout. Tests, balance tools and the
+GUT addon are excluded from the Android APK.
 
 ## Architecture boundaries
 
@@ -312,8 +316,9 @@ excluded from the Android APK.
   through an explicit allowlist. Equipment drafts use detached stat previews
   and revalidate canonical Hero identity and current item quantities on confirm.
 - `data/balancing/default_balancing.tres` is the single balancing asset. It
-  defines the 100-gold recruitment price, design §7 Party Power baseline
-  (including divisor 4 and no-front-row factor 0.85), and §9 combat defaults
+  defines the 100-gold recruitment price, design §7 Party Power formula
+  (level weight 30, Defense weight 3, divisor 4 and no-front-row factor 0.85),
+  and §9 combat defaults
   with a 20-round cap. Encounter-kind multipliers start at a neutral 1.0; the
   offline cap is provisionally 86400 seconds (24 hours) per observation, not a
   finalized balance decision. Skill multipliers are configured for Combat,
@@ -362,6 +367,10 @@ acceptance are tracked in the
 [Party Formation](docs/adventurers-march/milestones/03-party-formation.md), and
 [First Expedition](docs/adventurers-march/milestones/04-first-expedition.md)
 milestone details.
+
+Milestone 6 was manually verified externally by the user on 2026-09-08.
+Milestone 7's separate implementation, balance and physical-device evidence is
+tracked in [Content Expansion](docs/adventurers-march/milestones/07-content-expansion.md).
 
 ## Adventurer's March design & implementation docs
 

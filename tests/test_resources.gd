@@ -119,9 +119,9 @@ func test_default_balancing_asset() -> void:
 	assert_almost_eq(balancing.max_crit_chance, 0.50, 0.00001)
 	assert_almost_eq(balancing.basic_attack_damage_multiplier, 1.0, 0.00001)
 	assert_almost_eq(balancing.critical_damage_multiplier, 1.5, 0.00001)
-	assert_eq(balancing.party_power_level_weight, 10.0)
+	assert_eq(balancing.party_power_level_weight, 30.0)
 	assert_eq(balancing.party_power_stat_weights, {
-		"MaxHP": 0.5, "Attack": 1.0, "MagicPower": 1.0, "Defense": 0.5,
+		"MaxHP": 0.5, "Attack": 1.0, "MagicPower": 1.0, "Defense": 3.0,
 		"Evasion": 0.0, "Initiative": 0.0, "CritChance": 0.0,
 	})
 	assert_eq(balancing.missing_front_row_factor, 0.85)

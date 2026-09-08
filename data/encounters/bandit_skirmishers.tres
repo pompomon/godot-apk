@@ -12,7 +12,7 @@ enemies = Array[Dictionary]([{
 "row": "Front",
 "basic_attack_target_rule": "FrontRowFirst",
 "derived_stats": {
-"MaxHP": 45, "Attack": 12, "MagicPower": 0, "Defense": 4,
+"MaxHP": 130, "Attack": 40, "MagicPower": 0, "Defense": 14,
 "Evasion": 0.03, "Initiative": 8, "CritChance": 0.05
 }
 }, {
@@ -21,7 +21,7 @@ enemies = Array[Dictionary]([{
 "row": "Back",
 "basic_attack_target_rule": "AnySlot",
 "derived_stats": {
-"MaxHP": 30, "Attack": 10, "MagicPower": 0, "Defense": 2,
+"MaxHP": 90, "Attack": 36, "MagicPower": 0, "Defense": 8,
 "Evasion": 0.06, "Initiative": 12, "CritChance": 0.08
 }
 }])

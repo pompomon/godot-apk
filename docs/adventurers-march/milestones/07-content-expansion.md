@@ -64,6 +64,10 @@ diplomacy, crafting/enchanting (all explicit non-goals per
   lose a majority. Stronger Parties beyond the tested band may exceed 85%.
   Recommendations and authored enemy stats may be tuned; do not weaken
   established combat formulas or exact-log regression fixtures.
+  Power's existing level/Defense coefficients may also be calibrated to avoid
+  underrating high-level partial Parties. Preserve the hand-computed evaluator
+  regression as an explicit original-coefficient fixture; the Resource tests
+  separately assert the shipped tuning.
 
 ### Bounded delivery
 
@@ -149,13 +153,13 @@ static func run(regions: Array[RegionResource], trials: int, seed_value: int,
 
 ## Acceptance criteria
 
-- [ ] At least 3 total Regions are unlockable through normal play
+- [x] At least 3 total Regions are unlockable through normal play
       progression (Green Hollow + 2 new).
-- [ ] Each Region has a distinct encounter/event mix and at least one
+- [x] Each Region has a distinct encounter/event mix and at least one
       unique enemy group.
-- [ ] Region-unlock conditions are implemented and correctly reflected in
+- [x] Region-unlock conditions are implemented and correctly reflected in
       Region Select's locked/unlocked UI state.
-- [ ] Roster cap increases are tied to progression and surfaced to the
+- [x] Roster cap increases are tied to progression and surfaced to the
       player when reached.
 - [ ] Balance-simulation results show win rates within the target bands
       from plan §16 for every Region.
@@ -191,6 +195,84 @@ or milestone-complete**. Maximum sampled journal size was 129,063 bytes;
 full-save tests also cover twenty roster Heroes and 1,024 inventory entries.
 Next bounded action: tune authored encounter difficulty/recommendations and
 repeat reports plus integrated regression/export validation.
+
+Published as **`65d788a`**, with a clean working tree verified after push.
+Changed-file secret scanning was clean. CodeQL was requested after commit,
+but reported no supported changed language, so no analysis was performed.
+The [Android run for this checkpoint](https://github.com/pompomon/godot-apk/actions/runs/34194489621)
+is `action_required`, with zero jobs returned by the logs endpoint: a maintainer
+approval blocker, not a passing or failing integrated CI result.
+
+### Final bounded checkpoint — balance acceptance incomplete
+
+The final tested gameplay revision calibrates the existing Power level/Defense
+weights to **30 / 3**, without changing the evaluator or Combat formulas.
+Recommendations are **330 / 820 / 1000** for Green Hollow, Ashen Reach and
+Frostbound Pass. Authored enemy HP, Attack and Defense were tuned; historical
+saved encounters are not recomputed. The original Power and Hero-generation
+golden fixtures retain explicit historical inputs rather than relaxed assertions.
+
+Clean import, focused checks (**22 tests / 1,333 assertions**), the full GUT
+suite (**357 tests / 23,635 assertions**, both standard hooks), Android export
+and nonempty verification all exited successfully. No skipped scripts or GUT
+warnings/errors remained. The authored-reward progression test starts with the
+ordinary 100-gold Company and reaches/dispatches to all three Regions without
+editing gold, XP or save data. Reload and acknowledgment preserve earned rewards.
+Full-save fixtures cover twenty Heroes, three offers, 1,024 inventory copies
+and five-combat candidate runs; the largest measured fixture was **116,899
+bytes**, below `SaveManager.MAX_SAVE_BYTES` (1,048,576). These are sampled
+fixtures, not a proof about every possible journal.
+
+The APK is **28,521,467 bytes**, SHA256
+`24c4de6f165458f45e6f176301a962a6ddfce3fcc99d7f9d1b9da16ead141407`.
+Archive inspection confirmed tests, GUT and balance tools are excluded.
+The missing-icon/ADB diagnostics remain pre-existing and non-blocking for
+export; neither export nor headless UI tests certify physical-device behavior.
+
+#### Recorded balance results
+
+Each seed generates a fixed 16,000-Party candidate population, independent of
+combat outcomes. Trials sample actual Power at 60–80%, 95–105% and 105–115%
+of recommendation. Every row/seed below has **256 distinct Parties / 256
+independent full-HP Combat trials**, with enemy groups sampled according to
+their authored Combat weights. Full-Expedition trials separately exercise
+HP carryover; they are not used as interchangeable Combat win rates.
+
+Seeds **7001 and 7002** were used for calibration; **9001** was evaluated only
+after the final tuning and was not used for further changes. Calibration
+aggregates contain 512 trials per Region/tier. A successful tool exit means a
+valid report, not target acceptance.
+
+| Region | Calibration below | At | Above | Independent 9001 below | At | Above |
+|---|---:|---:|---:|---:|---:|---:|
+| Green Hollow | 37.30% | 72.46% | 84.18% | 45.31% | 69.14% | 79.69% |
+| Ashen Reach | 49.80% | 64.65% | 67.77% | 48.44% | 64.06% | 70.31% |
+| Frostbound Pass | 42.77% | 71.88% | 88.09% | 44.53% | 71.48% | 81.25% |
+
+**Unmet acceptance:** calibration misses Ashen Reach's at/above bands and
+Frostbound Pass's above band (**6/9 pass**). The independent population misses
+Green Hollow-at and Ashen Reach-at (**7/9 pass**). Targets and sample bands
+were not changed to conceal these misses; the balance checkbox remains open.
+The largest journal across these runs was **154,051 bytes**. Expedition
+completion rates at recommendation were roughly 58–66% for Green Hollow,
+59–69% for Ashen Reach and 31–35% for Frostbound Pass; attrition makes them
+lower than independent Combat Victory rates.
+
+Reproduce each report after the README's clean import:
+
+```sh
+godot --headless --path . -s res://tools/balance_simulation.gd -- --trials=256 --seed=7001
+godot --headless --path . -s res://tools/balance_simulation.gd -- --trials=256 --seed=7002
+godot --headless --path . -s res://tools/balance_simulation.gd -- --trials=256 --seed=9001
+```
+
+All source writers confirmed stopped with no queued edits; the validation
+owner stopped all processes before publication. Scope was frozen to preserve
+closeout capacity instead of beginning another tuning cycle. **Next bounded
+action:** a balance-only follow-up addressing the named misses, retaining
+unchanged simulation semantics and regression gates, followed by Android
+physical acceptance. No Region-clear subsystem, new skills, art pass or
+additional milestone implementation is needed for this handoff.
 
 ## Risks
 

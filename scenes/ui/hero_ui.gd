@@ -109,6 +109,9 @@ static func decorate_label(target: Label, texture: Texture2D, icon_name: String)
 	var index := target.get_index()
 	var line := HBoxContainer.new()
 	line.name = "%sLine" % target.name
+	line.size_flags_horizontal = target.size_flags_horizontal
+	line.size_flags_vertical = target.size_flags_vertical
+	line.size_flags_stretch_ratio = target.size_flags_stretch_ratio
 	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(line)
 	parent.move_child(line, index)

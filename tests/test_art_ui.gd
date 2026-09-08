@@ -135,6 +135,22 @@ func test_formation_uses_stable_portraits_and_an_explicit_row_hint() -> void:
 	assert_eq(SaveManager.capture_state(), before)
 
 
+func test_roster_gold_decoration_preserves_header_width_and_height() -> void:
+	for amount in [100, 1000000]:
+		GameState.gold = amount
+		await _go(ROSTER)
+		await get_tree().process_frame
+		await get_tree().process_frame
+		var gold: Label = _node("GoldLabel")
+		var line := gold.get_parent() as HBoxContainer
+		var text_width := gold.get_theme_font("font").get_string_size(
+			gold.text, HORIZONTAL_ALIGNMENT_LEFT, -1, gold.get_theme_font_size("font_size")).x
+		assert_eq(line.size_flags_horizontal, Control.SIZE_EXPAND_FILL)
+		assert_gte(gold.size.x, text_width, "Gold remains readable on one line beside roster capacity.")
+		assert_lte(line.get_parent().size.y, 64.0, "The fixed header must not consume the roster scroll area.")
+		assert_lte(_node("RosterCountLabel").get_global_rect().end.x, 720.0)
+
+
 func _dispatch() -> void:
 	var party := PartyData.new()
 	for index in GameState.roster.size():

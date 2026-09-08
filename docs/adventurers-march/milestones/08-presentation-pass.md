@@ -72,13 +72,21 @@ publishes contact sheets as a downloadable artifact, and retains validation
 logs. This changes the review/validation path; it does **not** fix the upstream
 managed-agent service or bypass GitHub workflow approval.
 
-Local recovery validation: clean import, **17 focused art tests**, full GUT
-**381 tests / 34,353 assertions**, and Android debug export with a nonempty
-**28,762,614-byte APK** passed. The existing art UI tests also passed **6/6**
-under a desktop Compatibility renderer and generated seven 720×1280 screen
-captures. Captures were not inspected through the failed image transport.
-Visual quality, Android-device acceptance and current-checkpoint CI remain
-separate, unverified gates; these results do not complete Milestone 8.
+The generated bank was published in `d67327f`; its
+[Android run](https://github.com/pompomon/godot-apk/actions/runs/34278631878)
+also requires approval. A subsequent source review found that the new gold-icon
+wrapper lost the Roster label's horizontal expansion. A regression test
+reproduced a one-pixel-wide gold label and a 375–543-pixel-tall fixed header.
+The wrapper now preserves the original sizing flags and stretch ratio.
+
+Local validation of `d67327f` plus that header fix: clean import, **18 focused
+art tests**, full GUT **382 tests / 34,365 assertions**, and Android debug export
+with a nonempty **28,762,614-byte APK** passed. The existing art UI tests also
+passed **7/7** under a desktop Compatibility renderer and generated seven
+720×1280 screen captures. All 66 texture remaps were verified in the APK; tools
+and tests are excluded. Captures were not inspected through the failed image
+transport. Visual quality, Android-device acceptance and current-checkpoint
+CI remain separate, unverified gates; these results do not complete Milestone 8.
 
 ### Full presentation milestone
 

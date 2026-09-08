@@ -364,16 +364,16 @@ the first deterministic offer is immediately purchasable.
   Confirmation does not start an Expedition: formation and Region selection
   are separate steps (see the [screen plan](#5-screen-and-navigation-plan)).
 - **Party Power** is a single legible number shown to the player to help
-  judge readiness against a Region's recommended Power. Recommended
-  baseline formula:
+  judge readiness against a Region's recommended Power. The formula with
+  Milestone 7's calibrated coefficients is:
 
   ```
   PartyPower = Σ over Heroes in Party of (
-      HeroLevel * 10
+      HeroLevel * 30
       + MaxHP * 0.5
       + Attack * 1.0
       + MagicPower * 1.0
-      + Defense * 0.5
+      + Defense * 3.0
   ) * FormationFactor
   ```
 
@@ -384,6 +384,8 @@ the first deterministic offer is immediately purchasable.
   allowed, with their penalties explained in the UI. An empty draft scores
   zero but cannot be confirmed. Exact coefficients live in a single
   `BalancingConfig` resource ([§16](#16-balancing)), not hard-coded.
+  The original Milestone 3 baseline used level weight 10 and Defense weight
+  0.5; exact evaluator regression fixtures retain those original inputs.
   The evaluator consumes `HeroStats` output, retains floating-point precision,
   and rejects invalid statistics or coefficients rather than showing a
   misleading fallback estimate.

@@ -16,6 +16,10 @@ const HEARTY = preload("res://data/traits/hearty.tres")
 const KEEN_EYED = preload("res://data/traits/keen_eyed.tres")
 const LIGHTFOOTED = preload("res://data/traits/lightfooted.tres")
 const STUDIOUS = preload("res://data/traits/studious.tres")
+const IRONHIDE = preload("res://data/traits/ironhide.tres")
+const FIERCE = preload("res://data/traits/fierce.tres")
+const FOCUSED = preload("res://data/traits/focused.tres")
+const ALERT = preload("res://data/traits/alert.tres")
 
 
 static func classes() -> Array[HeroClassResource]:
@@ -23,7 +27,7 @@ static func classes() -> Array[HeroClassResource]:
 
 
 static func traits() -> Array[HeroTraitResource]:
-	return [HEARTY, KEEN_EYED, LIGHTFOOTED, STUDIOUS]
+	return [HEARTY, KEEN_EYED, LIGHTFOOTED, STUDIOUS, IRONHIDE, FIERCE, FOCUSED, ALERT]
 
 
 static func class_by_id(id: String) -> HeroClassResource:

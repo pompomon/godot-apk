@@ -3,13 +3,27 @@ extends RefCounted
 ## Ordered allowlists. Save validation checks identity, not today's outcome tuning.
 
 const GREEN_HOLLOW: RegionResource = preload("res://data/regions/green_hollow.tres")
+const ASHEN_REACH: RegionResource = preload("res://data/regions/ashen_reach.tres")
+const FROSTBOUND_PASS: RegionResource = preload("res://data/regions/frostbound_pass.tres")
 const LOOT: LootResource = preload("res://data/encounters/green_hollow_loot.tres")
+const ASHEN_LOOT: LootResource = preload("res://data/encounters/ashen_loot.tres")
+const FROSTBOUND_LOOT: LootResource = preload("res://data/encounters/frostbound_loot.tres")
 const EVENTS: Array[EventResource] = [
 	preload("res://data/encounters/green_hollow_bridge.tres"),
 	preload("res://data/encounters/green_hollow_spring.tres"),
 	preload("res://data/encounters/green_hollow_caravan.tres"),
 	preload("res://data/encounters/green_hollow_fireflies.tres"),
 	preload("res://data/encounters/green_hollow_ruins.tres"),
+	preload("res://data/encounters/ashen_cistern.tres"),
+	preload("res://data/encounters/ashen_kiln.tres"),
+	preload("res://data/encounters/ashen_obelisk.tres"),
+	preload("res://data/encounters/ashen_glass.tres"),
+	preload("res://data/encounters/ashen_pilgrims.tres"),
+	preload("res://data/encounters/frostbound_bells.tres"),
+	preload("res://data/encounters/frostbound_crevasse.tres"),
+	preload("res://data/encounters/frostbound_shelter.tres"),
+	preload("res://data/encounters/frostbound_aurora.tres"),
+	preload("res://data/encounters/frostbound_sled.tres"),
 ]
 const MAX_STEPS := 1024
 const MAX_LOOT_GOLD := 2147483647 # RandomNumberGenerator.randi_range's signed range.
@@ -17,7 +31,7 @@ const MAX_EVENT_ITEMS := 16
 
 
 static func regions() -> Array[RegionResource]:
-	return [GREEN_HOLLOW]
+	return [GREEN_HOLLOW, ASHEN_REACH, FROSTBOUND_PASS]
 
 
 static func events() -> Array[EventResource]:
@@ -25,7 +39,7 @@ static func events() -> Array[EventResource]:
 
 
 static func loot() -> Array[LootResource]:
-	return [LOOT]
+	return [LOOT, ASHEN_LOOT, FROSTBOUND_LOOT]
 
 
 static func region_by_id(id: String) -> RegionResource:
@@ -118,6 +132,18 @@ static func clock_config_valid(balancing: BalancingConfig) -> bool:
 	return balancing != null and integer(balancing.max_offline_delta_seconds, 1)
 
 
+static func unlock_condition_valid(condition: Dictionary) -> bool:
+	if not condition.get("kind") is String:
+		return false
+	match condition.kind:
+		"always":
+			return HeroCatalog.has_exact_keys(condition, ["kind"])
+		"gold":
+			return HeroCatalog.has_exact_keys(condition, ["kind", "value"]) \
+				and condition.value is int and integer(condition.value, 1)
+	return false
+
+
 static func validate_region(region: RegionResource, balancing: BalancingConfig) -> bool:
 	if region == null or not clock_config_valid(balancing):
 		return false
@@ -125,7 +151,7 @@ static func validate_region(region: RegionResource, balancing: BalancingConfig) 
 		return false
 	if not text(region.travel_title) or not text(region.travel_text, 4096):
 		return false
-	if region.unlock_condition != {"kind": "always"}:
+	if not unlock_condition_valid(region.unlock_condition):
 		return false
 	if not integer(region.travel_step_count, 1, MAX_STEPS / 2) or region.duration_options_seconds.is_empty():
 		return false

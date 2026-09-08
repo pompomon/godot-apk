@@ -40,12 +40,17 @@ static func initialize_new_game(seed: int) -> bool:
 	if seed_at(seed, 0) < 0 or not HeroCatalog.validate_catalog(
 			HeroCatalog.classes(), HeroCatalog.traits()):
 		return false
+	var progression := CompanyProgression.preview(100, [], 12, ExpeditionManager.balancing)
+	if progression.has("error"):
+		return false
 	var old_state := GameState.checkpoint()
 	var old_expedition := ExpeditionManager.checkpoint()
 	GameState.reset()
 	GameState.recruitment_seed = seed
 	GameState.expedition_seed = seed
 	GameState.gold = 100
+	GameState.unlocked_regions.assign(progression.unlocked_regions)
+	GameState.roster_capacity = progression.roster_capacity
 	for hero_class in HeroCatalog.classes():
 		var single_class: Array[HeroClassResource] = [hero_class]
 		var hero := _reserve_hero(single_class)

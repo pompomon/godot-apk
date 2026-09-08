@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="EnemyGroupResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/models/enemy_group_resource.gd" id="1_group"]
+
+[resource]
+script = ExtResource("1_group")
+group_id = &"ashen_raiders"
+display_name = "Ash-road Raiders"
+enemies = Array[Dictionary]([{
+"combatant_id": "ashen_raider_blade",
+"display_name": "Ash-road Blade",
+"row": "Front",
+"basic_attack_target_rule": "FrontRowFirst",
+"derived_stats": {
+"MaxHP": 128, "Attack": 46, "MagicPower": 0, "Defense": 30,
+"Evasion": 0.04, "Initiative": 12, "CritChance": 0.06
+}
+}, {
+"combatant_id": "ashen_raider_slinger_a",
+"display_name": "Cinder Slinger",
+"row": "Back",
+"basic_attack_target_rule": "AnySlot",
+"derived_stats": {
+"MaxHP": 77, "Attack": 36, "MagicPower": 0, "Defense": 25,
+"Evasion": 0.07, "Initiative": 20, "CritChance": 0.08
+}
+}, {
+"combatant_id": "ashen_raider_slinger_b",
+"display_name": "Cinder Slinger",
+"row": "Back",
+"basic_attack_target_rule": "AnySlot",
+"derived_stats": {
+"MaxHP": 77, "Attack": 36, "MagicPower": 0, "Defense": 25,
+"Evasion": 0.07, "Initiative": 20, "CritChance": 0.08
+}
+}])

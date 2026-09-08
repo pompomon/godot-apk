@@ -197,9 +197,11 @@ review and the existing Godot/GUT tests supplied the code-level validation.
 The [Android workflow for `57bebc2`](https://github.com/pompomon/godot-apk/actions/runs/34153484217)
 is **`action_required`**, with zero jobs reported by the logs endpoint.
 This is a remote approval blocker, not a failed or passing CI test run.
-Next bounded action: approve that workflow and perform the physical-device
-check below. No further milestone implementation or new subsystem is pending
-in this task; the top-level box remains open for acceptance evidence.
+At that checkpoint the next bounded action was workflow approval and the
+physical-device check below. On 2026-09-08 the user directed: "implement
+Milestone 7, mark milestone 6 as verified manually". This closes manual
+acceptance externally; it is not a claim that the coding agent tested a device
+or that the historical workflow subsequently passed.
 
 Progression/recovery uses `xp_award_coefficients`, `xp_threshold_curve`,
 `base_recovery_seconds`, and `recovery_hp_percent` in the existing
@@ -328,7 +330,8 @@ static func grant_xp(hero: HeroData, amount: int, balancing: BalancingConfig = n
 - [x] Loot and Event item rewards extend the existing reveal path and
       correctly update `GameState.inventory` without duplicating gold or
       item grants.
-- [ ] Physical Android acceptance: complete an Expedition, inspect XP/gold/items,
+- [x] Physical Android acceptance (user-confirmed externally, 2026-09-08):
+      complete an Expedition, inspect XP/gold/items,
       preview/confirm/cancel equipment using touch and Android Back, and verify
       Resting recovery after backgrounding and a full restart. Automated UI and
       clock tests do not substitute for this check.

@@ -63,6 +63,7 @@ func test_exported_resource_contracts() -> void:
 			"base_recovery_seconds": TYPE_INT, "max_offline_delta_seconds": TYPE_INT,
 			"recovery_hp_percent": TYPE_INT,
 			"recruitment_cost": TYPE_INT,
+			"region_roster_capacities": TYPE_DICTIONARY,
 		}],
 	]
 	for contract in contracts:
@@ -118,9 +119,9 @@ func test_default_balancing_asset() -> void:
 	assert_almost_eq(balancing.max_crit_chance, 0.50, 0.00001)
 	assert_almost_eq(balancing.basic_attack_damage_multiplier, 1.0, 0.00001)
 	assert_almost_eq(balancing.critical_damage_multiplier, 1.5, 0.00001)
-	assert_eq(balancing.party_power_level_weight, 10.0)
+	assert_eq(balancing.party_power_level_weight, 30.0)
 	assert_eq(balancing.party_power_stat_weights, {
-		"MaxHP": 0.5, "Attack": 1.0, "MagicPower": 1.0, "Defense": 0.5,
+		"MaxHP": 0.5, "Attack": 1.0, "MagicPower": 1.0, "Defense": 3.0,
 		"Evasion": 0.0, "Initiative": 0.0, "CritChance": 0.0,
 	})
 	assert_eq(balancing.missing_front_row_factor, 0.85)
@@ -146,7 +147,7 @@ func test_authored_combat_catalog_and_class_skills() -> void:
 	var balancing: BalancingConfig = load("res://data/balancing/default_balancing.tres")
 	assert_true(CombatCatalog.validate_catalog(CombatCatalog.skills(), CombatCatalog.enemy_groups(), balancing))
 	assert_eq(CombatCatalog.skills().size(), 4)
-	assert_eq(CombatCatalog.enemy_groups().size(), 2)
+	assert_eq(CombatCatalog.enemy_groups().size(), 6)
 	assert_null(CombatCatalog.skill_by_id("../skills/unknown"))
 	assert_null(CombatCatalog.enemy_group_by_id("missing"))
 	assert_false(CombatCatalog.validate_enemy_group(null))
@@ -171,7 +172,7 @@ func test_authored_combat_catalog_and_class_skills() -> void:
 		assert_true(CombatCatalog.validate_enemy_group(group))
 	var groups: Array[EnemyGroupResource] = CombatCatalog.enemy_groups()
 	groups.clear()
-	assert_eq(CombatCatalog.enemy_groups().size(), 2)
+	assert_eq(CombatCatalog.enemy_groups().size(), 6)
 	var region := ExpeditionCatalog.GREEN_HOLLOW
 	assert_true(ExpeditionCatalog.validate_region(region, balancing))
 	assert_eq(region.duration_options_seconds, [60])

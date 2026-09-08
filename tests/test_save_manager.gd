@@ -52,14 +52,15 @@ func test_autoload_construction_and_capture_are_io_free() -> void:
 	assert_false(SaveManager.last_error.is_empty())
 
 
-func test_version_five_round_trip_every_field_and_maximum_seed() -> void:
+func test_current_version_round_trip_every_field_and_maximum_seed() -> void:
 	_boot()
 	GameState.recruitment_seed = HeroCatalog.MAX_SAFE_INT
 	GameState.recruitment_sequence = HeroCatalog.MAX_SAFE_INT
 	GameState.offer_seeds.assign([0, 123, HeroCatalog.MAX_SAFE_INT])
 	GameState.gold = HeroCatalog.MAX_SAFE_INT
 	GameState.next_hero_id = HeroCatalog.MAX_SAFE_INT
-	GameState.unlocked_regions.assign([&"forest", &"mountains"])
+	GameState.unlocked_regions.assign([&"green_hollow", &"ashen_reach", &"frostbound_pass"])
+	GameState.roster_capacity = 20
 	var index := 0
 	for hero in GameState.roster:
 		hero.hero_name = "Persistent Hero %d" % index
@@ -145,7 +146,7 @@ func test_original_rolls_survive_range_tuning_while_new_heroes_use_current_range
 
 func test_migration_rejects_unknown_versions_and_types() -> void:
 	var snapshot := _boot()
-	for version in [null, true, "1", -1, 0, 1.5, 6, HeroCatalog.MAX_SAFE_INT]:
+	for version in [null, true, "1", -1, 0, 1.5, SaveManager.SAVE_VERSION + 1, HeroCatalog.MAX_SAFE_INT]:
 		var invalid := snapshot.duplicate(true)
 		invalid.save_version = version
 		assert_eq(SaveManager.migrate(invalid), {}, str(version))
@@ -156,10 +157,10 @@ func test_migration_rejects_unknown_versions_and_types() -> void:
 func test_root_validation_rejects_bad_types_bounds_and_missing_fields() -> void:
 	var snapshot := _boot()
 	var changes := [
-		["save_version", "1"], ["save_version", 1], ["save_version", 6], ["save_version", true],
+		["save_version", "1"], ["save_version", 1], ["save_version", SaveManager.SAVE_VERSION + 1], ["save_version", true],
 		["gold", -1], ["gold", 1.1], ["gold", true], ["gold", "100"],
 		["gold", INF], ["gold", NAN], ["gold", HeroCatalog.MAX_SAFE_INT + 1],
-		["roster_capacity", 0], ["roster_capacity", 13], ["roster_capacity", 3],
+		["roster_capacity", 0], ["roster_capacity", CompanyProgression.MAX_ROSTER_CAPACITY + 1], ["roster_capacity", 3],
 		["roster_capacity", 12.1], ["next_hero_id", 7], ["next_hero_id", 0],
 		["next_hero_id", 8.1], ["next_hero_id", HeroCatalog.MAX_SAFE_INT + 1],
 		["recruitment_seed", -1], ["recruitment_seed", true],

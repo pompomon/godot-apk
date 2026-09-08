@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="EnemyGroupResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/models/enemy_group_resource.gd" id="1_group"]
+
+[resource]
+script = ExtResource("1_group")
+group_id = &"frostbound_sentinels"
+display_name = "Icebound Sentinels"
+enemies = Array[Dictionary]([{
+"combatant_id": "frostbound_sentinel_a",
+"display_name": "Icebound Sentinel",
+"row": "Front",
+"basic_attack_target_rule": "FrontRowFirst",
+"derived_stats": {
+"MaxHP": 219, "Attack": 53, "MagicPower": 0, "Defense": 0,
+"Evasion": 0.02, "Initiative": 11, "CritChance": 0.05
+}
+}, {
+"combatant_id": "frostbound_sentinel_b",
+"display_name": "Icebound Sentinel",
+"row": "Front",
+"basic_attack_target_rule": "FrontRowFirst",
+"derived_stats": {
+"MaxHP": 219, "Attack": 53, "MagicPower": 0, "Defense": 0,
+"Evasion": 0.02, "Initiative": 11, "CritChance": 0.05
+}
+}, {
+"combatant_id": "frostbound_sentinel_watcher",
+"display_name": "Ridge Watcher",
+"row": "Back",
+"basic_attack_target_rule": "AnySlot",
+"derived_stats": {
+"MaxHP": 158, "Attack": 45, "MagicPower": 0, "Defense": 0,
+"Evasion": 0.05, "Initiative": 17, "CritChance": 0.08
+}
+}])

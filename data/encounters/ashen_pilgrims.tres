@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="EventResource" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/models/event_resource.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/models/event_outcome_resource.gd" id="2"]
+
+[sub_resource type="Resource" id="a"]
+script = ExtResource("2")
+outcome_id = &"ashen_pilgrims_gratitude"
+journal_text = "The Party steadies a laden handcart over the rubble. The pilgrims offer a few coins in thanks."
+weight = 2.0
+result = {"gold": 4}
+
+[sub_resource type="Resource" id="b"]
+script = ExtResource("2")
+outcome_id = &"ashen_pilgrims_song"
+journal_text = "The travelers exchange road news and an old marching song before their routes diverge."
+weight = 1.0
+result = {"gold": 0}
+
+[resource]
+script = ExtResource("1")
+event_id = &"ashen_pilgrims"
+display_name = "Pilgrims of the ash road"
+description = "A small pilgrimage follows the ruined aqueduct, bright ribbons tied around the handles of its carts."
+outcomes = Array[ExtResource("2")]([SubResource("a"), SubResource("b")])

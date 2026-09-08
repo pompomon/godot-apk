@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="HeroTraitResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/models/hero_trait_resource.gd" id="1_trait"]
+
+[resource]
+script = ExtResource("1_trait")
+trait_id = &"alert"
+display_name = "Alert"
+description = "+4 Initiative, -3 Attack."
+stat_modifiers = {"Initiative": 4.0, "Attack": -3.0}

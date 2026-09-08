@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="EventResource" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/models/event_resource.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/models/event_outcome_resource.gd" id="2"]
+
+[sub_resource type="Resource" id="a"]
+script = ExtResource("2")
+outcome_id = &"frostbound_shelter_armor"
+journal_text = "A note offers spare supplies to the next traveler. The Party takes a serviceable leather coat from the rack."
+weight = 1.0
+result = {"gold": 0, "item_ids": ["leather_armor"]}
+
+[sub_resource type="Resource" id="b"]
+script = ExtResource("2")
+outcome_id = &"frostbound_shelter_ledger"
+journal_text = "They add their names to the shelter ledger and secure the door before returning to the trail."
+weight = 3.0
+result = {"gold": 0}
+
+[resource]
+script = ExtResource("1")
+event_id = &"frostbound_shelter"
+display_name = "The trailkeeper's shelter"
+description = "A low stone hut stands beneath an overhang, its entrance marked by the mountain guides' blue sign."
+outcomes = Array[ExtResource("2")]([SubResource("a"), SubResource("b")])

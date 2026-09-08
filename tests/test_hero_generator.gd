@@ -2,7 +2,9 @@ extends GutTest
 
 
 func test_fixed_seed_golden_heroes() -> void:
-	# Captured with Godot 4.7.2; changing draw order/content intentionally changes these.
+	# Preserve the original four-trait fixture so content expansion cannot mask RNG regressions.
+	var original_traits: Array[HeroTraitResource] = [
+		HeroCatalog.HEARTY, HeroCatalog.KEEN_EYED, HeroCatalog.LIGHTFOOTED, HeroCatalog.STUDIOUS]
 	var cases := [
 		[0, "Lina", "cleric", {"MIG": 4, "FOC": 4, "GRT": 5, "GUI": 2, "FTH": 13}, ["keen_eyed"]],
 		[2, "Lina", "wizard", {"MIG": 1, "FOC": 12, "GRT": 4, "GUI": 5, "FTH": 4}, []],
@@ -14,7 +16,7 @@ func test_fixed_seed_golden_heroes() -> void:
 	]
 	for example in cases:
 		var hero := HeroGenerator.generate_hero(
-			"hero-7", example[0], HeroCatalog.classes(), HeroCatalog.traits())
+			"hero-7", example[0], HeroCatalog.classes(), original_traits)
 		assert_not_null(hero)
 		if hero == null:
 			continue

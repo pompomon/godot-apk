@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="LootResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/models/loot_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+loot_id = &"ashen_loot"
+display_name = "Buried strongbox"
+journal_text = "A broken courtyard tile reveals a merchant's strongbox, its contents sheltered from the ash."
+min_gold = 5
+max_gold = 12
+item_pool = {"short_sword": 3.0, "apprentice_staff": 2.0, "chainmail": 2.0, "robes": 1.0}
+item_drop_chance = 0.6

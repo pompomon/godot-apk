@@ -59,7 +59,7 @@ func test_null_partial_back_row_and_full_parties_round_trip_with_exact_roster_id
 		if not mapping.is_empty():
 			assert_true(PartyFormationService.confirm(party, BALANCING))
 		var expected := SaveManager.capture_state()
-		assert_eq(expected.save_version, 5)
+		assert_eq(expected.save_version, SaveManager.SAVE_VERSION)
 		assert_true(SaveManager.validate_snapshot(expected))
 		GameState.reset()
 		SaveManager.load_or_create()
@@ -150,7 +150,8 @@ func test_version_one_migration_preserves_all_old_data_except_orphan_assigned() 
 	var untouched := legacy.duplicate(true)
 	var migrated := SaveManager.migrate(legacy)
 	var expected := untouched.duplicate(true)
-	expected.save_version = 5
+	expected.save_version = SaveManager.SAVE_VERSION
+	expected.unlocked_regions = []
 	expected.current_party = null
 	expected.expedition = null
 	expected.expedition_seed = expected.recruitment_seed
@@ -214,6 +215,8 @@ func test_primary_version_one_upgrades_without_resetting_progress() -> void:
 	legacy.roster[2].level = 42
 	legacy.roster[2].xp = 765
 	var expected := SaveManager.migrate(legacy)
+	expected.unlocked_regions = ["green_hollow", "ashen_reach", "frostbound_pass"]
+	expected.roster_capacity = 20
 	_write(SaveManager.get_save_path(), legacy)
 	GameState.reset()
 	SaveManager.new_game_seed_override = 987654
@@ -234,6 +237,8 @@ func test_backup_version_one_upgrades_primary_without_modifying_backup() -> void
 	legacy.roster[0].status = "ASSIGNED"
 	legacy.roster[1].status = "RESTING"
 	var expected := SaveManager.migrate(legacy)
+	expected.unlocked_regions = ["green_hollow", "ashen_reach", "frostbound_pass"]
+	expected.roster_capacity = 20
 	_write(SaveManager.get_save_path() + ".bak", legacy)
 	var backup := _read(SaveManager.get_save_path() + ".bak")
 	_write(SaveManager.get_save_path(), {"broken": true})

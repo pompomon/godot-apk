@@ -116,6 +116,8 @@ func test_no_reload_refresh_and_deterministic_continuation() -> void:
 	_boot()
 	GameState.gold = 1000
 	SaveManager.save()
+	ExpeditionManager.reveal_progress()
+	assert_true(ExpeditionManager.last_committed, ExpeditionManager.last_error)
 	var initial := GameState.checkpoint()
 	var initial_json := SaveManager.capture_state()
 	assert_true(RecruitmentService.recruit(GameState.recruitment_offers[2], _balancing))

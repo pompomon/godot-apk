@@ -1,8 +1,8 @@
-# Adventurer's March — Progression and Equipment
+# Adventurer's March — Content Expansion
 
 A Godot 4.7.2 portrait Android game with a generated Company roster, Hero
 inspection, deterministic recruitment, Party formation, timed Combat
-Expeditions, Hero leveling, equipment, and local JSON saves. The
+Expeditions, Hero leveling, equipment, unlockable Regions, and local JSON saves. The
 application/package name and APK artifact retain their original **Hello World**
 identifiers. Green Hollow includes deterministic Combat and readable saved
 logs; completed Expeditions award XP and revealed Loot/Events can award equipment.
@@ -24,7 +24,7 @@ gates, validation ownership, and verified handoffs.
    binds the persistent screen root, calls `SaveManager.load_or_create()`,
    and displays Home with the Company's gold and roster count. Open
    **Company Roster** to inspect or recruit Heroes, or **Form Party** to
-   assemble a formation, then choose **Green Hollow** for the first Expedition.
+   assemble a formation, then choose a Region (initially **Green Hollow**).
 
 You can also run the project directly:
 
@@ -41,7 +41,7 @@ godot --path .
   resource. Only the purchased offer is replaced; there is no timer or refresh
   button. Insufficient gold and full capacity disable recruitment.
 - Heroes retain their original stable IDs when recruited and after reload.
-  Each has zero or one flat-stat trade-off trait. Conditional combat/recovery
+  Each has zero or one of eight flat-stat trade-off traits. Conditional combat/recovery
   traits are deferred, not represented as working effects.
 - Hero Detail shows attributes, derived stats, traits, status, cumulative XP and
   next-level progress. **Manage equipment** opens a weapon/armor draft with
@@ -152,10 +152,10 @@ godot --path .
   refreshes only after commit. Legacy Wounded Heroes without a deadline remain
   unchanged. Recovery duration and the heavy-damage percentage are frozen at
   dispatch; subsequent content changes do not alter a pending run's policy.
-- Version-5 saves preserve inventory copies, equipped item IDs, pending Parties
+- Version-6 saves preserve inventory copies, equipped item IDs, pending Parties
   and active/completed Expeditions,
   including frozen combat payloads, planned step counts, terminal rules, and
-  Hero recovery deadlines and frozen progression rewards. Versions 1–4 migrate
+  Hero recovery deadlines and frozen progression rewards. Versions 1–5 migrate
   without regenerating Heroes,
   recruitment offers, or historical journals. Combat dispatch, finalization,
   recovery observation, equipment and presentation share the existing transaction
@@ -165,6 +165,54 @@ godot --path .
   Wounded/Resting states with no deadline remain unchanged.
   Legacy `On expedition` statuses become `Idle`: those schemas could not
   store an Expedition to which those Heroes belonged.
+
+## Region and Company progression
+
+- Green Hollow is always available. Holding **200 gold** permanently unlocks
+  **Ashen Reach**, and holding **400 gold** permanently unlocks **Frostbound Pass**.
+  These are current-balance thresholds, not prices or lifetime-gold counters.
+  Spending gold after a committed unlock never relocks a Region.
+- The Regions offer **60 / 120 / 180 seconds** respectively. Each has five
+  authored automatic Event cards, its own Combat mix, and item-bearing Loot.
+  Recommended Power is guidance, never an additional dispatch restriction.
+- Unlocking the Regions raises roster capacity to **12 / 16 / 20** respectively.
+  Region Select displays requirements; Company Roster displays capacity and
+  progression guidance. Capacity and unlocks are committed with earned gold,
+  not granted again when a report is acknowledged.
+- Existing Companies are evaluated on load and foreground observations even
+  without an Expedition. Unlocks appear only after saving succeeds. Save
+  version 6 validates known Region IDs and supports expanded capacities;
+  legacy unused, unknown unlock strings are removed during migration, without
+  rerolling journals, changing equipment, or awarding historical rewards.
+- This milestone does not add skills, event choices, crafting, a shop, or
+  conditional trait effects.
+- Current recommended Power is **330 / 820 / 1000**. Balance remains
+  **provisional**: not all measured win-rate bands meet their targets.
+  See [Milestone 7's recorded results](docs/adventurers-march/milestones/07-content-expansion.md#recorded-balance-results)
+  for the outstanding tuning and device-acceptance gates.
+
+### Reproduce the balance report
+
+After the clean import below, run from the repository root:
+
+```sh
+godot --headless --path . -s res://tools/balance_simulation.gd -- --trials=256 --seed=7001
+```
+
+Optionally restrict the report with `--region=green_hollow`, `--region=ashen_reach`,
+or `--region=frostbound_pass`. The tool prints JSON to stdout and never loads
+or saves a Company. It samples generated 1–4-Hero Parties at levels 1–12, with
+distinct classes and optional starter equipment. Party selection uses only
+Power, not eventual combat outcomes. The report identifies actual Power ranges,
+member counts, distinct sampled Parties, Victory/Retreat/Defeat counts, and
+per-enemy results. Every independent Combat starts at full HP; separate complete
+Expedition trials retain HP carryover and report completion rate and journal size.
+
+Below/at/above samples use 60–80%, 95–105%, and 105–115% of recommended Power.
+The target is fewer than 50% Victories below, and 70–85% at/modestly above.
+`target_met` reports these bands without making statistical tuning a flaky unit
+test. A valid report can contain unmet targets; malformed inputs or insufficient
+samples return a nonzero exit code. The tools are excluded from the APK.
 
 ## Run the tests
 
@@ -206,15 +254,17 @@ update this pin, and repeat clean-import, test, and export checks.
 
 The CLI does not require enabling the optional GUT editor plugin. Godot's import
 cache is already ignored under `.godot/`; GUT's editor scratch files live under
-`user://gut_temp_directory/`, outside the checkout. Tests and the GUT addon are
-excluded from the Android APK.
+`user://gut_temp_directory/`, outside the checkout. Tests, balance tools and the
+GUT addon are excluded from the Android APK.
 
 ## Architecture boundaries
 
 - `GameState` owns the typed Hero roster and offers, nullable confirmed
   `current_party`, gold, roster capacity, ID/seed state, inventory, and unlocked
-  Region IDs. Inventory contains typed, immutable `ItemResource` references;
-  unlocked Regions remain reserved for the content-expansion milestone.
+  Region IDs. Inventory contains typed, immutable `ItemResource` references.
+  `CompanyProgression` previews permanent gold-threshold unlocks and capacity
+  rewards without mutating Company state; the existing observation transaction
+  commits them before UI refresh.
 - `HeroData` is a `RefCounted` runtime model. Generation and derived-stat
   calculation are pure; generated attributes are not overwritten by growth.
   Class-specific stat bases and weights live on authored class Resources.
@@ -266,8 +316,9 @@ excluded from the Android APK.
   through an explicit allowlist. Equipment drafts use detached stat previews
   and revalidate canonical Hero identity and current item quantities on confirm.
 - `data/balancing/default_balancing.tres` is the single balancing asset. It
-  defines the 100-gold recruitment price, design §7 Party Power baseline
-  (including divisor 4 and no-front-row factor 0.85), and §9 combat defaults
+  defines the 100-gold recruitment price, design §7 Party Power formula
+  (level weight 30, Defense weight 3, divisor 4 and no-front-row factor 0.85),
+  and §9 combat defaults
   with a 20-round cap. Encounter-kind multipliers start at a neutral 1.0; the
   offline cap is provisionally 86400 seconds (24 hours) per observation, not a
   finalized balance decision. Skill multipliers are configured for Combat,
@@ -316,6 +367,10 @@ acceptance are tracked in the
 [Party Formation](docs/adventurers-march/milestones/03-party-formation.md), and
 [First Expedition](docs/adventurers-march/milestones/04-first-expedition.md)
 milestone details.
+
+Milestone 6 was manually verified externally by the user on 2026-09-08.
+Milestone 7's separate implementation, balance and physical-device evidence is
+tracked in [Content Expansion](docs/adventurers-march/milestones/07-content-expansion.md).
 
 ## Adventurer's March design & implementation docs
 

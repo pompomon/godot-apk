@@ -107,6 +107,8 @@ func start_error(region: RegionResource, party: PartyData, duration_seconds: int
 			return "A Party member is stale or unavailable. Return Home and reload."
 	if region == null or ExpeditionCatalog.region_by_id(String(region.region_id)) != region:
 		return "Choose an available Region."
+	if not CompanyProgression.is_unlocked(region, GameState.unlocked_regions):
+		return "This Region is locked. " + CompanyProgression.requirement_text(region)
 	if not ExpeditionCatalog.validate_catalog(ExpeditionCatalog.regions(), ExpeditionCatalog.events(), ExpeditionCatalog.loot(), balancing):
 		return "Expedition content or balancing is invalid. Check the configuration and retry."
 	if duration_seconds not in region.duration_options_seconds:
@@ -210,11 +212,7 @@ func reveal_progress() -> void:
 	for hero in GameState.roster:
 		if hero != null and hero.status == HeroData.HeroStatus.RESTING and hero.recovery_ready_at > 0 and hero.recovery_ready_at <= int(now):
 			recovering.append(hero)
-	if not observe_run and recovering.is_empty():
-		return
-	last_committed = false
-	last_error = ""
-	if not SaveManager.validate_snapshot(SaveManager.capture_state()):
+	if (observe_run or not recovering.is_empty()) and not SaveManager.validate_snapshot(SaveManager.capture_state()):
 		_fail("Expedition state is invalid. Reload before retrying progress.")
 		return
 	var elapsed := 0
@@ -269,12 +267,27 @@ func reveal_progress() -> void:
 					_fail("The Hero recovery deadline exceeds the supported UTC range. Check the clock and retry.")
 					return
 				recovery_ready_at = int(now) + _expedition.recovery_seconds
+	var company_progression := CompanyProgression.preview(gold, GameState.unlocked_regions, GameState.roster_capacity, balancing)
+	if company_progression.has("error"):
+		_fail("Company progression could not be applied. " + String(company_progression.error))
+		return
+	var company_changed: bool = company_progression.unlocked_regions != GameState.unlocked_regions or company_progression.roster_capacity != GameState.roster_capacity
+	if not observe_run and recovering.is_empty():
+		if not company_changed:
+			return
+		if not SaveManager.validate_snapshot(SaveManager.capture_state()):
+			_fail("Company state is invalid. Reload before retrying progression.")
+			return
+	last_committed = false
+	last_error = ""
 	var company_before := GameState.checkpoint()
 	var own_before := checkpoint()
 	for hero in recovering:
 		hero.status = HeroData.HeroStatus.IDLE
 		hero.recovery_ready_at = 0
 	GameState.gold = gold
+	GameState.unlocked_regions.assign(company_progression.unlocked_regions)
+	GameState.roster_capacity = company_progression.roster_capacity
 	GameState.inventory.assign(inventory)
 	if observe_run:
 		_expedition.last_observed_utc = int(now)

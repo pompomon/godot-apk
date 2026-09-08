@@ -2,7 +2,7 @@ extends Node
 ## Versioned, validated snapshots and best-effort same-directory replacement.
 ## No fsync or cross-platform atomicity guarantees are available through these APIs.
 
-const SAVE_VERSION := 5
+const SAVE_VERSION := 6
 const MAX_SAVE_BYTES := 1048576
 const MAX_INVENTORY_ITEMS := 1024
 const LEGACY_ROOT_KEYS := [
@@ -27,6 +27,8 @@ var last_warning: String = ""
 var new_game_seed_override: int = -1
 ## Callable(stage: String) -> bool; true simulates an interrupted boundary.
 var fault_injector: Callable
+## The load observation may save unlocks; retain the recovered backup through both writes.
+var _recovering_backup: bool = false
 
 
 func get_save_path() -> String:
@@ -44,6 +46,7 @@ func load_or_create() -> void:
 	var backup := _read_validated(get_save_path() + ".bak")
 	if not backup.is_empty():
 		_apply_validated(backup)
+		_recovering_backup = true
 		_write_snapshot(backup, false)
 		var recovery_warning := "Recovered the company from the backup save."
 		if not last_success:
@@ -52,6 +55,7 @@ func load_or_create() -> void:
 		push_warning(last_warning)
 		recovery_warning = last_warning
 		ExpeditionManager.reveal_progress()
+		_recovering_backup = false
 		retain_warning(recovery_warning)
 		return
 	var had_files := FileAccess.file_exists(get_save_path()) or FileAccess.file_exists(
@@ -81,7 +85,7 @@ func save() -> void:
 	if not validate_snapshot(snapshot):
 		last_error = "Company data is invalid; the existing save was not replaced."
 		return
-	_write_snapshot(snapshot, true)
+	_write_snapshot(snapshot, not _recovering_backup)
 
 
 func _clear_result() -> void:
@@ -105,7 +109,7 @@ func migrate(data: Variant) -> Dictionary:
 	if not data is Dictionary or not _integer(data.get("save_version"), 1, HeroCatalog.MAX_SAFE_INT):
 		return {}
 	match int(data.save_version):
-		1, 2, 3, 4:
+		1, 2, 3, 4, 5:
 			var version := int(data.save_version)
 			var keys := LEGACY_ROOT_KEYS if version == 1 else (V2_ROOT_KEYS if version == 2 else ROOT_KEYS)
 			if not _validate_schema(data, version, keys):
@@ -116,6 +120,11 @@ func migrate(data: Variant) -> Dictionary:
 				return {}
 			var migrated: Dictionary = data.duplicate(true)
 			migrated.save_version = SAVE_VERSION
+			# Versions 1–5 reserved arbitrary strings here. Only shipped IDs have meaning now.
+			migrated.unlocked_regions = []
+			for id in data.unlocked_regions:
+				if ExpeditionCatalog.region_by_id(id) != null:
+					migrated.unlocked_regions.append(id)
 			if version == 1:
 				migrated.current_party = null
 			if version < 3:
@@ -128,14 +137,14 @@ func migrate(data: Variant) -> Dictionary:
 			elif version == 3 and migrated.expedition != null:
 				migrated.expedition.planned_step_count = migrated.expedition.steps.size()
 				migrated.expedition.retreat_ends_expedition = false
-			if migrated.expedition != null:
+			if version < 5 and migrated.expedition != null:
 				migrated.expedition.xp_award = 0
 				migrated.expedition.recovery_seconds = 60
 				migrated.expedition.rest_hp_percent = 0
 			for hero in migrated.roster + migrated.recruitment_offers:
 				if version < 4:
 					hero.recovery_ready_at = 0
-				elif hero.status == "WOUNDED" and hero.recovery_ready_at > 0:
+				elif version == 4 and hero.status == "WOUNDED" and hero.recovery_ready_at > 0:
 					hero.status = "RESTING"
 			return migrated if validate_snapshot(migrated) else {}
 		SAVE_VERSION:
@@ -224,7 +233,7 @@ func _validate_expedition_relations(data: Dictionary, version: int = SAVE_VERSIO
 	var participants := {}
 	var running := false
 	if data.expedition != null:
-		var valid_run := ExpeditionData.valid(data.expedition) if version == SAVE_VERSION else (
+		var valid_run := ExpeditionData.valid(data.expedition) if version >= 5 else (
 			ExpeditionData.valid_legacy(data.expedition) if version == 3 else ExpeditionData.valid_version_four(data.expedition))
 		if not valid_run:
 			return false
@@ -255,7 +264,8 @@ func _validate_schema(data: Variant, version: int, keys: Array) -> bool:
 		return false
 	if not HeroCatalog.validate_catalog(HeroCatalog.classes(), HeroCatalog.traits()):
 		return false
-	if not _integer(data.gold) or not _integer(data.roster_capacity, 1, 12):
+	var maximum_capacity := CompanyProgression.MAX_ROSTER_CAPACITY if version >= 6 else 12
+	if not _integer(data.gold) or not _integer(data.roster_capacity, 1, maximum_capacity):
 		return false
 	if not _integer(data.next_hero_id, 1) or not _integer(data.recruitment_seed):
 		return false
@@ -278,6 +288,8 @@ func _validate_schema(data: Variant, version: int, keys: Array) -> bool:
 	var regions := {}
 	for id in data.unlocked_regions:
 		if not _text(id) or regions.has(id):
+			return false
+		if version >= 6 and ExpeditionCatalog.region_by_id(id) == null:
 			return false
 		regions[id] = true
 	if not data.roster is Array or data.roster.size() > int(data.roster_capacity):

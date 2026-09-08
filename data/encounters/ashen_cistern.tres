@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="EventResource" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/models/event_resource.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/models/event_outcome_resource.gd" id="2"]
+
+[sub_resource type="Resource" id="a"]
+script = ExtResource("2")
+outcome_id = &"ashen_cistern_tokens"
+journal_text = "Beside the dry waterline, the Party finds old brass tokens still accepted by local merchants."
+weight = 2.0
+result = {"gold": 5}
+
+[sub_resource type="Resource" id="b"]
+script = ExtResource("2")
+outcome_id = &"ashen_cistern_echo"
+journal_text = "Their voices return from the empty reservoir. They mark the dry cistern and continue."
+weight = 1.0
+result = {"gold": 0}
+
+[resource]
+script = ExtResource("1")
+event_id = &"ashen_cistern"
+display_name = "The empty cistern"
+description = "Stone steps spiral into a roofless reservoir, its walls striped by long-vanished water."
+outcomes = Array[ExtResource("2")]([SubResource("a"), SubResource("b")])

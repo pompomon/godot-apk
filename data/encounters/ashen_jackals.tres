@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="EnemyGroupResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/models/enemy_group_resource.gd" id="1_group"]
+
+[resource]
+script = ExtResource("1_group")
+group_id = &"ashen_jackals"
+display_name = "Cinder Jackals"
+enemies = Array[Dictionary]([{
+"combatant_id": "ashen_jackal_leader",
+"display_name": "Cinder Packleader",
+"row": "Front",
+"basic_attack_target_rule": "FrontRowFirst",
+"derived_stats": {
+"MaxHP": 112, "Attack": 43, "MagicPower": 0, "Defense": 26,
+"Evasion": 0.08, "Initiative": 25, "CritChance": 0.1
+}
+}, {
+"combatant_id": "ashen_jackal_a",
+"display_name": "Cinder Jackal",
+"row": "Front",
+"basic_attack_target_rule": "FrontRowFirst",
+"derived_stats": {
+"MaxHP": 85, "Attack": 36, "MagicPower": 0, "Defense": 25,
+"Evasion": 0.08, "Initiative": 23, "CritChance": 0.06
+}
+}, {
+"combatant_id": "ashen_jackal_b",
+"display_name": "Cinder Jackal",
+"row": "Front",
+"basic_attack_target_rule": "FrontRowFirst",
+"derived_stats": {
+"MaxHP": 85, "Attack": 36, "MagicPower": 0, "Defense": 25,
+"Evasion": 0.08, "Initiative": 23, "CritChance": 0.06
+}
+}])

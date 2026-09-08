@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="432" height="432" viewBox="0 0 432 432">
+  <title>Adventurer's March — compass shield</title>
+  <desc>Original navy-and-gold artwork. The foreground fits inside the central 264-pixel safe circle.</desc>
+  <defs>
+    <filter id="monochrome" color-interpolation-filters="sRGB">
+      <feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1 0"/>
+    </filter>
+  </defs>
+  <rect id="background" width="432" height="432" fill="#0e1a2d"/>
+  <g id="foreground">
+    <path fill="#edc676" fill-rule="evenodd" d="M216 96 306 130V211C306 262 270 302 216 336 162 302 126 262 126 211V130ZM216 115 144 143V211C144 252 174 287 216 314 258 287 288 252 288 211V143Z"/>
+    <path fill="#fff0c6" d="M216 142 233 192 276 212 233 232 216 286 199 232 156 212 199 192Z"/>
+    <path fill="#d5a34f" d="M216 142V212L233 192ZM276 212H216L233 232ZM216 286V212L199 232ZM156 212H216L199 192Z"/>
+    <circle cx="216" cy="212" r="9" fill="#0e1a2d"/>
+  </g>
+</svg>

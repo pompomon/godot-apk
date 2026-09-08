@@ -169,6 +169,31 @@ static func run(regions: Array[RegionResource], trials: int, seed_value: int,
 
 ## Implementation and validation evidence
 
+### Balance-only follow-up protocol (2026-09-08)
+
+- Calibration: seeds **7001, 7002 and 9001**, **256 distinct Parties per
+  Region/tier/seed** (768 trials per aggregate row). Seed 9001 is now known
+  and is no longer held out.
+- Fresh held-out evaluation: seeds **91001, 91002 and 91003**, with the same
+  sample size, declared before numerical tuning. Evaluate these only after
+  freezing the calibration candidate. Do not retune against their results;
+  a miss remains an explicitly reported acceptance blocker.
+- Both aggregates must meet all nine existing point-estimate bands: below
+  recommendation <50% Victory, at and modestly above 70–85%. Individual seeds
+  need not all pass. Show Wilson 95% intervals as uncertainty, not as a way to
+  relax the targets. Combat samples remain full-HP, Power-selected, and
+  outcome-independent; sample shortages fail instead of recycling Parties.
+- Report per-enemy Victory/Retreat/Defeat counts, separate full-Expedition
+  completion and resting-Hero counts, and serialized sizes. Keep the candidate
+  population, tier boundaries, Combat formulas, skills and round limits fixed.
+- No new content, save schema, progression system or presentation work.
+  Physical Android acceptance remains pending an actual external playthrough.
+
+The follow-up starts from **`7a43848`**, with no pre-existing working-tree
+changes. The [Android workflow on that merged baseline](https://github.com/pompomon/godot-apk/actions/runs/34218321959)
+completed successfully, including tests, export and artifact upload. This is
+baseline CI evidence, not validation of the follow-up changes.
+
 **Baseline (2026-09-08, `a3f8419`):** the validation owner tested an isolated
 `git archive` of the unchanged revision with SHA512-verified Godot 4.7.2
 editor/templates. Clean import, the full **319 tests / 21,914 assertions**

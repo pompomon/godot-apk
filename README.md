@@ -204,15 +204,27 @@ or `--region=frostbound_pass`. The tool prints JSON to stdout and never loads
 or saves a Company. It samples generated 1–4-Hero Parties at levels 1–12, with
 distinct classes and optional starter equipment. Party selection uses only
 Power, not eventual combat outcomes. The report identifies actual Power ranges,
-member counts, distinct sampled Parties, Victory/Retreat/Defeat counts, and
-per-enemy results. Every independent Combat starts at full HP; separate complete
-Expedition trials retain HP carryover and report completion rate and journal size.
+member counts, distinct sampled Parties, Victory/Retreat/Defeat counts, a Wilson
+95% Victory-rate interval, and per-enemy outcomes. Every independent Combat starts
+at full HP; separate complete Expedition trials retain HP carryover and report
+completion rate, resting/participating Hero counts, and journal size.
 
 Below/at/above samples use 60–80%, 95–105%, and 105–115% of recommended Power.
 The target is fewer than 50% Victories below, and 70–85% at/modestly above.
 `target_met` reports these bands without making statistical tuning a flaky unit
 test. A valid report can contain unmet targets; malformed inputs or insufficient
-samples return a nonzero exit code. The tools are excluded from the APK.
+samples return a nonzero exit code. Every requested trial requires a distinct
+Party snapshot; a short bucket is never padded by replaying earlier Parties.
+The candidate population remains fixed at 16,000, so larger trial requests may
+fail even when smaller ones succeed. The tools are excluded from the APK.
+
+For the balance-only follow-up, aggregate seeds **7001, 7002, 9001** for
+calibration and reserve **91001, 91002, 91003** for evaluation after tuning is
+frozen, using 256 trials per seed/Region/tier. Sum outcome counts across seeds
+(768 trials per aggregate row); both aggregates must meet all nine point-estimate
+bands. Individual seed rows and confidence intervals remain diagnostic, not
+additional pass criteria. See the
+[acceptance protocol](docs/adventurers-march/milestones/07-content-expansion.md#balance-only-follow-up-protocol-2026-09-08).
 
 ## Run the tests
 

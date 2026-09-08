@@ -187,14 +187,14 @@ godot --path .
   rerolling journals, changing equipment, or awarding historical rewards.
 - This milestone does not add skills, event choices, crafting, a shop, or
   conditional trait effects.
-- Current recommended Power is **330 / 850 / 1000**. Balance remains
-  **provisional**: calibration passes **9/9**, but the frozen candidate's
-  held-out aggregate passes **7/9**. Ashen Reach-above (85.94%) and Frostbound
-  Pass-above (86.98%) exceed the 85% target. See
-  [Milestone 7's follow-up verdict](docs/adventurers-march/milestones/07-content-expansion.md#follow-up-verdict-633d1de)
+- Current recommended Power is **330 / 800 / 1000**. Balance remains
+  **provisional**: second-cycle development passes **9/9**, but the frozen
+  candidate's fresh held-out aggregate passes **8/9**. Frostbound Pass-above
+  (86.20%) exceeds the 85% target. No retuning followed evaluation. See
+  [Milestone 7's second-cycle verdict](docs/adventurers-march/milestones/07-content-expansion.md#second-cycle-verdict-644a96c)
   for measured uncertainty, attrition, and the outstanding balance/device gates.
-- Ashen Reach's recommendation change increases future 120-second Expedition
-  awards from **325 to 332 XP** per Hero. Already-dispatched runs retain their
+- Ashen Reach's recommendation change decreases future 120-second Expedition
+  awards from **332 to 320 XP** per Hero. Already-dispatched runs retain their
   frozen award; existing saves need no migration.
 
 ### Reproduce the balance report
@@ -224,15 +224,20 @@ Party snapshot; a short bucket is never padded by replaying earlier Parties.
 The candidate population remains fixed at 16,000, so larger trial requests may
 fail even when smaller ones succeed. The tools are excluded from the APK.
 
-For the balance-only follow-up, aggregate seeds **7001, 7002, 9001** for
-calibration and reserve **91001, 91002, 91003** for evaluation after tuning is
-frozen, using 256 trials per seed/Region/tier. Sum outcome counts across seeds
-(768 trials per aggregate row); both aggregates must meet all nine point-estimate
-bands. Individual seed rows and confidence intervals remain diagnostic, not
-additional pass criteria. See the
-[acceptance protocol](docs/adventurers-march/milestones/07-content-expansion.md#balance-only-follow-up-protocol-2026-09-08).
-These held-out seeds have now been evaluated on `633d1de`; they are not unseen
-data for any subsequent tuning. Their two failed bands remain acceptance blockers.
+The second balance cycle uses all six known seeds **7001, 7002, 9001, 91001,
+91002, 91003** for development and predeclares **92001, 92002, 92003** as fresh
+holdouts, evaluated only after freezing the numerical candidate. Use 256 trials
+per seed/Region/tier and sum raw outcome counts: **1,536 trials** per development
+aggregate row and **768** per holdout row. Both aggregates must meet all nine
+point-estimate bands; individual seeds and confidence intervals remain diagnostic.
+A held-out miss ends the cycle without further numerical tuning. See the
+[second-cycle protocol](docs/adventurers-march/milestones/07-content-expansion.md#second-balance-cycle-protocol-2026-09-08).
+The previous holdouts were evaluated on `633d1de`; their two failed bands are
+historical blockers, not fresh evaluation data for this cycle.
+The second-cycle holdouts have now been evaluated once on `644a96c`: **8/9**
+bands pass. They are also known data now, not fresh holdouts for future tuning.
+Frostbound-above remains a balance-acceptance blocker; Android device acceptance
+is still pending.
 
 ## Run the tests
 

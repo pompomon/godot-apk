@@ -221,21 +221,26 @@ func test_full_saves_with_five_combat_pairs_fit_size_limit_without_storage_io() 
 
 
 func test_recommendation_tuning_changes_future_xp_without_rewriting_frozen_runs() -> void:
-	var historical_region: RegionResource = ExpeditionCatalog.ASHEN_REACH.duplicate(true)
-	historical_region.recommended_party_power = 820
 	var party := _party()
-	var historical := ExpeditionGenerator.generate(historical_region, party, 42, 120, 1000, BALANCING)
 	var current := ExpeditionGenerator.generate(ExpeditionCatalog.ASHEN_REACH, party, 42, 120, 1000, BALANCING)
-	assert_not_null(historical)
 	assert_not_null(current)
-	if historical == null or current == null:
+	if current == null:
 		return
-	assert_eq(historical.xp_award, 325)
-	assert_eq(current.xp_award, 332)
-	assert_eq(historical.serialize().steps, current.serialize().steps,
-		"Recommendation tuning must not change encounter resolution.")
-	var record: Variant = JSON.parse_string(JSON.stringify(_full_snapshot(historical, party), "", true, true))
-	assert_true(SaveManager.validate_snapshot(record))
-	var restored := ExpeditionData.new(record.expedition)
-	assert_eq(restored.serialize(), historical.serialize())
-	assert_eq(restored.xp_award, 325, "A saved historical award is not recomputed from live recommendations.")
+	assert_eq(current.xp_award, 320)
+	var historical_awards := {820: 325, 850: 332}
+	for recommendation in historical_awards:
+		var historical_region: RegionResource = ExpeditionCatalog.ASHEN_REACH.duplicate(true)
+		historical_region.recommended_party_power = recommendation
+		var historical := ExpeditionGenerator.generate(historical_region, party, 42, 120, 1000, BALANCING)
+		assert_not_null(historical)
+		if historical == null:
+			continue
+		assert_eq(historical.xp_award, historical_awards[recommendation])
+		assert_eq(historical.serialize().steps, current.serialize().steps,
+			"Recommendation tuning must not change encounter resolution.")
+		var record: Variant = JSON.parse_string(JSON.stringify(_full_snapshot(historical, party), "", true, true))
+		assert_true(SaveManager.validate_snapshot(record))
+		var restored := ExpeditionData.new(record.expedition)
+		assert_eq(restored.serialize(), historical.serialize())
+		assert_eq(restored.xp_award, historical_awards[recommendation],
+			"A saved historical award is not recomputed from live recommendations.")

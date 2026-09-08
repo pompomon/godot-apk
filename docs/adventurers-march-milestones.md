@@ -259,9 +259,10 @@ debug export locally. Distinct-party reports pass **9/9 development bands**
 (six known seeds), but only **8/9 fresh held-out bands** (three predeclared
 seeds): Frostbound Pass-above (86.20%) exceeds 85%. Ashen's recommendation is
 now 800; future awards become 320 XP, while historical rewards remain frozen.
-No retuning followed held-out evaluation. Balance and physical Android
-acceptance remain pending; candidate CI requires maintainer approval. This is
-an incomplete milestone checkpoint, not a claim of full acceptance.
+No retuning followed held-out evaluation. Current-head push and pull-request CI
+pass headless tests and Android export. Balance and physical Android acceptance
+remain pending. This is an incomplete milestone checkpoint, not a claim of full
+acceptance.
 
 **Definition of done:** at least 3 total Regions are unlockable through
 normal play progression, each with a distinct encounter/event mix, and

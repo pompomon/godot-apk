@@ -348,8 +348,11 @@ Changed-file secret scans are clean. Post-commit CodeQL was requested but
 reported no supported changed language and performed no analysis; this is not
 a passing CodeQL scan. The [candidate Android run](https://github.com/pompomon/godot-apk/actions/runs/34253035542)
 is **`action_required`**, with zero jobs and no executed job logs: maintainer
-approval is needed, not a test fix. Baseline CI success does not establish
-candidate CI.
+approval was needed, not a test fix. Subsequent current-head
+[push](https://github.com/pompomon/godot-apk/actions/runs/34253911855) and
+[pull-request](https://github.com/pompomon/godot-apk/actions/runs/34260428552)
+workflows pass headless tests and Android export. Physical-device acceptance
+remains unverified.
 
 All validation processes and writes stopped before this documentation-only
 handoff. Balance and physical Android acceptance stay unchecked. **Next bounded

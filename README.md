@@ -186,7 +186,7 @@ godot --path .
   rerolling journals, changing equipment, or awarding historical rewards.
 - This milestone does not add skills, event choices, crafting, a shop, or
   conditional trait effects.
-- Current recommended Power is **330 / 820 / 1000**. Balance remains
+- Current recommended Power is **330 / 850 / 1000**. Balance remains
   **provisional**: not all measured win-rate bands meet their targets.
   See [Milestone 7's recorded results](docs/adventurers-march/milestones/07-content-expansion.md#recorded-balance-results)
   for the outstanding tuning and device-acceptance gates.

@@ -194,6 +194,48 @@ changes. The [Android workflow on that merged baseline](https://github.com/pompo
 completed successfully, including tests, export and artifact upload. This is
 baseline CI evidence, not validation of the follow-up changes.
 
+Fresh local validation of an unchanged archive of `7a43848` passed clean import,
+**358 tests / 23,643 assertions**, all three 256-trial baseline reports, and
+Android debug export/signature/exclusion checks. The APK was **28,521,467 bytes**
+(SHA256 `0b53ad5eb00877785e154da5f55d290223f12a9e2e166a7a8972341472877239`).
+The extra test relative to the preceding checkpoint is already present in the
+published baseline. SDK refresh failed DNS, but the installed Android platform
+and build tools exported successfully. Existing missing-icon and absent-ADB
+diagnostics are unchanged; no device was tested.
+
+The distinct-sample/uncertainty reporting checkpoint passed clean import and the
+full **360 tests / 23,684 assertions**. Its untuned reports reproduce the baseline
+outcome counts exactly, including per-enemy counts, and add recovery diagnostics
+without changing the sampled encounters or seeds.
+
+#### Frozen calibration candidate
+
+All nine calibration aggregate bands pass with **768 trials per row**. This
+candidate is frozen before running the three predeclared held-out seeds; these
+calibration results alone do not complete balance acceptance.
+
+| Region | Below | At | Above |
+|---|---:|---:|---:|
+| Green Hollow | 39.97% | 71.35% | 82.68% |
+| Ashen Reach | 49.48% | 70.31% | 82.94% |
+| Frostbound Pass | 43.62% | 71.74% | 84.38% |
+
+Ashen's original at-band misses included **157 Retreats / 768 trials**.
+Replacing its high Defense with HP-based durability and retuning Attack reduces
+that to **16 / 768** without changing the round cap or Combat formulas. Several
+calibration candidates were rejected for making the below band too easy or the
+above band too successful; only the declared calibration seeds informed tuning.
+The final Ashen recommendation is **850** (previously 820), changing newly
+dispatched 120-second runs from **325 to 332 XP** per Hero. Green Hollow and
+Frostbound remain **330 / 1000**, with unchanged **142 / 430 XP**.
+
+Frostbound Sentinels have slightly higher HP/Attack while Prowlers have lower
+Attack; their existing targeting, Evasion, Initiative and encounter weights
+remain unchanged. Green Hollow, global balancing coefficients, skills, classes,
+durations, unlock thresholds, capacities and save version 6 are unchanged.
+The candidate's content/frozen-XP/size regression slice passes **7 tests / 581
+assertions**; full integrated validation and held-out acceptance follow.
+
 **Baseline (2026-09-08, `a3f8419`):** the validation owner tested an isolated
 `git archive` of the unchanged revision with SHA512-verified Godot 4.7.2
 editor/templates. Clean import, the full **319 tests / 21,914 assertions**

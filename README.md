@@ -187,9 +187,14 @@ godot --path .
 - This milestone does not add skills, event choices, crafting, a shop, or
   conditional trait effects.
 - Current recommended Power is **330 / 850 / 1000**. Balance remains
-  **provisional**: not all measured win-rate bands meet their targets.
-  See [Milestone 7's recorded results](docs/adventurers-march/milestones/07-content-expansion.md#recorded-balance-results)
-  for the outstanding tuning and device-acceptance gates.
+  **provisional**: calibration passes **9/9**, but the frozen candidate's
+  held-out aggregate passes **7/9**. Ashen Reach-above (85.94%) and Frostbound
+  Pass-above (86.98%) exceed the 85% target. See
+  [Milestone 7's follow-up verdict](docs/adventurers-march/milestones/07-content-expansion.md#follow-up-verdict-633d1de)
+  for measured uncertainty, attrition, and the outstanding balance/device gates.
+- Ashen Reach's recommendation change increases future 120-second Expedition
+  awards from **325 to 332 XP** per Hero. Already-dispatched runs retain their
+  frozen award; existing saves need no migration.
 
 ### Reproduce the balance report
 
@@ -225,6 +230,8 @@ frozen, using 256 trials per seed/Region/tier. Sum outcome counts across seeds
 bands. Individual seed rows and confidence intervals remain diagnostic, not
 additional pass criteria. See the
 [acceptance protocol](docs/adventurers-march/milestones/07-content-expansion.md#balance-only-follow-up-protocol-2026-09-08).
+These held-out seeds have now been evaluated on `633d1de`; they are not unseen
+data for any subsequent tuning. Their two failed bands remain acceptance blockers.
 
 ## Run the tests
 

@@ -253,11 +253,14 @@ Detail: [06-progression-and-equipment.md](adventurers-march/milestones/06-progre
 
 **Status:** runtime features are implemented: three Regions, fifteen Events,
 eight traits, permanent gold-threshold unlocks, roster capacities 12/16/20,
-version-6 saves and multi-Region selection. Clean import, **357 tests / 23,635
-assertions** and Android debug export pass locally. Reproducible balance
-reports exist, but only **6/9 calibration bands** meet their targets; further
-tuning and physical Android acceptance remain pending. This is an incomplete
-milestone checkpoint, not a claim of full acceptance.
+version-6 saves and multi-Region selection. The balance-only follow-up on
+**`633d1de`** passes clean import, **361 tests / 23,678 assertions** and Android
+debug export locally. Distinct-party balance reports pass **9/9 calibration
+bands**, but only **7/9 held-out bands**: Ashen Reach-above (85.94%) and
+Frostbound Pass-above (86.98%) exceed 85%. No retuning followed held-out
+evaluation. Further balance acceptance and physical Android acceptance remain
+pending; CI requires maintainer approval. This is an incomplete milestone
+checkpoint, not a claim of full acceptance.
 
 **Definition of done:** at least 3 total Regions are unlockable through
 normal play progression, each with a distinct encounter/event mix, and

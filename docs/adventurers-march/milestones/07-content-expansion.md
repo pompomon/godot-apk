@@ -236,6 +236,108 @@ durations, unlock thresholds, capacities and save version 6 are unchanged.
 The candidate's content/frozen-XP/size regression slice passes **7 tests / 581
 assertions**; full integrated validation and held-out acceptance follow.
 
+#### Follow-up verdict (633d1de)
+
+**Balance acceptance remains blocked.** The published and tested gameplay
+revision is [`633d1de`](https://github.com/pompomon/godot-apk/commit/633d1de55ac9ebfaf61a801a175dddf5ca0a82be).
+Calibration passes **9/9**, but the first evaluation of the predeclared held-out
+seeds passes **7/9**. Ashen Reach-above and Frostbound Pass-above exceed the
+unchanged 85% upper bound. No numerical changes were made after seeing held-out
+results; confidence intervals do not waive point-estimate failures. Both
+balance and physical-device acceptance checkboxes remain open.
+
+Each aggregate row below sums **768 independent full-HP Combat trials**:
+256 distinct Party snapshots per Region/tier/seed, from each fixed 16,000-Party
+population. Distinctness is checked within each seed/row, not asserted across
+seeds. Counts are **Victory / Retreat / Defeat**; brackets are Wilson 95%
+Victory-rate intervals. Aggregate rates use summed counts, not rounded averages.
+
+| Region / tier | Calibration V/R/D | Victory % [95% interval] | Held-out V/R/D | Victory % [95% interval] |
+|---|---:|---:|---:|---:|
+| Green Hollow / below | 307/24/437 | 39.97 [36.57, 43.48] | 331/32/405 | 43.10 [39.64, 46.63] |
+| Green Hollow / at | 548/31/189 | 71.35 [68.06, 74.44] | 579/28/161 | 75.39 [72.22, 78.31] |
+| Green Hollow / above | 635/32/101 | 82.68 [79.85, 85.19] | 627/34/107 | 81.64 [78.75, 84.22] |
+| Ashen Reach / below | 380/22/366 | 49.48 [45.95, 53.01] | 381/33/354 | 49.61 [46.08, 53.14] |
+| Ashen Reach / at | 540/16/212 | 70.31 [66.99, 73.44] | 540/11/217 | 70.31 [66.99, 73.44] |
+| Ashen Reach / above | 637/26/105 | 82.94 [80.12, 85.44] | 660/25/83 | **85.94 [83.30, 88.22] — fails** |
+| Frostbound Pass / below | 335/24/409 | 43.62 [40.15, 47.15] | 317/35/416 | 41.28 [37.85, 44.79] |
+| Frostbound Pass / at | 551/23/194 | 71.74 [68.46, 74.81] | 578/25/165 | 75.26 [72.09, 78.18] |
+| Frostbound Pass / above | 648/38/82 | 84.38 [81.64, 86.77] | 668/25/75 | **86.98 [84.41, 89.18] — fails** |
+
+Per-enemy diagnostics retain the actual authored Combat-weight sampling. Each
+cell below lists **below; at; above**, with V/R/D counts in each tier.
+
+| Enemy group | Trials per tier, calibration / held-out | Calibration V/R/D | Held-out V/R/D |
+|---|---:|---|---|
+| Forest Wolves | 533 / 483 | 234/11/288; 392/20/121; 465/24/44 | 230/14/239; 373/18/92; 414/24/45 |
+| Bandit Skirmishers | 235 / 285 | 73/13/149; 156/11/68; 170/8/57 | 101/18/166; 206/10/69; 213/10/62 |
+| Ash-road Raiders | 467 / 441 | 223/11/233; 332/8/127; 379/16/72 | 217/15/209; 315/8/118; 382/9/50 |
+| Cinder Jackals | 301 / 327 | 157/11/133; 208/8/85; 258/10/33 | 164/18/145; 225/3/99; 278/16/33 |
+| Icebound Sentinels | 492 / 460 | 169/18/305; 295/14/183; 387/29/76 | 125/28/307; 302/20/138; 372/19/69 |
+| Snowcrest Prowlers | 276 / 308 | 166/6/104; 256/9/11; 261/9/6 | 192/7/109; 276/5/27; 296/6/6 |
+
+**Complete-Expedition trade-offs:** these separate trials retain HP carryover;
+their completion rates are not Combat Victory rates. At recommendation:
+
+| Region | Untuned calibration completion / resting Heroes | Final calibration completion / resting Heroes | Held-out completion / resting Heroes |
+|---|---|---|---|
+| Green Hollow | 61.20%; 940/1810 | 61.20%; 940/1810 | 64.97%; 874/1800 |
+| Ashen Reach | 63.80%; 1238/2423 | 47.40%; 1742/2676 | 45.70%; 1791/2690 |
+| Frostbound Pass | 33.46%; 1957/2596 | 35.68%; 1952/2596 | 36.72%; 1890/2588 |
+
+Each completion percentage has 768 Expedition trials; resting counts divide
+injured Heroes by participating Heroes. Ashen's reduced armor stalls come with
+**worse Expedition attrition**, despite improved independent Combat Victory
+rates. Its recommendation change also changes sampled Party composition, so
+these comparisons are not matched-Party causal estimates. The normal-reward
+progression regression still reaches and dispatches to all three Regions without
+editing gold, XP or saves. No new Expedition-completion target is inferred.
+
+**Integrated validation:** clean import, focused **98 tests / 3,083 assertions**,
+full **361 tests / 23,678 assertions**, and Android debug export all exit 0.
+Both GUT hooks remain enabled, with no empty discovery, skipped scripts, pending
+tests or GUT errors. The actual assertion total differs from the untuned
+checkpoint because authored outcomes affect existing fixture assertion counts;
+no unrelated tests or assertions were removed. All six report processes exit 0
+(valid reports), while checking the combined balance acceptance returns failure.
+The scoped read-only gameplay/correctness review found no blocking regressions.
+
+The largest sampled Expedition is **146,023 bytes**. The existing full-save
+fixture measures **43,155–96,927 bytes** across all six enemy groups at levels
+1/3/6, each with twenty Heroes, three offers and 1,024 inventory entries; every
+fixture validates below the unchanged **1,048,576-byte** save limit. These are
+sampled cases, not exhaustive maxima. The diagnostic only printed existing
+serialized sizes in an isolated archive, without changing assertions or
+production code; that instrumentation was removed afterward.
+
+The APK is **28,521,467 bytes**, SHA256
+`0e2976b969d6171b19ee6daebcf1cb6c105b1ce194a0670b737010ba647e226f`.
+Nonempty, v2/v3 signature and archive-exclusion checks pass; tests, GUT and
+balance tools are absent. Existing missing-icon/ADB diagnostics remain, and no
+physical Android behavior was certified. Raw local evidence is retained under
+the ignored `build/m7-validation/evidence/integrated-633d1de/` directory; the
+revision, commands, counts and intervals here are the published evidence.
+
+To reproduce, use the README's clean import, full GUT and Android export
+commands with Godot 4.7.2. Run the existing balance command with `--trials=256`
+once for each seed **7001, 7002, 9001, 91001, 91002, 91003**, and sum the
+first three and last three reports separately. These last three seeds are now
+known evaluation data and must not be presented as fresh holdouts for later work.
+
+Changed-file secret scans were clean. Post-commit CodeQL was requested but
+could not analyze the changed GDScript/Resource languages; this is not a clean
+CodeQL analysis result. The [Android run on this candidate](https://github.com/pompomon/godot-apk/actions/runs/34233441103)
+is **`action_required`**, with zero jobs/logs executed: maintainer approval is
+needed, not a CI test fix. Baseline CI success does not establish candidate CI.
+
+All validation processes and writes stopped before this evidence-only update;
+the parent was the sole source/data writer and the gameplay revision stayed
+frozen. **Next bounded action:** agree a subsequent calibration/holdout protocol
+before any further numerical edits, address the two above-band misses without
+losing the narrow Ashen below/at margins, and evaluate Ashen attrition alongside
+isolated Combat rates. Then obtain physical Android normal-play acceptance.
+Do not start Milestone 8 or mark this milestone complete.
+
 **Baseline (2026-09-08, `a3f8419`):** the validation owner tested an isolated
 `git archive` of the unchanged revision with SHA512-verified Godot 4.7.2
 editor/templates. Clean import, the full **319 tests / 21,914 assertions**

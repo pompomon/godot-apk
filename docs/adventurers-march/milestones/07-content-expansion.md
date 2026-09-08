@@ -169,6 +169,44 @@ static func run(regions: Array[RegionResource], trials: int, seed_value: int,
 
 ## Implementation and validation evidence
 
+### Second balance cycle protocol (2026-09-08)
+
+The user requested implementation of the continuation plan. This cycle starts
+from **`6562427`**, whose gameplay matches `633d1de`; only published documentation
+differs. The working tree was clean. The parent owns numerical content and
+documentation; one validation owner checks the baseline and frozen integrated
+revision. No new content, mechanics, presentation work or save migration is in
+scope.
+
+- Development/calibration uses all six now-known seeds: **7001, 7002, 9001,
+  91001, 91002, 91003**, with **256 distinct Parties per Region/tier/seed**
+  (**1,536 trials per aggregate row**).
+- Predeclared fresh holdouts are **92001, 92002, 92003**, with the same per-seed
+  sample size (**768 trials per aggregate row**). Do not run them until the
+  numerical candidate is frozen and published. Evaluate once; any miss ends
+  this cycle with an explicit blocker and no further numerical tuning.
+- Both development and holdout aggregates must pass all nine existing bands:
+  below <50% Victory, at and modestly above 70–85%. Sum raw counts; Wilson 95%
+  intervals and individual seed results are diagnostic, not alternate gates.
+- Preserve the fixed 16,000-Party population, generated Party distribution,
+  Power-selected tiers (60–80%, 95–105%, 105–115%), distinctness within each
+  seed/row, full-HP independent Combat trials and outcome-independent sampling.
+  Insufficient buckets fail; they are never padded or resampled for acceptance.
+- Start with HP/Attack adjustments to the four Ashen/Frostbound enemy groups.
+  Keep recommendations fixed initially; any necessary recommendation adjustment
+  must disclose its sampling, displayed-Power and future-XP effects. Preserve
+  historical awards and logs. Combat formulas, skills, targeting, round limits,
+  encounter weights, unlock thresholds, capacities and save version remain fixed.
+  Global balancing changes require a separately agreed scope expansion.
+- Full-Expedition completion, resting-Hero counts, per-enemy outcomes and
+  serialized sizes remain mandatory diagnostics. No new attrition target is
+  inferred. Physical Android acceptance remains pending an actual playthrough;
+  local export and CI cannot substitute for it.
+
+The [Android workflow for the merged baseline](https://github.com/pompomon/godot-apk/actions/runs/34247610455)
+has completed successfully. Candidate validation and the previous cycle's
+historical evidence remain separate.
+
 ### Balance-only follow-up protocol (2026-09-08)
 
 - Calibration: seeds **7001, 7002 and 9001**, **256 distinct Parties per

@@ -223,15 +223,16 @@ Party snapshot; a short bucket is never padded by replaying earlier Parties.
 The candidate population remains fixed at 16,000, so larger trial requests may
 fail even when smaller ones succeed. The tools are excluded from the APK.
 
-For the balance-only follow-up, aggregate seeds **7001, 7002, 9001** for
-calibration and reserve **91001, 91002, 91003** for evaluation after tuning is
-frozen, using 256 trials per seed/Region/tier. Sum outcome counts across seeds
-(768 trials per aggregate row); both aggregates must meet all nine point-estimate
-bands. Individual seed rows and confidence intervals remain diagnostic, not
-additional pass criteria. See the
-[acceptance protocol](docs/adventurers-march/milestones/07-content-expansion.md#balance-only-follow-up-protocol-2026-09-08).
-These held-out seeds have now been evaluated on `633d1de`; they are not unseen
-data for any subsequent tuning. Their two failed bands remain acceptance blockers.
+The second balance cycle uses all six known seeds **7001, 7002, 9001, 91001,
+91002, 91003** for development and predeclares **92001, 92002, 92003** as fresh
+holdouts, evaluated only after freezing the numerical candidate. Use 256 trials
+per seed/Region/tier and sum raw outcome counts: **1,536 trials** per development
+aggregate row and **768** per holdout row. Both aggregates must meet all nine
+point-estimate bands; individual seeds and confidence intervals remain diagnostic.
+A held-out miss ends the cycle without further numerical tuning. See the
+[second-cycle protocol](docs/adventurers-march/milestones/07-content-expansion.md#second-balance-cycle-protocol-2026-09-08).
+The previous holdouts were evaluated on `633d1de`; their two failed bands are
+historical blockers, not fresh evaluation data for this cycle.
 
 ## Run the tests
 

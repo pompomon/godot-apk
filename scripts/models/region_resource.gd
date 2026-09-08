@@ -11,7 +11,6 @@ extends Resource
 ## Positive; each Travel step is followed by exactly one encounter.
 @export var travel_step_count: int = 1
 @export var encounter_pool: Array[EncounterEntryResource] = []
-## { "kind": "always" | "gold" | "region_cleared",
-##   "value": int, "region_id": StringName }
+## Exactly { "kind": "always" } or { "kind": "gold", "value": positive int }.
 @export var unlock_condition: Dictionary = {}
 @export var retreat_ends_expedition: bool

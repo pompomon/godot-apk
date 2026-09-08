@@ -14,6 +14,10 @@ const FIREBOLT: SkillResource = preload("res://data/skills/firebolt.tres")
 const MEND: SkillResource = preload("res://data/skills/mend.tres")
 const BANDIT_SKIRMISHERS: EnemyGroupResource = preload("res://data/encounters/bandit_skirmishers.tres")
 const FOREST_WOLVES: EnemyGroupResource = preload("res://data/encounters/forest_wolves.tres")
+const ASHEN_RAIDERS: EnemyGroupResource = preload("res://data/encounters/ashen_raiders.tres")
+const ASHEN_JACKALS: EnemyGroupResource = preload("res://data/encounters/ashen_jackals.tres")
+const FROSTBOUND_SENTINELS: EnemyGroupResource = preload("res://data/encounters/frostbound_sentinels.tres")
+const FROSTBOUND_PROWLERS: EnemyGroupResource = preload("res://data/encounters/frostbound_prowlers.tres")
 
 
 static func skills() -> Array[SkillResource]:
@@ -21,7 +25,8 @@ static func skills() -> Array[SkillResource]:
 
 
 static func enemy_groups() -> Array[EnemyGroupResource]:
-	return [BANDIT_SKIRMISHERS, FOREST_WOLVES]
+	return [BANDIT_SKIRMISHERS, FOREST_WOLVES, ASHEN_RAIDERS, ASHEN_JACKALS,
+		FROSTBOUND_SENTINELS, FROSTBOUND_PROWLERS]
 
 
 static func skill_by_id(id: String) -> SkillResource:

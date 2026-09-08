@@ -33,7 +33,7 @@ the single place to see overall status at a glance.
 | 3 | Party formation | 2 | [x] | [03-party-formation.md](adventurers-march/milestones/03-party-formation.md) |
 | 4 | First expedition | 3 | [x] | [04-first-expedition.md](adventurers-march/milestones/04-first-expedition.md) |
 | 5 | Combat simulation | 4 | [x] | [05-combat-simulation.md](adventurers-march/milestones/05-combat-simulation.md) |
-| 6 | Progression and equipment | 5 | [ ] | [06-progression-and-equipment.md](adventurers-march/milestones/06-progression-and-equipment.md) |
+| 6 | Progression and equipment | 5 | [x] | [06-progression-and-equipment.md](adventurers-march/milestones/06-progression-and-equipment.md) |
 | 7 | Content expansion | 6 | [ ] | [07-content-expansion.md](adventurers-march/milestones/07-content-expansion.md) |
 | 8 | Presentation pass | 7 | [ ] | [08-presentation-pass.md](adventurers-march/milestones/08-presentation-pass.md) |
 | 9 | Testing and release preparation | 8 | [ ] | [09-testing-and-release.md](adventurers-march/milestones/09-testing-and-release.md) |
@@ -46,7 +46,8 @@ Milestones 6–9 build out full MVP scope and release readiness.
 directed that device acceptance be considered complete externally for now.
 Their checked device criteria record that external acceptance, not device tests
 performed by this agent. Milestone 5 slices 4–5 were subsequently implemented
-and validated as recorded below; Milestone 6 is the next unfinished work.
+and validated as recorded below. On 2026-09-08 the user confirmed Milestone 6
+as manually verified; Milestone 7 is the next unfinished work.
 
 ---
 
@@ -225,9 +226,9 @@ Detail: [05-combat-simulation.md](adventurers-march/milestones/05-combat-simulat
 **Status:** implementation and local automated validation are complete:
 **314 tests / 21,874 assertions**, clean import, and a successful Android debug
 export. Version-5 saves preserve equipment copies and frozen rewards while
-migrating versions 1–4. The top-level milestone remains unchecked pending
-physical Android acceptance; see the detail file for contracts, checkpoint
-evidence, and the remaining manual check.
+migrating versions 1–4. Manually verified by the user on 2026-09-08; this
+records external acceptance, not physical-device testing by the coding agent.
+See the detail file for contracts and checkpoint evidence.
 
 **Definition of done:** Heroes gain XP and level up from completed
 Expeditions with visibly updated stats, items can be equipped/unequipped

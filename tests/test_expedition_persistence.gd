@@ -284,7 +284,8 @@ func test_v2_migration_validates_original_party_before_releasing_legacy_on_exped
 	legacy.roster[1].status = "ON_EXPEDITION"
 	legacy.unlocked_regions = ["forest", "arbitrary-old-region"]
 	var expected := legacy.duplicate(true)
-	expected.save_version = 5
+	expected.save_version = SaveManager.SAVE_VERSION
+	expected.unlocked_regions = []
 	expected.expedition = null
 	expected.expedition_seed = expected.recruitment_seed
 	expected.expedition_sequence = 0
@@ -292,6 +293,7 @@ func test_v2_migration_validates_original_party_before_releasing_legacy_on_exped
 	for hero in expected.roster + expected.recruitment_offers:
 		hero.recovery_ready_at = 0
 	assert_eq(SaveManager.migrate(legacy), expected)
+	expected.unlocked_regions = ["green_hollow"]
 	_write(SaveManager.get_save_path(), legacy)
 	SaveManager.load_or_create()
 	assert_eq(SaveManager.capture_state(), expected)

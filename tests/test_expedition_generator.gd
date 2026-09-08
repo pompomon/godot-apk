@@ -35,8 +35,8 @@ func _party() -> PartyData:
 func test_noncombat_fixture_is_ordered_and_allowlisted() -> void:
 	assert_true(ExpeditionCatalog.validate_catalog(
 		ExpeditionCatalog.regions(), ExpeditionCatalog.events(), ExpeditionCatalog.loot(), BALANCING))
-	assert_eq(ExpeditionCatalog.events().size(), 5)
-	assert_eq(ExpeditionCatalog.loot().size(), 1)
+	assert_eq(ExpeditionCatalog.events().size(), 15)
+	assert_eq(ExpeditionCatalog.loot().size(), 3)
 	var region := ExpeditionCatalog.GREEN_HOLLOW
 	assert_eq(region.duration_options_seconds, [60])
 	assert_eq(region.travel_step_count, 5)
@@ -56,7 +56,7 @@ func test_invalid_region_counts_durations_pool_payloads_and_configuration() -> v
 	var changes := [
 		["travel_step_count", 0], ["travel_step_count", -1], ["travel_step_count", 513],
 		["recommended_party_power", -1], ["display_name", ""], ["travel_title", ""],
-		["travel_text", ""], ["unlock_condition", {}], ["unlock_condition", {"kind": "gold", "value": 1}],
+		["travel_text", ""], ["unlock_condition", {}], ["unlock_condition", {"kind": "gold", "value": 0}],
 	]
 	for change in changes:
 		var region: RegionResource = ExpeditionCatalog.GREEN_HOLLOW.duplicate(true)

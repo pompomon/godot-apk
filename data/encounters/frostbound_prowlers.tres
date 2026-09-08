@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="EnemyGroupResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/models/enemy_group_resource.gd" id="1_group"]
+
+[resource]
+script = ExtResource("1_group")
+group_id = &"frostbound_prowlers"
+display_name = "Snowcrest Prowlers"
+enemies = Array[Dictionary]([{
+"combatant_id": "frostbound_prowler_alpha",
+"display_name": "Snowcrest Alpha",
+"row": "Front",
+"basic_attack_target_rule": "FrontRowFirst",
+"derived_stats": {
+"MaxHP": 110, "Attack": 39, "MagicPower": 0, "Defense": 10,
+"Evasion": 0.09, "Initiative": 29, "CritChance": 0.1
+}
+}, {
+"combatant_id": "frostbound_prowler_flanker",
+"display_name": "Snowcrest Flanker",
+"row": "Back",
+"basic_attack_target_rule": "AnySlot",
+"derived_stats": {
+"MaxHP": 75, "Attack": 30, "MagicPower": 0, "Defense": 7,
+"Evasion": 0.12, "Initiative": 32, "CritChance": 0.12
+}
+}])

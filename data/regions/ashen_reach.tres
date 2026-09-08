@@ -1,0 +1,64 @@
+[gd_resource type="Resource" script_class="RegionResource" load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://scripts/models/region_resource.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/models/encounter_entry_resource.gd" id="2"]
+
+[sub_resource type="Resource" id="loot"]
+script = ExtResource("2")
+kind = "Loot"
+content_id = &"ashen_loot"
+weight = 3.0
+
+[sub_resource type="Resource" id="cistern"]
+script = ExtResource("2")
+kind = "Event"
+content_id = &"ashen_cistern"
+weight = 1.0
+
+[sub_resource type="Resource" id="kiln"]
+script = ExtResource("2")
+kind = "Event"
+content_id = &"ashen_kiln"
+weight = 1.0
+
+[sub_resource type="Resource" id="obelisk"]
+script = ExtResource("2")
+kind = "Event"
+content_id = &"ashen_obelisk"
+weight = 1.0
+
+[sub_resource type="Resource" id="glass"]
+script = ExtResource("2")
+kind = "Event"
+content_id = &"ashen_glass"
+weight = 1.0
+
+[sub_resource type="Resource" id="pilgrims"]
+script = ExtResource("2")
+kind = "Event"
+content_id = &"ashen_pilgrims"
+weight = 1.0
+
+[sub_resource type="Resource" id="raiders"]
+script = ExtResource("2")
+kind = "Combat"
+content_id = &"ashen_raiders"
+weight = 3.0
+
+[sub_resource type="Resource" id="jackals"]
+script = ExtResource("2")
+kind = "Combat"
+content_id = &"ashen_jackals"
+weight = 2.0
+
+[resource]
+script = ExtResource("1")
+region_id = &"ashen_reach"
+display_name = "Ashen Reach"
+travel_title = "Across the cinder road"
+travel_text = "The Party follows blackened milestones between wind-worn ruins and dunes of ash."
+recommended_party_power = 450
+duration_options_seconds = Array[int]([120])
+travel_step_count = 5
+encounter_pool = Array[ExtResource("2")]([SubResource("loot"), SubResource("cistern"), SubResource("kiln"), SubResource("obelisk"), SubResource("glass"), SubResource("pilgrims"), SubResource("raiders"), SubResource("jackals")])
+unlock_condition = {"kind": "gold", "value": 200}

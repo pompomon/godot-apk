@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="LootResource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/models/loot_resource.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+loot_id = &"frostbound_loot"
+display_name = "Icebound supply chest"
+journal_text = "The Party chips open an abandoned supply chest beneath a trail marker and retrieves the undamaged contents."
+min_gold = 8
+max_gold = 18
+item_pool = {"hunting_bow": 3.0, "leather_armor": 2.0, "chainmail": 3.0, "apprentice_staff": 1.0}
+item_drop_chance = 0.7

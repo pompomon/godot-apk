@@ -11,6 +11,7 @@ var _feedback_message: String = ""
 @onready var _gold_label: Label = %GoldLabel
 @onready var _roster_count_label: Label = %RosterCountLabel
 @onready var _feedback_label: Label = %FeedbackLabel
+@onready var _progression_label: Label = %CompanyProgressionLabel
 @onready var _roster_list: VBoxContainer = %RosterList
 @onready var _offer_list: VBoxContainer = %OfferList
 
@@ -32,10 +33,7 @@ func _notification(what: int) -> void:
 func _refresh() -> void:
 	%FormationButton.text = "Form Party" if GameState.current_party == null else "Edit Party"
 	%FormationButton.disabled = not PartyFormationService.editing_error().is_empty()
-	_gold_label.text = "Gold: %d" % GameState.gold
-	_roster_count_label.text = "Roster: %d / %d" % [
-		GameState.roster.size(), GameState.roster_capacity
-	]
+	_refresh_company_summary()
 	HeroUI.clear_children(_roster_list)
 	HeroUI.clear_children(_offer_list)
 	for index in GameState.roster.size():
@@ -122,7 +120,8 @@ func _open_formation() -> void:
 
 
 func _refresh_expedition_state() -> void:
-	_gold_label.text = "Gold: %d" % GameState.gold
+	_refresh_company_summary()
+	%FormationButton.text = "Form Party" if GameState.current_party == null else "Edit Party"
 	%FormationButton.disabled = not PartyFormationService.editing_error().is_empty()
 	for row in _roster_list.get_children():
 		var hero := GameState.find_hero(row.get_meta("hero_id", ""))
@@ -137,3 +136,30 @@ func _refresh_expedition_state() -> void:
 			availability.visible = not reason.is_empty()
 			card.find_child("RecruitButton", true, false).disabled = not reason.is_empty()
 	HeroUI.show_feedback(_feedback_label, ExpeditionManager.last_error)
+
+
+func _refresh_company_summary() -> void:
+	_gold_label.text = "Gold: %d" % GameState.gold
+	_roster_count_label.text = "Roster: %d / %d" % [
+		GameState.roster.size(), GameState.roster_capacity]
+	var milestones: Array[String] = []
+	var next_region: RegionResource
+	var next_capacity := 0
+	for region in ExpeditionCatalog.regions():
+		var capacity := int(ExpeditionManager.balancing.region_roster_capacities.get(region.region_id, 0))
+		if CompanyProgression.is_unlocked(region, GameState.unlocked_regions):
+			milestones.append("%s: %d" % [region.display_name, capacity])
+		elif capacity > GameState.roster_capacity and (next_region == null or capacity < next_capacity):
+			next_region = region
+			next_capacity = capacity
+	var text := "Roster full.\n" if GameState.roster.size() >= GameState.roster_capacity else ""
+	text += "Unlocked roster caps: %s." % ", ".join(milestones)
+	if next_region != null:
+		text += "\nNext roster cap: %d · %s\n%s" % [
+			next_capacity, next_region.display_name, CompanyProgression.requirement_text(next_region)]
+		if next_region.unlock_condition.get("kind") == "gold":
+			text += " · Held gold: %d / %d" % [GameState.gold, int(next_region.unlock_condition.value)]
+	else:
+		text += "\nNo higher roster cap is currently available."
+	text += "\nUnlocks are permanent; gold is not spent."
+	_progression_label.text = text

@@ -27,3 +27,5 @@ extends Resource
 @export var recovery_hp_percent: int = 25
 @export var max_offline_delta_seconds: int
 @export var recruitment_cost: int
+## { region_id: int }; achieved capacity is never reduced by later tuning.
+@export var region_roster_capacities: Dictionary = {}

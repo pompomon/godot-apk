@@ -59,7 +59,7 @@ func test_new_company_has_four_typed_heroes_and_starting_gold() -> void:
 		ids[hero.hero_id] = true
 	for index in 4:
 		assert_same(GameState.roster[index].hero_class, HeroCatalog.classes()[index])
-	assert_true(GameState.unlocked_regions.is_empty())
+	assert_eq(GameState.unlocked_regions, [&"green_hollow"])
 	assert_eq(GameState.unlocked_regions.get_typed_builtin(), TYPE_STRING_NAME)
 	assert_false(ExpeditionManager.is_expedition_active())
 	assert_null(ExpeditionManager.get_active_expedition())

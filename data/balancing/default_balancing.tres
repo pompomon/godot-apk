@@ -46,3 +46,8 @@ max_offline_delta_seconds = 86400
 base_recovery_seconds = 60
 recovery_hp_percent = 25
 recruitment_cost = 100
+region_roster_capacities = {
+"green_hollow": 12,
+"ashen_reach": 16,
+"frostbound_pass": 20
+}

@@ -5,7 +5,7 @@ func test_catalog_has_four_ordered_classes_and_functional_tradeoff_traits() -> v
 	var classes := HeroCatalog.classes()
 	var traits := HeroCatalog.traits()
 	assert_eq(classes.size(), 4)
-	assert_between(traits.size(), 3, 5)
+	assert_eq(traits.size(), 8)
 	assert_true(HeroCatalog.validate_catalog(classes, traits))
 	var ids := ["knight", "ranger", "wizard", "cleric"]
 	var names := ["Knight", "Ranger", "Wizard", "Cleric"]
@@ -33,7 +33,7 @@ func test_catalog_has_four_ordered_classes_and_functional_tradeoff_traits() -> v
 		assert_true(has_bonus, "%s bonus" % hero_trait.trait_id)
 		assert_true(has_penalty, "%s tradeoff" % hero_trait.trait_id)
 		trait_ids.append(String(hero_trait.trait_id))
-	assert_eq(trait_ids, ["hearty", "keen_eyed", "lightfooted", "studious"])
+	assert_eq(trait_ids.slice(0, 4), ["hearty", "keen_eyed", "lightfooted", "studious"])
 	assert_eq(HeroCatalog.HEARTY.stat_modifiers, {"MaxHP": 12.0, "Initiative": -1.0})
 	assert_eq(HeroCatalog.KEEN_EYED.stat_modifiers, {"CritChance": 0.04, "Defense": -2.0})
 	assert_eq(HeroCatalog.LIGHTFOOTED.stat_modifiers, {"Evasion": 0.06, "Initiative": -2.0})
@@ -75,7 +75,7 @@ func test_catalog_lookup_is_explicit_and_returns_fresh_pool_arrays() -> void:
 	traits.pop_back()
 	assert_eq(HeroCatalog.classes().size(), 4)
 	assert_eq(HeroCatalog.classes()[0], HeroCatalog.KNIGHT)
-	assert_eq(HeroCatalog.traits().size(), 4)
+	assert_eq(HeroCatalog.traits().size(), 8)
 	assert_eq(HeroCatalog.traits()[0], HeroCatalog.HEARTY)
 
 

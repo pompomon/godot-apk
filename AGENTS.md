@@ -85,6 +85,21 @@ The [architecture boundaries](README.md#architecture-boundaries) are authoritati
   bootstrap-only. Respect deferred navigation and stale-root rejection; UI
   tests await a process frame before inspecting the destination.
 
+### Android layout stability
+
+- Never connect a `Control`'s own `resized` signal to code that mutates its
+  theme margins. Theme changes invalidate minimum sizes and can feed back into
+  layout. `ScreenMargin` instead coalesces initial, viewport, and resume requests
+  into one deferred update, ignores detached/re-entrant work, skips unchanged
+  values, and applies all four constants in one bulk theme override.
+- A Fold 4 / Android 16 comparison isolated the Roster and Formation failure to
+  dynamic margin invalidation; artwork and row sizing were controls, not causes.
+  The stabilized baseline passed both screens, but no native stack trace proved
+  an engine-level cause. Do not replace this mitigation with assumed recursion.
+- For foldable safe-area changes, device acceptance covers both displays plus
+  fold/unfold, background/resume, scrolling, and Back/Cancel. Headless layout
+  checks and a successful APK export remain separate evidence.
+
 ## Validate incrementally; preserve regression coverage
 
 Use the existing [test instructions](README.md#run-the-tests) and

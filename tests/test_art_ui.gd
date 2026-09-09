@@ -211,8 +211,58 @@ func test_all_screens_resize_with_centered_content_and_no_horizontal_overflow() 
 			assert_same(margin.get_script(), ScreenMargin)
 			assert_lte(margin.get_child(0).size.x, ScreenMargin.MAX_CONTENT_WIDTH)
 			assert_eq(margin.get_theme_constant("margin_left"), margin.get_theme_constant("margin_right"))
+			assert_false(margin.get("_update_queued"))
+			assert_false(margin.get("_updating"))
+			assert_false(margin.resized.is_connected(Callable(margin, "_update_margins")))
 			_check_control_widths(_screen(), extent.x)
 			await _capture_preview("%s_%dx%d" % [path.get_base_dir().get_file(), extent.x, extent.y])
+
+
+func test_screen_margins_defer_coalesce_and_skip_unchanged_updates() -> void:
+	await _go(ROSTER)
+	await get_tree().process_frame
+	var margin := _node("Margin") as MarginContainer
+	assert_eq(margin.get("_applied_margins"), PackedInt32Array([24, 24, 24, 24]))
+	assert_false(margin.resized.is_connected(Callable(margin, "_update_margins")))
+	assert_true(_viewport.size_changed.is_connected(Callable(margin, "_queue_margin_update")))
+	watch_signals(margin)
+	_viewport.size = Vector2i(960, 1280)
+	margin.notification(NOTIFICATION_APPLICATION_RESUMED)
+	margin.notification(NOTIFICATION_APPLICATION_RESUMED)
+	assert_true(margin.get("_update_queued"))
+	assert_eq([
+		margin.get_theme_constant("margin_left"),
+		margin.get_theme_constant("margin_top"),
+		margin.get_theme_constant("margin_right"),
+		margin.get_theme_constant("margin_bottom"),
+	], [24, 24, 24, 24])
+	await get_tree().process_frame
+	assert_false(margin.get("_update_queued"))
+	assert_eq([
+		margin.get_theme_constant("margin_left"),
+		margin.get_theme_constant("margin_top"),
+		margin.get_theme_constant("margin_right"),
+		margin.get_theme_constant("margin_bottom"),
+	], [60, 24, 60, 24])
+	assert_signal_emit_count(margin, "theme_changed", 1)
+	assert_false(margin.get("_updating"))
+	margin.notification(NOTIFICATION_APPLICATION_RESUMED)
+	margin.notification(NOTIFICATION_APPLICATION_RESUMED)
+	await get_tree().process_frame
+	assert_signal_emit_count(margin, "theme_changed", 1)
+	assert_false(margin.get("_update_queued"))
+	assert_false(margin.get("_updating"))
+
+
+func test_queued_screen_margin_update_ignores_a_detached_control() -> void:
+	var margin := autofree(ScreenMargin.new()) as MarginContainer
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_viewport.add_child(margin)
+	assert_true(margin.get("_update_queued"))
+	_viewport.remove_child(margin)
+	await get_tree().process_frame
+	assert_false(margin.get("_update_queued"))
+	assert_eq(margin.get("_applied_margins"), PackedInt32Array())
 
 
 func test_safe_area_conversion_handles_scaling_window_offsets_and_invalid_rects() -> void:

@@ -81,7 +81,8 @@ static func validate_stats(value: Variant) -> bool:
 static func validate_enemy_group(group: EnemyGroupResource) -> bool:
 	if group == null or not ExpeditionCatalog.text(String(group.group_id)) or not ExpeditionCatalog.text(group.display_name):
 		return false
-	if not ExpeditionCatalog.text_variants_valid(group.journal_text_variants):
+	if not ExpeditionCatalog.text_variants_valid(
+			"The Party encounters %s." % group.display_name, group.journal_text_variants):
 		return false
 	if group.enemies.is_empty() or group.enemies.size() > MAX_ENEMIES:
 		return false

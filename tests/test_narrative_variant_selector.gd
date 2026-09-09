@@ -52,18 +52,30 @@ func test_utf8_text_remains_valid() -> void:
 
 
 func test_invalid_candidate_arrays_are_rejected_by_catalog_validation() -> void:
-	assert_false(ExpeditionCatalog.text_variants_valid("not an array"))
-	assert_false(ExpeditionCatalog.text_variants_valid([""]))
-	assert_false(ExpeditionCatalog.text_variants_valid(["dup", "dup"]))
-	assert_false(ExpeditionCatalog.text_variants_valid(["x".repeat(4097)]))
-	assert_false(ExpeditionCatalog.text_variants_valid([1, "ok"]))
-	assert_false(ExpeditionCatalog.text_variants_valid([null]))
+	assert_false(ExpeditionCatalog.text_variants_valid("fallback", "not an array"))
+	assert_false(ExpeditionCatalog.text_variants_valid("fallback", [""]))
+	assert_false(ExpeditionCatalog.text_variants_valid("fallback", ["dup", "dup"]))
+	assert_false(ExpeditionCatalog.text_variants_valid("fallback", ["fallback"]))
+	assert_false(ExpeditionCatalog.text_variants_valid("fallback", ["x".repeat(4097)]))
+	assert_false(ExpeditionCatalog.text_variants_valid("fallback", [1, "ok"]))
+	assert_false(ExpeditionCatalog.text_variants_valid("fallback", [null]))
 	var too_many: Array = []
 	for i in range(17):
 		too_many.append("v%d" % i)
-	assert_false(ExpeditionCatalog.text_variants_valid(too_many))
-	assert_true(ExpeditionCatalog.text_variants_valid([]))
-	assert_true(ExpeditionCatalog.text_variants_valid(["a", "b"]))
+	assert_false(ExpeditionCatalog.text_variants_valid("fallback", too_many))
+	assert_true(ExpeditionCatalog.text_variants_valid("fallback", []))
+	assert_true(ExpeditionCatalog.text_variants_valid("fallback", ["a", "b"]))
+
+
+func test_catalog_validation_rejects_variants_that_duplicate_fallbacks() -> void:
+	var region: RegionResource = ExpeditionCatalog.GREEN_HOLLOW.duplicate(true)
+	region.travel_text_variants.assign([region.travel_text])
+	var balancing: BalancingConfig = load("res://data/balancing/default_balancing.tres")
+	assert_false(ExpeditionCatalog.validate_region(region, balancing))
+
+	var group: EnemyGroupResource = CombatCatalog.enemy_groups()[0].duplicate(true)
+	group.journal_text_variants.assign(["The Party encounters %s." % group.display_name])
+	assert_false(CombatCatalog.validate_enemy_group(group))
 
 
 func test_select_travel_avoids_immediate_repetition_when_possible() -> void:
@@ -71,6 +83,13 @@ func test_select_travel_avoids_immediate_repetition_when_possible() -> void:
 	var previous := NarrativeVariantSelector.select_travel("a", variants, 10, "region", 0, "")
 	var next_text := NarrativeVariantSelector.select_travel("a", variants, 10, "region", 1, previous)
 	assert_ne(next_text, previous)
+
+
+func test_select_travel_skips_variants_that_duplicate_fallback() -> void:
+	var variants: Array[String] = ["same", "different"]
+	for step_index in range(8):
+		assert_eq(NarrativeVariantSelector.select_travel(
+				"same", variants, 10, "region", step_index, "same"), "different")
 
 
 func test_select_travel_with_single_candidate_always_returns_fallback() -> void:

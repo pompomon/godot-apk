@@ -76,10 +76,11 @@ static func text(value: Variant, maximum: int = 128) -> bool:
 ## Validates an optional narrative-variant pool: an Array of nonempty,
 ## length-bounded, unique strings.
 static func text_variants_valid(
-		variants: Variant, maximum_entries: int = 16, maximum_length: int = 4096) -> bool:
+		fallback: String, variants: Variant, maximum_entries: int = 16, maximum_length: int = 4096) -> bool:
 	if not variants is Array or variants.size() > maximum_entries:
 		return false
 	var seen := {}
+	seen[fallback] = true
 	for entry in variants:
 		if not text(entry, maximum_length) or seen.has(entry):
 			return false
@@ -111,7 +112,7 @@ static func reward_payload(value: Variant, maximum_items: int = MAX_EVENT_ITEMS)
 static func validate_loot(entry: LootResource) -> bool:
 	if entry == null or not text(String(entry.loot_id)) or not text(entry.display_name) or not text(entry.journal_text, 4096):
 		return false
-	if not text_variants_valid(entry.journal_text_variants):
+	if not text_variants_valid(entry.journal_text, entry.journal_text_variants):
 		return false
 	if not integer(entry.min_gold, 0, MAX_LOOT_GOLD) or not integer(entry.max_gold, entry.min_gold, MAX_LOOT_GOLD):
 		return false
@@ -128,11 +129,13 @@ static func validate_loot(entry: LootResource) -> bool:
 static func validate_event(event: EventResource) -> bool:
 	if event == null or not text(String(event.event_id)) or not text(event.display_name) or not text(event.description, 4096):
 		return false
-	if not text_variants_valid(event.description_variants):
+	if not text_variants_valid(event.description, event.description_variants):
 		return false
 	if event.outcomes.is_empty() or event.outcomes.size() > MAX_STEPS:
 		return false
-	var descriptions := NarrativeVariantSelector.candidate_list(event.description, event.description_variants)
+	var maximum_description_length := event.description.length()
+	for description in event.description_variants:
+		maximum_description_length = maxi(maximum_description_length, description.length())
 	var ids := {}
 	var total := 0.0
 	for outcome in event.outcomes:
@@ -140,13 +143,13 @@ static func validate_event(event: EventResource) -> bool:
 			return false
 		if not text(outcome.journal_text, 4096) or not weight(outcome.weight) or not reward_payload(outcome.result):
 			return false
-		if not text_variants_valid(outcome.journal_text_variants):
+		if not text_variants_valid(outcome.journal_text, outcome.journal_text_variants):
 			return false
-		var outcome_texts := NarrativeVariantSelector.candidate_list(outcome.journal_text, outcome.journal_text_variants)
-		for description in descriptions:
-			for outcome_text in outcome_texts:
-				if not text(description + "\n" + outcome_text, 4096):
-					return false
+		var maximum_outcome_length := outcome.journal_text.length()
+		for outcome_text in outcome.journal_text_variants:
+			maximum_outcome_length = maxi(maximum_outcome_length, outcome_text.length())
+		if maximum_description_length + 1 + maximum_outcome_length > 4096:
+			return false
 		ids[outcome.outcome_id] = true
 		total += outcome.weight
 	return is_finite(total) and total > 0.0
@@ -175,7 +178,7 @@ static func validate_region(region: RegionResource, balancing: BalancingConfig) 
 		return false
 	if not text(region.travel_title) or not text(region.travel_text, 4096):
 		return false
-	if not text_variants_valid(region.travel_text_variants):
+	if not text_variants_valid(region.travel_text, region.travel_text_variants):
 		return false
 	if not unlock_condition_valid(region.unlock_condition):
 		return false

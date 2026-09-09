@@ -32,8 +32,10 @@ static func select_travel(
 	if candidates.size() <= 1:
 		return fallback
 	var index := _digest_index(expedition_seed, region_id, step_index, "", "", "travel", candidates.size())
-	if candidates[index] == previous_text:
-		index = (index + 1) % candidates.size()
+	for offset in range(candidates.size()):
+		var candidate_index := (index + offset) % candidates.size()
+		if candidates[candidate_index] != previous_text:
+			return candidates[candidate_index]
 	return candidates[index]
 
 

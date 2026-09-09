@@ -4,9 +4,11 @@ extends MarginContainer
 const MAX_CONTENT_WIDTH := 840.0
 const SIDES := ["left", "top", "right", "bottom"]
 var _padding: PackedInt32Array
+var _diagnostic_generation: int = -1
 
 
 func _ready() -> void:
+	_diagnostic_generation = UIManager.diagnostics.generation
 	for side in SIDES:
 		_padding.append(get_theme_constant("margin_%s" % side))
 	resized.connect(_update_margins)
@@ -20,6 +22,7 @@ func _notification(what: int) -> void:
 
 
 func _update_margins() -> void:
+	UIManager.diagnostics.mark_for(_diagnostic_generation, "layout.screen_margins.begin")
 	var safe := Rect2(Vector2.ZERO, size)
 	if OS.has_feature("android") and get_viewport() == get_tree().root:
 		safe = local_safe_rect(size, Rect2(DisplayServer.get_display_safe_area()),
@@ -35,6 +38,7 @@ func _update_margins() -> void:
 	margins[2] += ceili(extra / 2.0)
 	for index in SIDES.size():
 		add_theme_constant_override("margin_%s" % SIDES[index], margins[index])
+	UIManager.diagnostics.mark_for(_diagnostic_generation, "layout.screen_margins.end")
 
 
 func physical_screen_transform() -> Transform2D:

@@ -1,6 +1,7 @@
 extends Control
 
 const HeroUI = preload("res://scenes/ui/hero_ui.gd")
+const DiagnosticPanel = preload("res://scenes/ui/diagnostic_panel.gd")
 const ROSTER_SCREEN := "res://scenes/ui/roster/roster_screen.tscn"
 const PARTY_SCREEN := "res://scenes/ui/party_formation/party_formation_screen.tscn"
 const REGION_SCREEN := "res://scenes/ui/region_select/region_select_screen.tscn"
@@ -23,6 +24,8 @@ func _ready() -> void:
 	ExpeditionManager.operation_failed.connect(_refresh)
 	ExpeditionManager.reveal_progress()
 	_refresh()
+	if UIManager.diagnostics.enabled:
+		$Margin/Scroll/Content.add_child(DiagnosticPanel.new())
 
 
 func _notification(what: int) -> void:

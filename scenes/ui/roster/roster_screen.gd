@@ -38,15 +38,19 @@ func _refresh() -> void:
 	HeroUI.clear_children(_roster_list)
 	HeroUI.clear_children(_offer_list)
 	for index in GameState.roster.size():
+		UIManager.diagnostics.mark("hero.roster.%d.begin" % index)
 		var hero: HeroData = GameState.roster[index]
 		var row := HeroUI.hero_row(hero, _open_detail.bind(hero.hero_id))
 		row.name = "HeroRow%d" % index
 		_roster_list.add_child(row)
+		UIManager.diagnostics.mark("hero.roster.%d.added" % index)
 	if GameState.roster.is_empty():
 		_roster_list.add_child(HeroUI.label("Your company is empty. Recruit a hero below."))
 	for index in GameState.recruitment_offers.size():
+		UIManager.diagnostics.mark("hero.offer.%d.begin" % index)
 		var hero: HeroData = GameState.recruitment_offers[index]
 		_offer_list.add_child(_offer_card(hero, index))
+		UIManager.diagnostics.mark("hero.offer.%d.added" % index)
 	if GameState.recruitment_offers.is_empty():
 		_offer_list.add_child(HeroUI.label(
 			"No recruitment offers are available. Return Home and check any save or recovery message."))

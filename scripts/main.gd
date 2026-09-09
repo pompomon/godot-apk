@@ -3,6 +3,8 @@ extends Control
 
 
 func _ready() -> void:
+	UIManager.diagnostics.initialize(SaveManager.get_save_path().get_base_dir(),
+		OS.has_feature("ui_diagnostics") or OS.get_environment("UI_DIAGNOSTICS") == "1")
 	UIManager.bind_screen_root($ScreenRoot)
 	SaveManager.load_or_create()
 	ExpeditionManager.enable_lifecycle()

@@ -80,6 +80,13 @@ func test_catalog_validation_rejects_variants_that_duplicate_fallbacks() -> void
 	assert_false(CombatCatalog.validate_enemy_group(group))
 
 
+func test_event_validation_rejects_combined_variants_over_step_text_limit() -> void:
+	var event: EventResource = ExpeditionCatalog.events()[0].duplicate(true)
+	event.description_variants.assign(["d".repeat(3000)])
+	event.outcomes[0].journal_text_variants.assign(["j".repeat(1096)])
+	assert_false(ExpeditionCatalog.validate_event(event))
+
+
 func test_select_travel_avoids_immediate_repetition_when_possible() -> void:
 	var variants: Array[String] = ["b", "c", "d"]
 	var previous := NarrativeVariantSelector.select_travel("a", variants, 10, "region", 0, "")

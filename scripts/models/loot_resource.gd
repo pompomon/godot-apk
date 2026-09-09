@@ -6,7 +6,7 @@ extends Resource
 @export var display_name: String
 @export_multiline var journal_text: String
 ## Optional additional candidates; [journal_text] + these form the selection pool.
-@export_multiline var journal_text_variants: Array[String] = []
+@export var journal_text_variants: Array[String] = []
 @export var min_gold: int
 @export var max_gold: int
 @export var item_pool: Dictionary = {}

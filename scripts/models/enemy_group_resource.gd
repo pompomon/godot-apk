@@ -6,4 +6,4 @@ extends Resource
 @export var display_name: String
 @export var enemies: Array[Dictionary] = []
 ## Optional combat-introduction candidates; falls back to a generic encounter line.
-@export_multiline var journal_text_variants: Array[String] = []
+@export var journal_text_variants: Array[String] = []

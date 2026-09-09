@@ -3,6 +3,7 @@ extends GutTest
 const Isolation = preload("res://tests/isolated_state.gd")
 const HeroUI = preload("res://scenes/ui/hero_ui.gd")
 const Art = preload("res://scenes/ui/art_catalog.gd")
+const ScreenMargin = preload("res://scenes/ui/screen_margin.gd")
 const HOME := "res://scenes/ui/home/home_screen.tscn"
 const ROSTER := "res://scenes/ui/roster/roster_screen.tscn"
 const DETAIL := "res://scenes/ui/hero_detail/hero_detail_screen.tscn"
@@ -198,6 +199,48 @@ func test_all_seven_screens_keep_art_crisp_passive_and_inside_portrait_width() -
 	await _capture_preview("expedition_report")
 
 
+func test_all_screens_resize_with_centered_content_and_no_horizontal_overflow() -> void:
+	_dispatch()
+	for path in [HOME, ROSTER, DETAIL, EQUIPMENT, FORMATION, REGION, REPORT]:
+		await _go(path)
+		for extent in [Vector2i(720, 1280), Vector2i(720, 1600), Vector2i(960, 1280), Vector2i(720, 1280)]:
+			_viewport.size = extent
+			await _check_art_bounds()
+			assert_eq(_screen().size, Vector2(extent))
+			var margin: MarginContainer = _node("Margin")
+			assert_same(margin.get_script(), ScreenMargin)
+			assert_lte(margin.get_child(0).size.x, ScreenMargin.MAX_CONTENT_WIDTH)
+			assert_eq(margin.get_theme_constant("margin_left"), margin.get_theme_constant("margin_right"))
+			_check_control_widths(_screen(), extent.x)
+			await _capture_preview("%s_%dx%d" % [path.get_base_dir().get_file(), extent.x, extent.y])
+
+
+func test_safe_area_conversion_handles_scaling_window_offsets_and_invalid_rects() -> void:
+	var extent := Vector2(720, 1600)
+	var scaled := Transform2D(Vector2(1.5, 0), Vector2(0, 1.5), Vector2.ZERO)
+	assert_eq(ScreenMargin.local_safe_rect(extent, Rect2(0, 60, 1080, 2280), scaled),
+		Rect2(0, 40, 720, 1520))
+	# A client window already below a system bar must not acquire that inset again.
+	var offset := Transform2D(Vector2(1.5, 0), Vector2(0, 1.5), Vector2(0, 60))
+	assert_eq(ScreenMargin.local_safe_rect(extent, Rect2(0, 60, 1080, 2400), offset),
+		Rect2(Vector2.ZERO, extent))
+	assert_eq(ScreenMargin.local_safe_rect(extent, Rect2(), scaled), Rect2(Vector2.ZERO, extent))
+	assert_eq(ScreenMargin.local_safe_rect(extent, Rect2(-20, -20, 1200, 2500), scaled),
+		Rect2(Vector2.ZERO, extent))
+	assert_eq(ScreenMargin.local_safe_rect(extent, Rect2(5000, 5000, 20, 20), scaled),
+		Rect2(Vector2.ZERO, extent))
+	assert_eq(ScreenMargin.local_safe_rect(extent, Rect2(0, 60, 1080, 2280),
+		Transform2D(Vector2.ZERO, Vector2.ZERO, Vector2.ZERO)), Rect2(Vector2.ZERO, extent))
+
+
+func _check_control_widths(parent: Node, width: float) -> void:
+	for child in parent.get_children():
+		if child is Control and child.is_visible_in_tree():
+			assert_gte(child.get_global_rect().position.x, 0.0, str(child.get_path()))
+			assert_lte(child.get_global_rect().end.x, width, str(child.get_path()))
+		_check_control_widths(child, width)
+
+
 func _check_art_bounds() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -209,7 +252,7 @@ func _check_art_bounds() -> void:
 		assert_eq(image.mouse_filter, Control.MOUSE_FILTER_IGNORE)
 		assert_eq(image.focus_mode, Control.FOCUS_NONE)
 		assert_eq(image.stretch_mode, TextureRect.STRETCH_KEEP_ASPECT_CENTERED, str(image.get_path()))
-		assert_lte(image.get_global_rect().end.x, 720.0, image.name)
+		assert_lte(image.get_global_rect().end.x, float(_viewport.size.x), image.name)
 		assert_gte(image.get_global_rect().position.x, 0.0, image.name)
 
 

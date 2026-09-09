@@ -1,6 +1,7 @@
 extends GutTest
 
 const Isolation = preload("res://tests/isolated_state.gd")
+const HeroUI = preload("res://scenes/ui/hero_ui.gd")
 const HOME := "res://scenes/ui/home/home_screen.tscn"
 const ROSTER := "res://scenes/ui/roster/roster_screen.tscn"
 const DETAIL := "res://scenes/ui/hero_detail/hero_detail_screen.tscn"
@@ -221,6 +222,48 @@ func test_portrait_layout_wraps_long_names_and_scrolls_inspection_content() -> v
 	assert_gt(scroll.get_v_scroll_bar().max_value, scroll.size.y)
 	assert_lte(_screen().get_node("%HeroNameLabel").size.x, scroll.size.x)
 	assert_eq(_screen().get_node("%HeroNameLabel").autowrap_mode, TextServer.AUTOWRAP_WORD_SMART)
+
+
+func test_status_badges_fit_one_line_in_rows_offers_and_formation_after_refresh() -> void:
+	var viewport: SubViewport = add_child_autofree(SubViewport.new())
+	viewport.size = Vector2i(720, 1280)
+	await _boot(viewport)
+	var hero := GameState.roster[0]
+	hero.hero_name = "Alexandria of the Distant Northern Mountains and Moonlit Lakes"
+	UIManager.show_screen(ROSTER)
+	await get_tree().process_frame
+	var row := _screen().get_node("%RosterList").get_child(0)
+	for status in HeroData.HeroStatus.values():
+		hero.status = status as HeroData.HeroStatus
+		HeroUI.refresh_hero_header(row, hero)
+		await get_tree().process_frame
+		await get_tree().process_frame
+		_assert_single_line_badge(row, HeroUI.status_name(hero))
+		assert_eq(row.find_child("HeroName", true, false).autowrap_mode,
+			TextServer.AUTOWRAP_WORD_SMART)
+		assert_lte(row.size.x, _screen().get_node("%Scroll").size.x)
+	for card in _screen().get_node("%OfferList").get_children():
+		_assert_single_line_badge(card, "Idle")
+	hero.status = HeroData.HeroStatus.IDLE
+	UIManager.show_screen("res://scenes/ui/party_formation/party_formation_screen.tscn")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	for available in _screen().get_node("%AvailableList").get_children():
+		_assert_single_line_badge(available, "Idle")
+
+
+func _assert_single_line_badge(parent: Control, expected: String) -> void:
+	var badge := parent.find_child("StatusBadge", true, false) as Label
+	var icon := parent.find_child("StatusIcon", true, false) as TextureRect
+	assert_eq(badge.text, expected)
+	assert_eq(badge.get_line_count(), 1)
+	assert_eq(badge.autowrap_mode, TextServer.AUTOWRAP_OFF)
+	var text_width := badge.get_theme_font("font").get_string_size(
+		badge.text, HORIZONTAL_ALIGNMENT_LEFT, -1, badge.get_theme_font_size("font_size")).x
+	assert_gte(badge.size.x, text_width + badge.get_theme_stylebox("normal").get_minimum_size().x)
+	assert_almost_eq(badge.get_global_rect().get_center().y, icon.get_global_rect().get_center().y, 1.0)
+	assert_gte(badge.get_global_rect().position.x, icon.get_global_rect().end.x)
+	assert_lte(badge.get_global_rect().end.x, parent.get_global_rect().end.x)
 
 
 func test_scroll_rows_cards_and_recruit_buttons_pass_touch_input() -> void:

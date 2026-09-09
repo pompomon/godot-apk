@@ -86,7 +86,8 @@ and `README.md`). Adventurer's March continues on this foundation:
 
 - **Primary platform:** Android (phones), portrait orientation. Keep the
   portrait viewport (`window/size/viewport_width=720`,
-  `window/size/viewport_height=1280`) and `canvas_items` stretch mode, and
+  `window/size/viewport_height=1280`), `canvas_items` stretch mode and `expand`
+  aspect policy to use taller/wider displays without letterboxing, and
   explicitly set `display/window/handheld/orientation=1` (`Portrait`) so an
   exported Android app does not rotate to landscape.
 - **Renderer:** keep `gl_compatibility` for the widest device compatibility

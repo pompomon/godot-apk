@@ -2,6 +2,7 @@ extends RefCounted
 ## Shared presentation only: hero values always come from the domain calculators.
 
 const Art = preload("res://scenes/ui/art_catalog.gd")
+const ScreenMargin = preload("res://scenes/ui/screen_margin.gd")
 const TEXT_COLOR := Color("#edf0f7")
 const MUTED_COLOR := Color("#bdc7da")
 const NOTICE_COLOR := Color("#f8d58b")
@@ -125,7 +126,7 @@ static func decorate_label(target: Label, texture: Texture2D, icon_name: String)
 
 
 static func scrollable_content(screen: Control) -> VBoxContainer:
-	var margin := MarginContainer.new()
+	var margin := ScreenMargin.new()
 	margin.name = "Margin"
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	for side in ["left", "top", "right", "bottom"]:
@@ -178,7 +179,9 @@ static func hero_summary(hero: HeroData) -> String:
 static func status_badge(hero: HeroData) -> Label:
 	var badge := label(status_name(hero), 24)
 	badge.name = "StatusBadge"
+	badge.autowrap_mode = TextServer.AUTOWRAP_OFF
 	badge.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	badge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	badge.add_theme_color_override("font_color", Color("#182235"))
 	var background := _box(NOTICE_COLOR)
 	background.content_margin_left = 12

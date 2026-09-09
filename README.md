@@ -474,6 +474,9 @@ evidence. Select one mode, then use the normal **Company Roster** or **Form
 Party** button:
 
 - **A · Baseline:** existing artwork and automatic row sizing, with tracing.
+  Each batch of dynamic safe-area margin requests is applied after screen sizing;
+  viewport and resume requests are coalesced, and unchanged margins are not
+  reapplied.
 - **B · No artwork drawing:** retains texture lookup, imported resources,
   controls, reserved image dimensions, and automatic sizing, but removes the
   textures from the target screen's TextureRects. It does **not** test removal
@@ -515,19 +518,24 @@ modify SaveManager's results. Tests use the existing isolated save directory.
 Tracing adds synchronous I/O and can change timing; even A is not an
 uninstrumented control.
 
-**Fold 4 / Android 16 comparison (physical-device results still pending):**
+The initial Fold 4 inner-display comparison isolated the failure to dynamic
+screen-margin mutation: D completed the first draw for both target screens,
+while A stopped during Roster's bottom override and after Formation root sizing.
+This does not establish the engine-level cause without a native stack trace.
+
+**Fold 4 / Android 16 fix verification (physical-device results pending):**
 
 1. Install this diagnostic debug APK, preserving any current Company. The
    signing-certificate caveat below still applies; do not clear app data or
    uninstall to resolve a signature mismatch.
-2. On the same display and Company state as the reported failure, try **D →
+2. On the same display and Company state as the reported failure, try **A →
    Company Roster**. If the app closes,
    relaunch and photograph the diagnostic result **before opening either target
-   again**. If it succeeds, return Home and photograph the result.
-3. Repeat with **A → Company Roster** to capture the finer dynamic-margin
-   milestone. Then test **D → Form Party** and **A → Form Party** separately.
-   Keep the Company and device settings unchanged. The previous B/C comparisons
-   do not need repeating until the shared margin path is excluded.
+   again**. If it succeeds, return Home and photograph the result. Repeat with
+   **A → Form Party**.
+3. Run **D → Company Roster** and **D → Form Party** as the static-margin
+   control. Keep the Company and device settings unchanged. The previous B/C
+   comparisons do not need repeating.
 4. Repeat on the other display. If entry succeeds, also check scrolling, a
    cancelled Party draft, and background/resume. Do not confirm/recruit between
    comparisons, since that changes the input state.

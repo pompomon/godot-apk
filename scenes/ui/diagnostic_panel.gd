@@ -12,7 +12,7 @@ func _ready() -> void:
 	add_child(result)
 	add_child(HeroUI.label(
 		"After a crash, relaunch and photograph the last milestone before trying again. "
-		+ "Each new Roster/Formation visit replaces the trace. Compare D with A. "
+		+ "Each new Roster/Formation visit replaces the trace. Verify A, then compare D. "
 		+ "B keeps texture lookup and layout but omits artwork drawing. "
 		+ "C keeps artwork but fixes Hero-row and formation-slot heights; long text may overflow. "
 		+ "D keeps baseline content sizing but uses the scene's static margins, without safe-area "

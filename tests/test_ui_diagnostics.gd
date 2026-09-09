@@ -2,6 +2,7 @@ extends GutTest
 
 const Isolation = preload("res://tests/isolated_state.gd")
 const HeroUI = preload("res://scenes/ui/hero_ui.gd")
+const ScreenMargin = preload("res://scenes/ui/screen_margin.gd")
 const HOME := "res://scenes/ui/home/home_screen.tscn"
 const ROSTER := "res://scenes/ui/roster/roster_screen.tscn"
 const FORMATION := "res://scenes/ui/party_formation/party_formation_screen.tscn"
@@ -270,6 +271,55 @@ func test_static_margin_comparison_keeps_baseline_content_and_bypasses_dynamic_u
 	assert_false(_stages().has("layout.screen_margins.begin"))
 
 
+func test_dynamic_margins_defer_coalesce_and_skip_unchanged_updates() -> void:
+	await _boot()
+	await _go(ROSTER)
+	var margin := _screen().get_node("Margin") as MarginContainer
+	assert_eq(margin.get("_applied_margins"), PackedInt32Array([24, 24, 24, 24]))
+	assert_eq(margin.resized.get_connections().size(), 0)
+	assert_true(_viewport.size_changed.is_connected(
+		Callable(margin, "_queue_margin_update")))
+	watch_signals(margin)
+	margin.theme_changed.connect(Callable(margin, "_queue_margin_update"))
+	_viewport.size = Vector2i(960, 1280)
+	margin.notification(NOTIFICATION_APPLICATION_RESUMED)
+	margin.notification(NOTIFICATION_APPLICATION_RESUMED)
+	assert_true(margin.get("_update_queued"))
+	assert_eq([
+		margin.get_theme_constant("margin_left"),
+		margin.get_theme_constant("margin_top"),
+		margin.get_theme_constant("margin_right"),
+		margin.get_theme_constant("margin_bottom"),
+	], [24, 24, 24, 24])
+	await get_tree().process_frame
+	assert_false(margin.get("_update_queued"))
+	assert_eq([
+		margin.get_theme_constant("margin_left"),
+		margin.get_theme_constant("margin_top"),
+		margin.get_theme_constant("margin_right"),
+		margin.get_theme_constant("margin_bottom"),
+	], [60, 24, 60, 24])
+	assert_signal_emit_count(margin, "theme_changed", 1)
+	assert_false(margin.get("_updating"))
+	margin.notification(NOTIFICATION_APPLICATION_RESUMED)
+	margin.notification(NOTIFICATION_APPLICATION_RESUMED)
+	await get_tree().process_frame
+	assert_signal_emit_count(margin, "theme_changed", 1)
+	assert_false(margin.get("_update_queued"))
+	assert_false(margin.get("_updating"))
+
+
+func test_queued_margin_update_ignores_a_detached_screen() -> void:
+	var margin := autofree(ScreenMargin.new()) as MarginContainer
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_viewport.add_child(margin)
+	assert_true(margin.get("_update_queued"))
+	_viewport.remove_child(margin)
+	await get_tree().process_frame
+	assert_false(margin.get("_update_queued"))
+	assert_eq(margin.get("_applied_margins"), PackedInt32Array())
+
+
 func test_every_mode_keeps_formation_drafts_local_and_confirm_cancel_functional() -> void:
 	await _boot()
 	for mode in UIDiagnostics.Mode.values():
@@ -340,6 +390,7 @@ func test_navigation_construction_layout_and_real_draw_have_distinct_markers() -
 		assert_true(stages.has(stage), stage)
 	for index in margin_stages.size() - 1:
 		assert_lt(stages.find(margin_stages[index]), stages.find(margin_stages[index + 1]))
+	assert_lt(stages.find("layout.root_sized"), stages.find("layout.screen_margins.begin"))
 	if DisplayServer.get_name() == "headless":
 		assert_true(stages.has("render.unavailable_headless"))
 		assert_false(stages.has("render.first_draw.end"))
@@ -352,6 +403,19 @@ func test_navigation_construction_layout_and_real_draw_have_distinct_markers() -
 		assert_lt(stages.find("navigation.after_ready"), stages.find("render.first_draw.begin"))
 		assert_lt(stages.find("render.first_draw.begin"), stages.find("render.first_draw.end"))
 		assert_true(UIManager.diagnostics.last_record.first_draw_finished)
+
+
+func test_baseline_roster_and_formation_reach_the_render_probe() -> void:
+	await _boot()
+	for path in [ROSTER, FORMATION]:
+		await _go(path)
+		if DisplayServer.get_name() == "headless":
+			assert_true(_stages().has("render.unavailable_headless"), path)
+		else:
+			await RenderingServer.frame_post_draw
+			assert_true(_stages().has("render.first_draw.end"), path)
+			assert_true(UIManager.diagnostics.last_record.first_draw_finished, path)
+		await _go(HOME)
 
 
 func test_outgoing_callbacks_and_untracked_screens_cannot_overwrite_trace() -> void:

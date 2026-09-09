@@ -6,6 +6,9 @@ const SIDES := ["left", "top", "right", "bottom"]
 var _padding: PackedInt32Array
 var _diagnostic_generation: int = -1
 var _static_margins: bool = false
+var _update_queued: bool = false
+var _updating: bool = false
+var _applied_margins := PackedInt32Array()
 
 
 func _ready() -> void:
@@ -17,17 +20,27 @@ func _ready() -> void:
 		return
 	for side in SIDES:
 		_padding.append(get_theme_constant("margin_%s" % side))
-	resized.connect(_update_margins)
-	get_viewport().size_changed.connect(_update_margins)
-	_update_margins()
+	get_viewport().size_changed.connect(_queue_margin_update)
+	_queue_margin_update()
 
 
 func _notification(what: int) -> void:
 	if not _static_margins and what == NOTIFICATION_APPLICATION_RESUMED and is_node_ready():
-		_update_margins()
+		_queue_margin_update()
+
+
+func _queue_margin_update() -> void:
+	if _static_margins or _update_queued or not is_inside_tree():
+		return
+	_update_queued = true
+	_update_margins.call_deferred()
 
 
 func _update_margins() -> void:
+	_update_queued = false
+	if _static_margins or _updating or not is_inside_tree() or not is_node_ready():
+		return
+	_updating = true
 	UIManager.diagnostics.mark_for(_diagnostic_generation, "layout.screen_margins.begin")
 	var safe := Rect2(Vector2.ZERO, size)
 	if OS.has_feature("android") and get_viewport() == get_tree().root:
@@ -59,14 +72,21 @@ func _update_margins() -> void:
 	margins[2] += ceili(extra / 2.0)
 	UIManager.diagnostics.mark_for(
 		_diagnostic_generation, "layout.screen_margins.calculation.end")
+	if margins == _applied_margins:
+		_updating = false
+		return
 	UIManager.diagnostics.mark_for(
 		_diagnostic_generation, "layout.screen_margins.overrides.begin")
+	begin_bulk_theme_override()
 	for index in SIDES.size():
 		UIManager.diagnostics.mark_for(_diagnostic_generation,
 			"layout.screen_margins.override.%s.begin" % SIDES[index])
 		add_theme_constant_override("margin_%s" % SIDES[index], margins[index])
 		UIManager.diagnostics.mark_for(_diagnostic_generation,
 			"layout.screen_margins.override.%s.end" % SIDES[index])
+	end_bulk_theme_override()
+	_applied_margins = margins
+	_updating = false
 	UIManager.diagnostics.mark_for(
 		_diagnostic_generation, "layout.screen_margins.overrides.end")
 	UIManager.diagnostics.mark_for(_diagnostic_generation, "layout.screen_margins.end")

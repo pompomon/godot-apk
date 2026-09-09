@@ -88,6 +88,40 @@ and tests are excluded. Captures were not inspected through the failed image
 transport. Visual quality, Android-device acceptance and current-checkpoint
 CI remain separate, unverified gates; these results do not complete Milestone 8.
 
+### Responsive layout and newest-first report slice (2026-09-09)
+
+This bounded presentation update keeps status badges on one line, enables
+portrait `canvas_items`/`expand` scaling, and shares safe-area-aware, centered
+content bounds across the seven existing screens. Expedition entries are
+prepended in reverse step order without changing stored results, rewards or
+combat action order. Older reading positions are retained; visible updates
+wait for held swipes and inertia to finish while saved progress continues.
+
+Validation of code revision **`59cf4c5`**, against baseline **`566f6bd`**:
+
+- Baseline clean import and **383 tests / 34,431 assertions** passed.
+- Updated clean import and full GUT **393 tests / 39,244 assertions** passed.
+- Focused desktop Compatibility runs passed **9 art/UI tests**, **11 smoke
+  tests**, and **21 Expedition UI tests**. Coverage includes live resizing at
+  720×1280, 720×1600 and 960×1280, actual root-window scaling, embedded-window
+  safe-area conversion, and reveals during held touch gestures and inertia.
+- Android debug export passed and produced a nonempty **28,766,875-byte APK**.
+  This is local export evidence, not an installed-device playtest.
+- Seven baseline and 31 updated layout/root-window captures were generated
+  under `/tmp/visual-before` and `/tmp/visual-after`. The updated images could
+  not be visually inspected because the session's image-viewing limit was
+  reached; automated bounds checks are not a substitute for that inspection.
+- Read-only review identified and then verified fixes for embedded-window
+  safe-area scaling and native swipe cancellation. Secret scans passed.
+  CodeQL was requested but performed no analysis because the changes contain
+  no supported language; this is not a CodeQL security clearance.
+- The [code-revision Android workflow](https://github.com/pompomon/godot-apk/actions/runs/34331233091)
+  is **`action_required`**, with no jobs executed, not a passing or failing CI run.
+
+Physical Android checks for cutouts/system bars, effective ≥48×48dp targets,
+typography, scrolling and compatibility-mode bars remain unverified. No
+Milestone 7 or full-Milestone-8 acceptance boxes are closed by this slice.
+
 ### Full presentation milestone
 
 1. Produce/source final Hero class icons, status-effect icons, item-slot

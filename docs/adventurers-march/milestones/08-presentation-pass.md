@@ -27,6 +27,69 @@ scoping PRs and code review).
 
 ## Tasks
 
+### Initial procedural-art slice
+
+The initial implementation uses offline-generated pixel art, replacing the
+earlier painterly direction without changing gameplay-facing contracts. Its
+bounded inventory is 32 class portraits, 29 icons, three Region banners and
+two additional portrait/banner fallbacks (66 PNGs total; the unknown icon is
+included in the 29). The seven existing screens receive presentation-only
+integration; Settings and audio are not part of this slice.
+
+Recipes and the pixel-checksum manifest remain under `tools/art/`, separate
+from exported textures. The [README workflow](../../../README.md#procedural-pixel-art)
+owns regeneration and validation instructions. Hero appearance is selected
+from existing stable identities without new save fields; reports use frozen
+identities and never disclose unrevealed results through art.
+
+This slice does not close Milestone 7's pending gates or any full-Milestone-8
+acceptance checkbox. Physical-device artwork, touch-target, contrast and
+scrolling acceptance must be recorded separately from local test/export checks.
+
+#### Interrupted-run recovery (2026-09-08)
+
+The [initial implementation run](https://github.com/pompomon/godot-apk/actions/runs/34275098135/job/102226054385)
+failed with `CAPIError: 400 Error while downloading file. Upstream status code:
+404` immediately after reading the two generated contact sheets. The managed
+agent stopped after about 15 minutes, not at its 59-minute timeout. The logs
+identify a file-download service error; they do not establish a broken PNG or
+an Android build failure.
+
+Its recovery commit `5a99d19` preserved recipes, UI integration and partial tests,
+but omitted all 66 runtime PNGs and the manifest. A local read-only bank check
+reproduced `Missing PNG: assets/art/portraits/knight_00.png`. The corresponding
+[Android run](https://github.com/pompomon/godot-apk/actions/runs/34276591792)
+was `action_required`, not a passing or failing test run.
+
+The continuation generates the missing bank, adds generator regressions, and
+fixes two unfinished art tests: the frozen slot key must use `PartyData.SLOT_NAMES`,
+and artwork traversal must exclude Godot's internal overscroll textures without
+excluding authored images. Raw PNG verification decodes file bytes rather than
+using runtime resource loading, avoiding misleading export warnings.
+
+The repository workflow now checks committed artwork without rewriting it,
+publishes contact sheets as a downloadable artifact, and retains validation
+logs. This changes the review/validation path; it does **not** fix the upstream
+managed-agent service or bypass GitHub workflow approval.
+
+The generated bank was published in `d67327f`; its
+[Android run](https://github.com/pompomon/godot-apk/actions/runs/34278631878)
+also requires approval. A subsequent source review found that the new gold-icon
+wrapper lost the Roster label's horizontal expansion. A regression test
+reproduced a one-pixel-wide gold label and a 375–543-pixel-tall fixed header.
+The wrapper now preserves the original sizing flags and stretch ratio.
+
+Local validation of `d67327f` plus that header fix: clean import, **18 focused
+art tests**, full GUT **382 tests / 34,365 assertions**, and Android debug export
+with a nonempty **28,762,614-byte APK** passed. The existing art UI tests also
+passed **7/7** under a desktop Compatibility renderer and generated seven
+720×1280 screen captures. All 66 texture remaps were verified in the APK; tools
+and tests are excluded. Captures were not inspected through the failed image
+transport. Visual quality, Android-device acceptance and current-checkpoint
+CI remain separate, unverified gates; these results do not complete Milestone 8.
+
+### Full presentation milestone
+
 1. Produce/source final Hero class icons, status-effect icons, item-slot
    icons, and Region backdrop art (or a clearly documented placeholder-art
    licensing plan if final art is sourced from an asset pack — note

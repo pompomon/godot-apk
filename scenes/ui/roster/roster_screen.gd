@@ -18,6 +18,7 @@ var _feedback_message: String = ""
 
 func _ready() -> void:
 	HeroUI.apply_theme(self)
+	HeroUI.decorate_label(_gold_label, HeroUI.Art.utility_icon("gold"), "GoldIcon")
 	%BackButton.pressed.connect(_go_home)
 	%FormationButton.pressed.connect(_open_formation)
 	ExpeditionManager.changed.connect(_refresh_expedition_state)
@@ -60,12 +61,7 @@ func _offer_card(hero: HeroData, index: int) -> PanelContainer:
 	var content := VBoxContainer.new()
 	content.name = "Content"
 	card.add_child(content)
-	var name_label := HeroUI.label(hero.hero_name, 36)
-	name_label.name = "HeroName"
-	content.add_child(name_label)
-	var summary := HeroUI.label(HeroUI.hero_summary(hero))
-	summary.name = "HeroSummary"
-	content.add_child(summary)
+	content.add_child(HeroUI.hero_header(hero))
 	HeroUI.add_attributes_and_stats(content, hero)
 	HeroUI.add_traits(content, hero)
 	var price := HeroUI.label("Price: %d gold" % BALANCING.recruitment_cost, 32)
@@ -126,8 +122,7 @@ func _refresh_expedition_state() -> void:
 	for row in _roster_list.get_children():
 		var hero := GameState.find_hero(row.get_meta("hero_id", ""))
 		if hero != null:
-			row.find_child("HeroSummary", true, false).text = HeroUI.hero_summary(hero)
-			row.find_child("StatusBadge", true, false).text = HeroUI.status_name(hero)
+			HeroUI.refresh_hero_header(row, hero)
 	for card in _offer_list.get_children():
 		var reason := RecruitmentService.availability_error(card.get_meta("hero_id", ""), BALANCING)
 		var availability: Label = card.find_child("AvailabilityLabel", true, false)

@@ -63,8 +63,13 @@ func _slot_button(slot: int) -> Button:
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	for side in ["left", "right", "top", "bottom"]:
 		margin.add_theme_constant_override("margin_%s" % side, 16)
+	margin.add_theme_constant_override("margin_top", 88)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	button.add_child(margin)
+	var portrait := HeroUI.portrait(null, 64)
+	portrait.position = Vector2(16, 16)
+	portrait.size = Vector2(64, 64)
+	button.add_child(portrait)
 	var text := HeroUI.label("", 28)
 	text.name = "SlotLabel"
 	margin.add_child(text)
@@ -84,6 +89,8 @@ func _refresh() -> void:
 		var hero: Variant = draft.slots.get(slot)
 		var text := "%s\n%s" % [PartyData.SLOT_LABELS[slot], hero.hero_name if hero is HeroData else "Empty"]
 		button.get_node("MarginContainer/SlotLabel").text = text
+		var portrait: TextureRect = button.get_node("Portrait")
+		portrait.texture = HeroUI.portrait_texture(hero if hero is HeroData else null)
 		button.set_pressed_no_signal(slot == _selected_slot)
 		button.disabled = blocked
 	%MemberCountLabel.text = "Party: %d / 4 Heroes" % draft.heroes().size()
@@ -115,11 +122,8 @@ func _refresh() -> void:
 	for hero in GameState.roster:
 		if not PartyFormationService.availability_error(hero).is_empty() or draft.contains_id(hero.hero_id):
 			continue
-		var row := HeroUI.hero_row(hero, _place.bind(hero))
+		var row := HeroUI.hero_row(hero, _place.bind(hero), "Place in selected slot")
 		row.name = "AvailableHero%d" % available
-		# The shared row's presentation wraps text and passes drags to the scroll.
-		var content := row.get_child(0).get_child(0)
-		content.get_child(content.get_child_count() - 1).text = "Place in selected slot"
 		row.tooltip_text = "Place %s in the selected empty slot" % hero.hero_name
 		row.disabled = blocked or selected != null or _moving_from >= 0
 		%AvailableList.add_child(row)

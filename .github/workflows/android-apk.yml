@@ -76,12 +76,37 @@ jobs:
           mkdir -p "$templates_dir"
           cp -R "$RUNNER_TEMP/export-templates/templates/." "$templates_dir/"
 
-      - name: Import project and run headless tests
+      - name: Import project
+        timeout-minutes: 5
         shell: bash
         run: |
           set -euo pipefail
-          godot --headless --path . --editor --import
-          godot --headless --path . -s addons/gut/gut_cmdln.gd
+          mkdir -p "$RUNNER_TEMP/art-validation"
+          godot --headless --path . --editor --import 2>&1 | tee "$RUNNER_TEMP/art-validation/import.log"
+
+      - name: Verify committed pixel art and generate review previews
+        timeout-minutes: 5
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . -s res://tools/art/generate_art.gd -- --check 2>&1 | tee "$RUNNER_TEMP/art-validation/art-check.log"
+          godot --headless --path . -s res://tools/art/generate_art.gd -- "--preview-dir=$RUNNER_TEMP/art-previews" 2>&1 | tee "$RUNNER_TEMP/art-validation/art-preview.log"
+          test -s "$RUNNER_TEMP/art-previews/representative.png"
+          test -s "$RUNNER_TEMP/art-previews/portrait_variants.png"
+
+      - name: Upload art review previews
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: adventurers-march-art-previews
+          path: ${{ runner.temp }}/art-previews/*.png
+          if-no-files-found: error
+
+      - name: Run headless tests
+        timeout-minutes: 15
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . -s addons/gut/gut_cmdln.gd 2>&1 | tee "$RUNNER_TEMP/art-validation/tests.log"
 
       - name: Configure Android export
         shell: bash
@@ -116,8 +141,16 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p build/android
-          godot --headless --path . --export-debug "Android" build/android/hello-world.apk
+          godot --headless --path . --export-debug "Android" build/android/hello-world.apk 2>&1 | tee "$RUNNER_TEMP/art-validation/export.log"
           test -s build/android/hello-world.apk
+
+      - name: Upload validation logs
+        if: ${{ always() && !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: art-and-android-validation
+          path: ${{ runner.temp }}/art-validation/*.log
+          if-no-files-found: ignore
 
       - name: Upload APK
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

@@ -14,6 +14,7 @@ const BALANCING: BalancingConfig = preload("res://data/balancing/default_balanci
 
 func _ready() -> void:
 	HeroUI.apply_theme(self)
+	HeroUI.decorate_label(_gold_label, HeroUI.Art.utility_icon("gold"), "GoldIcon")
 	%CompanyRosterButton.pressed.connect(_open_roster)
 	%FormationButton.pressed.connect(_open_formation)
 	%ExpeditionButton.pressed.connect(_open_expedition)
@@ -47,6 +48,8 @@ func _refresh() -> void:
 	%FormationButton.visible = not ExpeditionManager.is_expedition_active()
 	%ExpeditionButton.disabled = expedition == null and party == null
 	%ExpeditionButton.text = "View report" if expedition != null else "Choose Region"
+	HeroUI.set_button_icon(%ExpeditionButton, HeroUI.Art.journal_icon(
+		ExpeditionStep.StepKind.EVENT if expedition != null else ExpeditionStep.StepKind.TRAVEL))
 	if expedition == null:
 		%ExpeditionLabel.text = "Ready to dispatch." if party != null else "Form a Party to begin an Expedition."
 	else:

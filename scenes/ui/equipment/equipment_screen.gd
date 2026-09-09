@@ -14,6 +14,8 @@ var _stats: Label
 var _items: VBoxContainer
 var _confirm_button: Button
 var _message: String = ""
+var _portrait: TextureRect
+var _slot_buttons: Dictionary = {}
 
 
 func configure(context: Dictionary) -> void:
@@ -30,6 +32,8 @@ func _ready() -> void:
 	var content := HeroUI.scrollable_content(self)
 	_title = HeroUI.label("Equipment", 44)
 	content.add_child(_title)
+	_portrait = HeroUI.portrait(draft.hero)
+	content.add_child(_portrait)
 	_feedback = HeroUI.label("")
 	_feedback.name = "FeedbackLabel"
 	content.add_child(_feedback)
@@ -41,6 +45,7 @@ func _ready() -> void:
 		button.name = "%sButton" % slot
 		button.pressed.connect(_choose_slot.bind(slot))
 		content.add_child(button)
+		_slot_buttons[slot] = button
 	_stats = HeroUI.label("")
 	_stats.name = "StatPreview"
 	content.add_child(_stats)
@@ -64,6 +69,10 @@ func _refresh() -> void:
 	if _leaving or not is_inside_tree():
 		return
 	var reason := draft.validation_error()
+	_portrait.texture = HeroUI.portrait_texture(draft.hero)
+	_portrait.visible = draft.hero != null
+	HeroUI.set_button_icon(_slot_buttons["Weapon"], HeroUI.Art.equipment_icon(draft.weapon, "Weapon"))
+	HeroUI.set_button_icon(_slot_buttons["Armor"], HeroUI.Art.equipment_icon(draft.armor, "Armor"))
 	_title.text = "Equipment · %s" % (draft.hero.hero_name if draft.hero != null else "Hero unavailable")
 	_slots.text = "Weapon: %s\nArmor: %s\nSelecting: %s · Unequipped copies: %d" % [
 		_item_name(draft.weapon), _item_name(draft.armor), _slot, GameState.inventory.size()]
@@ -96,6 +105,7 @@ func _refresh() -> void:
 		var button := HeroUI.button("%s · %s · ×%d" % [item.display_name, item.rarity, counts[item]])
 		button.name = "Item_%s" % item.item_id
 		button.set_meta("item_id", String(item.item_id))
+		HeroUI.set_button_icon(button, HeroUI.Art.item_icon(String(item.item_id)))
 		button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		button.pressed.connect(_select_item.bind(item))
 		_items.add_child(button)

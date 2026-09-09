@@ -41,6 +41,9 @@ func _ready() -> void:
 	content.add_child(regions)
 	var group := ButtonGroup.new()
 	for region in ExpeditionCatalog.regions():
+		var backdrop := HeroUI.region_banner(String(region.region_id))
+		backdrop.name = "RegionBackdrop_%s" % region.region_id
+		regions.add_child(backdrop)
 		var choice := HeroUI.button("")
 		choice.name = "RegionButton_%s" % region.region_id
 		choice.toggle_mode = true
@@ -112,6 +115,7 @@ func _refresh() -> void:
 	for region in ExpeditionCatalog.regions():
 		var unlocked := CompanyProgression.is_unlocked(region, GameState.unlocked_regions)
 		var choice: Button = _region_buttons[region.region_id]
+		HeroUI.set_button_icon(choice, null if unlocked else HeroUI.Art.utility_icon("locked"))
 		choice.text = "%s\n%s%s" % [
 			region.display_name, "Selected · " if region == _region else "",
 			"Unlocked" if unlocked else "Locked"]

@@ -121,6 +121,8 @@ godot --path .
   entries and their earned gold are visible. The Report lists the newest
   committed step first, retaining original step numbers. New entries appear
   above existing entries; reading older entries preserves your position.
+  While swiping or coasting, the display waits for scrolling to finish before
+  inserting new entries, without delaying saved progress or rewards.
   Combat rounds and actions within each entry remain chronological.
   Revealed Combat entries show the
   outcome and round-by-round actors, actions, targets, misses, critical damage,

@@ -1,6 +1,7 @@
 extends GutTest
 
 const Isolation = preload("res://tests/isolated_state.gd")
+const ScreenMargin = preload("res://scenes/ui/screen_margin.gd")
 var _isolation: RefCounted
 var _auto_accept_quit: bool
 
@@ -127,6 +128,28 @@ func test_root_window_expands_canvas_without_letterboxing_or_distortion() -> voi
 			await RenderingServer.frame_post_draw
 			assert_eq(window.get_texture().get_image().save_png(
 				directory.path_join("window_%dx%d.png" % [extent.x, extent.y])), OK)
+	window.size = original_size
+	await get_tree().process_frame
+
+
+func test_safe_area_uses_physical_transform_with_embedded_subwindows() -> void:
+	var window := get_tree().root
+	var original_size := window.size
+	var original_embedding := window.gui_embed_subwindows
+	window.gui_embed_subwindows = true
+	window.size = Vector2i(360, 800)
+	var main: Control = autofree(load("res://main.tscn").instantiate())
+	window.add_child(main)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var margin := main.get_node("ScreenRoot").get_child(0).get_node("Margin")
+	var transform: Transform2D = margin.physical_screen_transform()
+	var safe_pixels := Rect2(Vector2(window.position) + Vector2(0, 20),
+		Vector2(window.size) - Vector2(0, 60))
+	assert_almost_eq(transform.get_scale(), Vector2(0.5, 0.5), Vector2(0.001, 0.001))
+	assert_eq(ScreenMargin.local_safe_rect(margin.size, safe_pixels, transform),
+		Rect2(0, 40, 720, 1480))
+	window.gui_embed_subwindows = original_embedding
 	window.size = original_size
 	await get_tree().process_frame
 

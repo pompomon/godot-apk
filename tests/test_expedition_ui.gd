@@ -18,6 +18,7 @@ var _enemy_states: Array[Dictionary]
 var _enemy_name: String
 var _terminal_retreat: bool
 var _travel_text: String
+var _emulate_touch: bool
 
 
 func before_each() -> void:
@@ -33,6 +34,7 @@ func before_each() -> void:
 	_enemy_states = enemies.enemies.duplicate(true)
 	_enemy_name = enemies.display_name
 	_auto_accept_quit = get_tree().auto_accept_quit
+	_emulate_touch = Input.emulate_touch_from_mouse
 	_time = 1000
 	ExpeditionManager.clock = func() -> int: return _time
 	_main = load("res://main.tscn").instantiate()
@@ -46,6 +48,7 @@ func after_each() -> void:
 	_main.free()
 	await get_tree().process_frame
 	get_tree().auto_accept_quit = _auto_accept_quit
+	Input.emulate_touch_from_mouse = _emulate_touch
 	var region := ExpeditionCatalog.GREEN_HOLLOW
 	region.encounter_pool.assign(_pool)
 	region.retreat_ends_expedition = _terminal_retreat
@@ -314,6 +317,82 @@ func test_reader_at_journal_start_sees_latest_entry_and_navigation_cancels_pendi
 	_node("HomeButton").pressed.emit()
 	await _settle_report_layout()
 	assert_eq(_screen().scene_file_path, HOME)
+
+
+func test_reveals_wait_for_held_swipes_and_inertia_without_cancelling_the_gesture() -> void:
+	Input.emulate_touch_from_mouse = true
+	var viewport: SubViewport = add_child_autofree(SubViewport.new())
+	viewport.size = Vector2i(720, 1280)
+	_main.free()
+	await get_tree().process_frame
+	_main = load("res://main.tscn").instantiate()
+	viewport.add_child(_main)
+	_root = _main.get_node("ScreenRoot")
+	await get_tree().process_frame
+	await _open_long_report()
+	var scroll := _node("Scroll") as ScrollContainer
+	var journal := _node("Journal") as VBoxContainer
+	scroll.scroll_vertical = int(journal.position.y + 100)
+	await _settle_report_layout()
+	watch_signals(scroll)
+	var position := scroll.get_global_rect().get_center()
+	_report_mouse_button(viewport, position, true)
+	for index in 3:
+		position.y -= 40
+		_report_mouse_motion(viewport, position, Vector2(0, -40))
+		await get_tree().create_timer(0.02).timeout
+	assert_signal_emit_count(scroll, "scroll_started", 1)
+	var before := scroll.scroll_vertical
+	_time = 1036
+	ExpeditionManager.observe_foreground()
+	await _settle_report_layout()
+	_assert_journal_order(4)
+	assert_eq(ExpeditionManager.get_active_expedition().last_revealed_index, 5,
+		"Only presentation waits for scrolling; committed progress continues.")
+	position.y -= 40
+	_report_mouse_motion(viewport, position, Vector2(0, -40))
+	await get_tree().create_timer(0.02).timeout
+	assert_gt(scroll.scroll_vertical, before, "A held swipe still moves after a reveal.")
+	assert_signal_not_emitted(scroll, "scroll_ended")
+	_report_mouse_button(viewport, position, false)
+	before = scroll.scroll_vertical
+	_time = 1048
+	ExpeditionManager.observe_foreground()
+	await _settle_report_layout()
+	assert_gt(scroll.scroll_vertical, before, "The release still has inertial scrolling.")
+	await get_tree().create_timer(1.5).timeout
+	await _settle_report_layout()
+	assert_signal_emit_count(scroll, "scroll_ended", 1)
+	_assert_journal_order(8)
+
+
+func _report_mouse_button(viewport: Viewport, position: Vector2, pressed: bool) -> void:
+	var touch := InputEventScreenTouch.new()
+	touch.index = 0
+	touch.position = position
+	touch.pressed = pressed
+	viewport.push_input(touch, true)
+	var event := InputEventMouseButton.new()
+	event.button_index = MOUSE_BUTTON_LEFT
+	event.button_mask = MOUSE_BUTTON_MASK_LEFT if pressed else 0
+	event.position = position
+	event.global_position = position
+	event.pressed = pressed
+	viewport.push_input(event, true)
+
+
+func _report_mouse_motion(viewport: Viewport, position: Vector2, relative: Vector2) -> void:
+	var touch := InputEventScreenDrag.new()
+	touch.index = 0
+	touch.position = position
+	touch.relative = relative
+	viewport.push_input(touch, true)
+	var event := InputEventMouseMotion.new()
+	event.button_mask = MOUSE_BUTTON_MASK_LEFT
+	event.position = position
+	event.global_position = position
+	event.relative = relative
+	viewport.push_input(event, true)
 
 
 func test_newest_first_report_keeps_combat_rounds_and_actions_chronological() -> void:

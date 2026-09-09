@@ -15,6 +15,8 @@ var _scroll: ScrollContainer
 var _scroll_anchor: Control
 var _anchor_y: float
 var _restoring_scroll: bool = false
+var _pointer_down: bool = false
+var _scrolling: bool = false
 
 
 func _ready() -> void:
@@ -22,6 +24,8 @@ func _ready() -> void:
 	_report = ExpeditionManager.get_active_expedition()
 	var content := HeroUI.scrollable_content(self)
 	_scroll = content.get_parent() as ScrollContainer
+	_scroll.scroll_started.connect(func() -> void: _scrolling = true)
+	_scroll.scroll_ended.connect(_on_scroll_ended)
 	content.add_child(HeroUI.label("Expedition Report", 44))
 	_backdrop = HeroUI.region_banner(_report.region_id if _report != null else "")
 	content.add_child(_backdrop)
@@ -66,7 +70,7 @@ func _ready() -> void:
 
 
 func _refresh() -> void:
-	if _leaving or not is_inside_tree():
+	if _leaving or not is_inside_tree() or _pointer_down or _scrolling:
 		return
 	var available := _report != null and _report == ExpeditionManager.get_active_expedition()
 	if available and _shown_cursor != _report.last_revealed_index:
@@ -102,6 +106,32 @@ func _refresh() -> void:
 			_journal.move_child(entry, 0)
 		_shown_cursor = _report.last_revealed_index
 	HeroUI.show_feedback(_feedback, ExpeditionManager.last_error)
+	if is_instance_valid(_scroll_anchor) and not _restoring_scroll:
+		_restoring_scroll = true
+		_restore_reading_position()
+
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if event.pressed:
+			var local: Vector2 = _scroll.get_global_transform_with_canvas().affine_inverse() * event.position
+			_pointer_down = Rect2(Vector2.ZERO, _scroll.size).has_point(local)
+		elif _pointer_down:
+			_pointer_down = false
+			_refresh.call_deferred()
+
+
+func _on_scroll_ended() -> void:
+	_scrolling = false
+	_refresh.call_deferred()
+
+
+func _notification(what: int) -> void:
+	if what in [NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_APPLICATION_PAUSED,
+			NOTIFICATION_APPLICATION_RESUMED] and is_node_ready():
+		_pointer_down = false
+		_scrolling = false
+		_refresh.call_deferred()
 
 
 func _journal_entry(step: ExpeditionStep, index: int) -> HBoxContainer:
@@ -132,7 +162,7 @@ func _journal_entry(step: ExpeditionStep, index: int) -> HBoxContainer:
 
 
 func _remember_reading_position() -> void:
-	if _restoring_scroll or _shown_cursor < 0 or _journal.get_child_count() == 0:
+	if is_instance_valid(_scroll_anchor) or _shown_cursor < 0 or _journal.get_child_count() == 0:
 		return
 	var top := _scroll.get_global_rect().position.y
 	var first: Control = _journal.get_child(0)
@@ -147,8 +177,6 @@ func _remember_reading_position() -> void:
 				break
 	if _scroll_anchor != null:
 		_anchor_y = _content_y(_scroll_anchor)
-		_restoring_scroll = true
-		_restore_reading_position()
 
 
 func _content_y(control: Control) -> float:
@@ -159,11 +187,15 @@ func _restore_reading_position() -> void:
 	# Wait for wrapped labels and their parent containers to settle.
 	await get_tree().process_frame
 	await get_tree().process_frame
+	_restoring_scroll = false
+	if _pointer_down or _scrolling:
+		return
 	if not _leaving and is_inside_tree() and is_instance_valid(_scroll_anchor):
 		# Content coordinates preserve any touch scrolling during the layout update.
-		_scroll.scroll_vertical += roundi(_content_y(_scroll_anchor) - _anchor_y)
+		var adjustment := roundi(_content_y(_scroll_anchor) - _anchor_y)
+		if adjustment != 0:
+			_scroll.get_v_scroll_bar().value += adjustment
 	_scroll_anchor = null
-	_restoring_scroll = false
 
 
 func _combat_text(result: Dictionary) -> String:

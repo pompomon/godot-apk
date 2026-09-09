@@ -23,7 +23,7 @@ func _update_margins() -> void:
 	var safe := Rect2(Vector2.ZERO, size)
 	if OS.has_feature("android") and get_viewport() == get_tree().root:
 		safe = local_safe_rect(size, Rect2(DisplayServer.get_display_safe_area()),
-			get_screen_transform())
+			physical_screen_transform())
 	var margins := PackedInt32Array([
 		ceili(safe.position.x) + _padding[0],
 		ceili(safe.position.y) + _padding[1],
@@ -35,6 +35,13 @@ func _update_margins() -> void:
 	margins[2] += ceili(extra / 2.0)
 	for index in SIDES.size():
 		add_theme_constant_override("margin_%s" % SIDES[index], margins[index])
+
+
+func physical_screen_transform() -> Transform2D:
+	# CanvasItem's popup transform omits stretch when subwindows are embedded (Android).
+	var transform := get_viewport().get_screen_transform()
+	transform.origin += Vector2(get_window().position)
+	return transform * get_global_transform_with_canvas()
 
 
 static func local_safe_rect(

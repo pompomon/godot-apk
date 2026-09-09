@@ -178,7 +178,9 @@ static func hero_summary(hero: HeroData) -> String:
 static func status_badge(hero: HeroData) -> Label:
 	var badge := label(status_name(hero), 24)
 	badge.name = "StatusBadge"
+	badge.autowrap_mode = TextServer.AUTOWRAP_OFF
 	badge.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	badge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	badge.add_theme_color_override("font_color", Color("#182235"))
 	var background := _box(NOTICE_COLOR)
 	background.content_margin_left = 12

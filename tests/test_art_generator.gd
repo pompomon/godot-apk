@@ -53,6 +53,22 @@ func test_generation_is_repeatable_and_independent_of_asset_order() -> void:
 		assert_eq(Bank.pixel_sha256(Bank.render(recipe)), checksums[recipe.id], recipe.id)
 
 
+func test_recipe_seeds_are_pinned_to_asset_identity() -> void:
+	var seeds := {}
+	for recipe: Dictionary in Recipes.all():
+		seeds[recipe.id] = recipe.seed
+	for class_id: String in Recipes.PORTRAIT_SEEDS:
+		for variant in range(8):
+			assert_eq(seeds["portrait.%s.%02d" % [class_id, variant]],
+				Recipes.PORTRAIT_SEEDS[class_id] + variant)
+	for icon_id: String in Recipes.ICON_SEEDS:
+		assert_eq(seeds["icon.%s.00" % icon_id], Recipes.ICON_SEEDS[icon_id])
+	for region_id: String in Recipes.BACKDROP_SEEDS:
+		assert_eq(seeds["backdrop.%s.00" % region_id], Recipes.BACKDROP_SEEDS[region_id])
+	assert_eq(seeds["portrait.unknown.00"], 1900)
+	assert_eq(seeds["icon.unknown.00"], 2900)
+
+
 func test_committed_bank_and_manifest_match_without_writes() -> void:
 	var before := {}
 	var paths: Array[String] = [Bank.MANIFEST_PATH]

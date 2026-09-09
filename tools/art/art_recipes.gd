@@ -4,6 +4,9 @@ extends RefCounted
 const PALETTE := preload("res://tools/art/art_palette.gd")
 const VERSION := "busts-and-waypoints-1"
 const CLASSES := ["knight", "ranger", "wizard", "cleric"]
+const PORTRAIT_SEEDS := {
+	"knight": 1100, "ranger": 1200, "wizard": 1300, "cleric": 1400,
+}
 const ICON_GROUPS := {
 	"class": CLASSES,
 	"status": ["idle", "assigned", "on_expedition", "resting", "wounded", "dead"],
@@ -13,7 +16,21 @@ const ICON_GROUPS := {
 	"outcome": ["victory", "retreat", "defeat"],
 	"utility": ["gold", "xp", "locked"],
 }
+const ICON_SEEDS := {
+	"class_knight": 2100, "class_ranger": 2101, "class_wizard": 2102, "class_cleric": 2103,
+	"status_idle": 2104, "status_assigned": 2105, "status_on_expedition": 2106,
+	"status_resting": 2107, "status_wounded": 2108, "status_dead": 2109,
+	"item_short_sword": 2110, "item_hunting_bow": 2111, "item_apprentice_staff": 2112,
+	"item_leather_armor": 2113, "item_chainmail": 2114, "item_robes": 2115,
+	"slot_weapon": 2116, "slot_armor": 2117,
+	"journal_travel": 2118, "journal_loot": 2119, "journal_event": 2120, "journal_combat": 2121,
+	"outcome_victory": 2122, "outcome_retreat": 2123, "outcome_defeat": 2124,
+	"utility_gold": 2125, "utility_xp": 2126, "utility_locked": 2127,
+}
 const REGIONS := ["green_hollow", "ashen_reach", "frostbound_pass", "unknown"]
+const BACKDROP_SEEDS := {
+	"green_hollow": 3100, "ashen_reach": 3101, "frostbound_pass": 3102, "unknown": 3103,
+}
 const FACES := [
 	{"skin": 0, "hair": 0, "cut": "short", "beard": false, "wide": false},
 	{"skin": 1, "hair": 1, "cut": "coils", "beard": false, "wide": true},
@@ -34,23 +51,22 @@ const HEADWEAR := {
 
 static func all() -> Array:
 	var result: Array = []
-	for class_index in range(CLASSES.size()):
+	for class_id: String in CLASSES:
 		for variant in range(8):
-			result.append(_recipe("portrait", CLASSES[class_index], variant,
-				1100 + class_index * 100 + variant, 64, 64, true,
-				"portraits/%s_%02d.png" % [CLASSES[class_index], variant]))
+			result.append(_recipe("portrait", class_id, variant,
+				PORTRAIT_SEEDS[class_id] + variant, 64, 64, true,
+				"portraits/%s_%02d.png" % [class_id, variant]))
 	result.append(_recipe("portrait", "unknown", 0, 1900, 64, 64, true, "portraits/unknown.png"))
-	var icon_seed := 2100
 	for group: String in ICON_GROUPS:
 		for subject: String in ICON_GROUPS[group]:
 			var size := 32 if group == "item" else 24
-			result.append(_recipe("icon", group + "_" + subject, 0, icon_seed,
+			var icon_id := group + "_" + subject
+			result.append(_recipe("icon", icon_id, 0, ICON_SEEDS[icon_id],
 				size, size, true, "icons/%s_%s.png" % [group, subject]))
-			icon_seed += 1
 	result.append(_recipe("icon", "unknown", 0, 2900, 24, 24, true, "icons/unknown.png"))
-	for index in range(REGIONS.size()):
-		result.append(_recipe("backdrop", REGIONS[index], 0, 3100 + index,
-			320, 144, false, "backdrops/%s.png" % REGIONS[index]))
+	for region: String in REGIONS:
+		result.append(_recipe("backdrop", region, 0, BACKDROP_SEEDS[region],
+			320, 144, false, "backdrops/%s.png" % region))
 	return result
 
 

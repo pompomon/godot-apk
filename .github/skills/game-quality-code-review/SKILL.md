@@ -89,6 +89,16 @@ not certify native device behavior or whether the game feels rewarding.
 Playwright's availability does not make it native Android automation; do not
 introduce a web export or browser harness to drive this Godot APK.
 
+Follow the shared [visual evidence and fresh-task policy](../../../AGENTS.md#visual-evidence-and-fresh-tasks).
+Keep screenshot-heavy investigation read-only and hand off textual observations
+separately from hypotheses. Unavailable media remains unverified; request
+replacement evidence rather than retrying it through alternate tools/models or
+inventing findings. An older screenshot is historical evidence, not acceptance
+of the current revision. If an attachment-processing error ends a session,
+recover from the published checkpoint in a fresh task; a follow-up comment or
+subagent does not prove clean history. This policy does not authorize edits,
+publication, workflow dispatch, or implementation by the reviewer.
+
 ## Read-only boundaries
 
 - Produce review feedback only. Do not edit files, apply fixes, commit, change

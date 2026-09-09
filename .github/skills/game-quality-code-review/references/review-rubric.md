@@ -181,6 +181,8 @@ into production code or weaken tests just to exercise the skill.
 | An unrelated PR retains placeholders explicitly deferred by its milestone. | No demand to implement the future feature or complete the presentation milestone. |
 | A UI change has headless layout tests but no Android capture/density evidence. | Relevant native visual, touch-size, and lifecycle checks remain unverified; no claim that viewport pixels prove dp compliance. |
 | An old successful CI run or screenshot accompanies a new head revision. | Identify the mismatch and request current evidence rather than report a pass. |
+| A supplied screenshot cannot be accessed. | State that it was not inspected; request a supported replacement or attributed transcription, and leave visual acceptance unverified. |
+| Attachment ingestion reports a content-fetch or image MIME error. | Apply AGENTS' media-failure policy; do not infer a game defect, retry through alternative models/tools, or assume a follow-up clears historical media. Hand off text to a fresh task if recovery is needed. |
 | An optional simplification could shorten a journey, but existing behavior meets the contract. | A bounded, non-blocking design improvement, separate from defects and tied to the short-session design goal. |
 
 ### Live GitHub pilot

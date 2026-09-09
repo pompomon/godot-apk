@@ -8,6 +8,10 @@ and linked milestone details own requirements and acceptance evidence.
 
 ## Before editing: scope and baseline
 
+- Classify the current request as investigation/planning, implementation, or
+  visual/device acceptance. Planning does not authorize edits. Distinguish the
+  latest requested action from historical PR comments; read the referenced
+  decision and necessary evidence, not the entire discussion by default.
 - Identify the deliverable, exclusions, acceptance criteria, and relevant
   interfaces and regression tests. Read milestone evidence: an unchecked box
   may mean device acceptance is pending, not that implementation is missing.
@@ -19,11 +23,51 @@ and linked milestone details own requirements and acceptance evidence.
   separately from new ones. For documentation-only changes, review links,
   consistency, and whitespace; gameplay tests/export are unnecessary unless
   documentation-specific checks require them.
+- For work requiring game validation, check the
+  [toolchain preflight](README.md#cloud-agent-environment) before editing.
+  Setup can fail and still leave the agent running; report missing tools rather
+  than assuming a ready environment or weakening validation.
 - Resolve decisions affecting persistence or public interfaces before coding.
   Split large work into independently validated tasks or PRs, keeping existing
   gameplay usable at each boundary. A split does not expand authorized scope.
 
 **Gate:** state the bounded deliverable and its acceptance criteria before edits.
+
+## Visual evidence and fresh tasks
+
+Separate screenshot-heavy investigation from implementation:
+
+1. Use a bounded, read-only visual investigation task. Inspect only the images
+   needed for the current diagnostic question, without concurrent implementation.
+2. Record a textual handoff in the normal discussion before implementation:
+   source comment, tested commit/APK run, screen and reproduction steps, device
+   and display configuration, diagnostic mode, exact observed markers,
+   observations versus hypotheses, bounded fix, acceptance criteria, and missing
+   evidence. Do not embed the images again in the handoff.
+3. Start implementation as a fresh task using that text and the published
+   revision. A follow-up comment, subagent, or restored session is not proof of
+   clean history. If the platform does not expose fresh context, state that
+   limitation and ask the maintainer to start a separate task; do not promise
+   that a text-only follow-up removed earlier media.
+
+For generated previews, publish the implementation and validation checkpoint
+before handing off to a separate visual-review task. Keep visual and device
+acceptance unverified until actually performed.
+
+- A local download or successful image tool call does not establish that the
+  model service can retrieve or ingest the image on subsequent requests.
+- After an attachment-fetch or MIME failure, do not repeatedly try the same
+  media through different models, browsers, URL rewrites, or network bypasses.
+  If still able to respond, request a fresh supported attachment or a textual
+  diagnostic transcription; after a fatal session error, use the recovery
+  procedure below in a fresh task.
+- Never claim inaccessible media was inspected or infer a game defect from a
+  media-service failure. Attribute user-provided transcriptions as such.
+- Do not commit screenshots or private diagnostic data just to make them
+  accessible, and do not upload private evidence to third-party services.
+
+**Gate:** implementation starts from a recoverable textual diagnostic contract,
+not a dependency on reloading historical attachments.
 
 ## Agree contracts before parallel work
 
@@ -120,9 +164,19 @@ Do not add alternative test runners or weaken existing gates.
 
 Publish at coherent, validated boundaries using the session's approved
 commit/publish tools. Label incomplete checkpoints honestly. Include the
-published revision, completed scope, validation evidence, blockers, and next
-bounded action in the handoff. Confirm publication succeeded before treating
-work as recoverable; never rely on emergency timeout-saving.
+following in normal publication updates, not only the final assistant response:
+
+- Published revision, completed scope, and remaining changes.
+- Validation owner, tested revision (identify any uncommitted diff), actual
+  command outcomes and GUT summaries, and relevant export/artifact evidence.
+- Local validation, matching-revision CI, and device acceptance as separate
+  statuses; include unrun checks, blockers, and the next bounded action.
+- Security-check results and limitations. For example, CodeQL reporting no
+  supported languages is not a successful GDScript security analysis.
+
+Confirm the commit exists remotely before treating work as recoverable; never
+rely on emergency error-time publication. A failed session does not imply its
+earlier published implementation was lost.
 
 At task start, account for the session's runtime limit and reserve capacity for
 closeout. Reassess at each checkpoint. If the next slice would consume that
@@ -135,12 +189,26 @@ reserve, stop and publish an incomplete handoff rather than starting it.
 4. Publish and verify the checkpoint, completing any required post-commit checks.
    If a blocking fix is needed, repeat the affected checks and publication.
 5. Report completion or an honest incomplete handoff. Do not launch another
-   broad review or subsystem implementation during closeout.
+   broad review, optional visual investigation, or subsystem implementation
+   during closeout.
 
-For CI investigation, inspect recent workflow runs and the relevant job logs.
-Distinguish `failure`, `cancelled`, and `action_required`; report approval/action
-blockers instead of repeatedly waiting or claiming CI passed. Leave device
-acceptance unchecked until it is actually performed.
+## Classify failures before recovery
+
+For CI investigation, first list recent workflow runs, then inspect relevant
+job logs and the tested revision. Select the remedy from the actual failure:
+
+| Failure | Required response |
+|---|---|
+| Parser, GUT, or export failure | Inspect the failing command and earliest error; fix the relevant regression and repeat affected checks. |
+| Agent content-fetch or image MIME error | Preserve/verify the published checkpoint and request fresh textual context; do not change game code or extend the Android timeout to fix a service error. |
+| Runner firewall restriction | Identify the blocked destination and ask for narrowly scoped maintainer action if necessary; do not disable protections. Runner access does not prove provider-side access. |
+| `action_required`, cancelled, or otherwise unexecuted CI | Report the exact status and required approval/action, not a test result; do not poll indefinitely. |
+| Managed session deadline | Stop dependent work, preserve the existing closeout reserve, and publish an honest incomplete handoff before shutdown. |
+
+After a fatal error, the next task verifies the remote commit and inspects the
+remaining diff before resuming. Recover published work rather than implementing
+it again; identify missing validation and missing final communication separately.
+Leave device acceptance unchecked until performed.
 
 ### Why these gates exist
 
@@ -156,3 +224,21 @@ also does not establish assertion results. Bounded scope, stopped writers,
 verified checkpoints, and evidence-based handoffs address these risks;
 increasing the Android workflow timeout would not fix the managed session's
 shutdown behavior.
+
+On 2026-09-09, [run 34373765801](https://github.com/pompomon/godot-apk/actions/runs/34373765801/job/102541251614)
+failed with `CAPIError: 400 Unable to download content from the provided URL
+before the timeout`, after [commit 663a036](https://github.com/pompomon/godot-apk/commit/663a0362bcde4999caec2d0661439c9d8d916ad6)
+had been published. It restored session history; the visible tools immediately
+before failure were repository verification and CodeQL, not image inspection.
+The failing URL was not identified, so historical media involvement remains a
+hypothesis. [Run 34368747542](https://github.com/pompomon/godot-apk/actions/runs/34368747542)
+separately reported `validating image item: image media type is required` and
+attachment-host firewall blocks. These are distinct from the earlier deadline
+failures. Fresh tasks and checkpoints reduce exposure and recovery cost; they
+cannot guarantee elimination of managed-runtime failures.
+
+For maintainer escalation, provide the run/job links, error signature, request
+ID, relevant timestamps, resumed-session status, and last verified remote commit
+to GitHub Support. Exclude credentials, private attachments, and unredacted
+diagnostics. Do not identify a blocked runner host as the failing provider URL
+without evidence or file an external report without authorization.

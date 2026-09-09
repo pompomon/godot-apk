@@ -82,7 +82,7 @@ static func text_variants_valid(
 	var seen := {}
 	seen[fallback] = true
 	for entry in variants:
-		if not text(entry, maximum_length) or seen.has(entry):
+		if not text(entry, maximum_length) or entry != entry.strip_edges() or seen.has(entry):
 			return false
 		seen[entry] = true
 	return true

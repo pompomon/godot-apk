@@ -56,6 +56,8 @@ func test_invalid_candidate_arrays_are_rejected_by_catalog_validation() -> void:
 	assert_false(ExpeditionCatalog.text_variants_valid("fallback", [""]))
 	assert_false(ExpeditionCatalog.text_variants_valid("fallback", ["dup", "dup"]))
 	assert_false(ExpeditionCatalog.text_variants_valid("fallback", ["fallback"]))
+	assert_false(ExpeditionCatalog.text_variants_valid("fallback", [" leading"]))
+	assert_false(ExpeditionCatalog.text_variants_valid("fallback", ["trailing "]))
 	assert_false(ExpeditionCatalog.text_variants_valid("fallback", ["x".repeat(4097)]))
 	assert_false(ExpeditionCatalog.text_variants_valid("fallback", [1, "ok"]))
 	assert_false(ExpeditionCatalog.text_variants_valid("fallback", [null]))

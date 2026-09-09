@@ -467,3 +467,21 @@ func test_missing_and_corrupt_recovery_feedback_survives_first_foreground_delta_
 			assert_string_contains(SaveManager.last_warning, "Recovered")
 			assert_string_contains(SaveManager.last_warning, "committed")
 			assert_eq(SaveManager.last_warning.split("\n", false).size(), 2, "Repeated warnings merge without duplication.")
+
+
+func test_selected_variant_text_survives_reload_and_ignores_later_resource_edits() -> void:
+	var region := REGION
+	var original_text := region.travel_text
+	var original_variants: Array[String] = region.travel_text_variants.duplicate()
+	region.travel_text_variants.assign(["Alternate travel line one.", "Alternate travel line two."])
+	var state := _start()
+	var frozen_text: String = state.expedition.steps[0].journal_text
+	assert_true(frozen_text in NarrativeVariantSelector.candidate_list(original_text, region.travel_text_variants))
+	region.travel_text = "Changed after dispatch."
+	region.travel_text_variants.assign(["Changed variant."])
+	SaveManager.load_or_create()
+	assert_true(SaveManager.last_success)
+	var reloaded := SaveManager.capture_state()
+	assert_eq(reloaded.expedition.steps[0].journal_text, frozen_text)
+	region.travel_text = original_text
+	region.travel_text_variants.assign(original_variants)

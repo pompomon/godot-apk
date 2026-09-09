@@ -4,6 +4,8 @@ extends Resource
 
 @export var outcome_id: StringName
 @export_multiline var journal_text: String
+## Optional additional candidates; [journal_text] + these form the selection pool.
+@export var journal_text_variants: Array[String] = []
 @export_range(0.001, 1000000.0) var weight: float = 1.0
 ## Exact { "gold": int } or { "gold": int, "item_ids": Array[String] }.
 @export var result: Dictionary = {}

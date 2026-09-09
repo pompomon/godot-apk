@@ -32,6 +32,14 @@ func _party() -> PartyData:
 	return party
 
 
+func _combat_entry(content_id: String) -> EncounterEntryResource:
+	var entry := EncounterEntryResource.new()
+	entry.kind = "Combat"
+	entry.content_id = StringName(content_id)
+	entry.weight = 1.0
+	return entry
+
+
 func test_noncombat_fixture_is_ordered_and_allowlisted() -> void:
 	assert_true(ExpeditionCatalog.validate_catalog(
 		ExpeditionCatalog.regions(), ExpeditionCatalog.events(), ExpeditionCatalog.loot(), BALANCING))
@@ -261,3 +269,137 @@ func test_snapshot_and_resolved_content_are_detached_from_roster_and_resources()
 	slots.BACK_RIGHT = null
 	assert_eq(run.serialize(), original)
 	assert_eq(run.party_snapshot.slots.BACK_RIGHT.hero_name, original.party_snapshot.BACK_RIGHT.hero_name)
+
+
+func test_narrative_variants_select_deterministically_without_changing_mechanics() -> void:
+	var region: RegionResource = ExpeditionCatalog.GREEN_HOLLOW.duplicate(true)
+	region.travel_step_count = 2
+	region.duration_options_seconds.assign([40, 80])
+	region.encounter_pool = [region.encounter_pool[0]]
+	var baseline := ExpeditionGenerator.generate(region, _party(), 91, 40, 1000, BALANCING)
+	assert_not_null(baseline)
+	region.travel_text_variants.assign(["Variant one.", "Variant two.", "Variant three."])
+	var with_variants := ExpeditionGenerator.generate(region, _party(), 91, 40, 1000, BALANCING)
+	assert_not_null(with_variants)
+	# Mechanical signature is unaffected by adding prose variants.
+	for index in range(baseline.steps.size()):
+		var before: Dictionary = baseline.steps[index].serialize()
+		var after: Dictionary = with_variants.steps[index].serialize()
+		assert_eq(before.content_id, after.content_id, "step %d" % index)
+		assert_eq(before.outcome_id, after.outcome_id, "step %d" % index)
+		assert_eq(before.result, after.result, "step %d" % index)
+	var again := ExpeditionGenerator.generate(region, _party(), 91, 40, 1000, BALANCING)
+	assert_eq(JSON.stringify(with_variants.serialize(), "", true, true), JSON.stringify(again.serialize(), "", true, true))
+	for index in [0, 2]:
+		assert_true(with_variants.steps[index].journal_text in
+			NarrativeVariantSelector.candidate_list(region.travel_text, region.travel_text_variants))
+
+
+func test_loot_narrative_variants_do_not_alter_rewards_or_content() -> void:
+	var loot := ExpeditionCatalog.LOOT
+	var region: RegionResource = ExpeditionCatalog.GREEN_HOLLOW.duplicate(true)
+	region.travel_step_count = 2
+	region.duration_options_seconds.assign([40])
+	region.encounter_pool = [region.encounter_pool[0]]
+	var baseline := ExpeditionGenerator.generate(region, _party(), 91, 40, 1000, BALANCING)
+	assert_not_null(baseline)
+	var original_variants: Array[String] = loot.journal_text_variants.duplicate()
+	var variants: Array[String] = ["Alternate loot line one.", "Alternate loot line two."]
+	loot.journal_text_variants.assign(variants)
+	var with_variants := ExpeditionGenerator.generate(region, _party(), 91, 40, 1000, BALANCING)
+	loot.journal_text_variants.assign(original_variants)
+	assert_not_null(with_variants)
+	for loop_index in range(region.travel_step_count):
+		var step_index := loop_index * 2 + 1
+		var before: Dictionary = baseline.steps[step_index].serialize()
+		var after: Dictionary = with_variants.steps[step_index].serialize()
+		assert_eq(before.content_id, after.content_id, "step %d" % step_index)
+		assert_eq(before.outcome_id, after.outcome_id, "step %d" % step_index)
+		assert_eq(before.result, after.result, "step %d" % step_index)
+		assert_eq(after.journal_text, NarrativeVariantSelector.select(
+				loot.journal_text, variants, 91, String(region.region_id), loop_index,
+				String(loot.loot_id), "", "loot"))
+
+
+func test_travel_entries_avoid_consecutive_duplicate_text_when_alternatives_exist() -> void:
+	var region: RegionResource = ExpeditionCatalog.GREEN_HOLLOW.duplicate(true)
+	region.travel_step_count = 5
+	region.duration_options_seconds.assign([100])
+	region.encounter_pool = [region.encounter_pool[0]]
+	region.travel_text_variants.assign(["Variant one.", "Variant two."])
+	for seed_value in range(16):
+		var run := ExpeditionGenerator.generate(region, _party(), seed_value, 100, 1000, BALANCING)
+		assert_not_null(run)
+		var previous := ""
+		for index in [0, 2, 4, 6, 8]:
+			var current: String = run.steps[index].journal_text
+			if previous != "":
+				assert_ne(current, previous, "seed %d step %d" % [seed_value, index])
+			previous = current
+
+
+func test_event_narrative_variants_do_not_alter_outcome_or_reward() -> void:
+	var party := _party()
+	var event: EventResource = ExpeditionCatalog.events()[0]
+	var region: RegionResource = ExpeditionCatalog.GREEN_HOLLOW.duplicate(true)
+	region.encounter_pool = region.encounter_pool.filter(
+		func(candidate: EncounterEntryResource) -> bool: return String(candidate.content_id) == String(event.event_id))
+	var baseline := ExpeditionGenerator.generate(region, party, 12345, 60, 1000, BALANCING)
+	assert_not_null(baseline)
+	var original_description_variants: Array[String] = event.description_variants.duplicate()
+	var original_outcome_variants: Array = []
+	var description_variants: Array[String] = ["Alternate setup line."]
+	for outcome in event.outcomes:
+		original_outcome_variants.append(outcome.journal_text_variants.duplicate())
+		outcome.journal_text_variants.assign(["Alternate outcome %s." % outcome.outcome_id])
+	event.description_variants.assign(description_variants)
+	var with_variants := ExpeditionGenerator.generate(region, party, 12345, 60, 1000, BALANCING)
+	event.description_variants.assign(original_description_variants)
+	for outcome_index in range(event.outcomes.size()):
+		event.outcomes[outcome_index].journal_text_variants.assign(original_outcome_variants[outcome_index])
+	assert_not_null(with_variants)
+	for loop_index in range(region.travel_step_count):
+		var step_index := loop_index * 2 + 1
+		var before := baseline.steps[step_index].serialize()
+		var after := with_variants.steps[step_index].serialize()
+		assert_eq(before.content_id, after.content_id, "step %d" % step_index)
+		assert_eq(before.outcome_id, after.outcome_id, "step %d" % step_index)
+		assert_eq(before.result, after.result, "step %d" % step_index)
+		var selected_outcome: EventOutcomeResource = null
+		for outcome in event.outcomes:
+			if String(outcome.outcome_id) == after.outcome_id:
+				selected_outcome = outcome
+				break
+		assert_not_null(selected_outcome)
+		var outcome_variants: Array[String] = ["Alternate outcome %s." % selected_outcome.outcome_id]
+		var expected_description := NarrativeVariantSelector.select(
+				event.description, description_variants, 12345, String(region.region_id), loop_index,
+				String(event.event_id), "", "event_description")
+		var expected_outcome := NarrativeVariantSelector.select(
+				selected_outcome.journal_text, outcome_variants, 12345, String(region.region_id), loop_index,
+				String(event.event_id), String(selected_outcome.outcome_id), "event_outcome")
+		assert_eq(after.journal_text, expected_description + "\n" + expected_outcome)
+
+
+func test_combat_narrative_variants_do_not_alter_combat_result() -> void:
+	var party := _party()
+	var group := CombatCatalog.BANDIT_SKIRMISHERS
+	var region: RegionResource = ExpeditionCatalog.GREEN_HOLLOW.duplicate(true)
+	region.travel_step_count = 1
+	region.duration_options_seconds.assign([60])
+	region.retreat_ends_expedition = false
+	region.encounter_pool.assign([_combat_entry(String(group.group_id))])
+	var baseline := ExpeditionGenerator.generate(region, party, 321, 60, 1000, BALANCING)
+	assert_not_null(baseline)
+	var original_variants: Array[String] = group.journal_text_variants.duplicate()
+	group.journal_text_variants.assign(["Enemies emerge from the tree line.", "The party is ambushed."])
+	var with_variants := ExpeditionGenerator.generate(region, party, 321, 60, 1000, BALANCING)
+	group.journal_text_variants.assign(original_variants)
+	assert_not_null(with_variants)
+	var before := baseline.steps[1].serialize()
+	var after := with_variants.steps[1].serialize()
+	assert_eq(before.content_id, after.content_id)
+	assert_eq(before.outcome_id, after.outcome_id)
+	assert_eq(before.result, after.result)
+	assert_true(with_variants.steps[1].journal_text in NarrativeVariantSelector.candidate_list(
+		"The Party encounters %s." % group.display_name, ["Enemies emerge from the tree line.", "The party is ambushed."]))

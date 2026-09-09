@@ -17,6 +17,7 @@ var _pool: Array[EncounterEntryResource]
 var _enemy_states: Array[Dictionary]
 var _enemy_name: String
 var _terminal_retreat: bool
+var _travel_text: String
 
 
 func before_each() -> void:
@@ -25,6 +26,7 @@ func before_each() -> void:
 	var region := ExpeditionCatalog.GREEN_HOLLOW
 	_pool = region.encounter_pool.duplicate()
 	_terminal_retreat = region.retreat_ends_expedition
+	_travel_text = region.travel_text
 	region.encounter_pool.assign(_pool.filter(
 		func(entry: EncounterEntryResource) -> bool: return entry.kind != "Combat"))
 	var enemies := CombatCatalog.BANDIT_SKIRMISHERS
@@ -47,6 +49,7 @@ func after_each() -> void:
 	var region := ExpeditionCatalog.GREEN_HOLLOW
 	region.encounter_pool.assign(_pool)
 	region.retreat_ends_expedition = _terminal_retreat
+	region.travel_text = _travel_text
 	var enemies := CombatCatalog.BANDIT_SKIRMISHERS
 	enemies.enemies.assign(_enemy_states)
 	enemies.display_name = _enemy_name
@@ -184,6 +187,158 @@ func test_running_and_partial_report_never_disclose_unrevealed_results() -> void
 	await get_tree().process_frame
 	assert_eq(_screen().scene_file_path, HOME)
 	assert_same(ExpeditionManager.get_active_expedition(), run)
+
+
+func test_report_prepends_single_steps_and_catchup_batches_without_mutating_saved_order() -> void:
+	await _dispatch()
+	var run := ExpeditionManager.get_active_expedition()
+	var frozen_steps: Array = run.serialize().steps
+	await _go(REPORT)
+	assert_string_contains(_visible_text(_node("Journal")), "departed")
+	_time = 1012
+	ExpeditionManager.observe_foreground()
+	_assert_journal_order(2)
+	var oldest := _node("Journal").get_child(1)
+	_time = 1018
+	ExpeditionManager.observe_foreground()
+	_assert_journal_order(3)
+	assert_same(_node("Journal").get_child(2), oldest)
+	_time = 1048
+	ExpeditionManager.observe_foreground()
+	_assert_journal_order(8)
+	assert_same(_node("Journal").get_child(7), oldest)
+	var shown := _node("Journal").get_children()
+	ExpeditionManager.observe_foreground()
+	assert_eq(_node("Journal").get_children(), shown)
+	assert_null(_node("Step8"))
+	var saved := run.serialize()
+	await _go(HOME)
+	await _go(REPORT)
+	_assert_journal_order(8)
+	assert_eq(run.serialize(), saved)
+	SaveManager.load_or_create()
+	await _go(REPORT)
+	_assert_journal_order(8)
+	_time = 1060
+	ExpeditionManager.observe_foreground()
+	_assert_journal_order(10)
+	assert_true(_node("AcknowledgeButton").visible)
+	assert_eq(ExpeditionManager.get_active_expedition().serialize().steps, frozen_steps)
+	SaveManager.load_or_create()
+	await _go(REPORT)
+	_assert_journal_order(10)
+
+
+func _assert_journal_order(count: int) -> void:
+	var journal := _node("Journal")
+	assert_eq(journal.get_child_count(), count)
+	for index in count:
+		var step_index := count - index - 1
+		assert_eq(journal.get_child(index).name, StringName("Step%d" % step_index))
+		assert_true(_visible_text(journal.get_child(index)).begins_with("%d. " % (step_index + 1)))
+
+
+func _settle_report_layout() -> void:
+	for frame in 4:
+		await get_tree().process_frame
+
+
+func _open_long_report() -> void:
+	var region := ExpeditionCatalog.GREEN_HOLLOW
+	region.travel_text = _travel_text.repeat(12)
+	await _dispatch()
+	await _go(REPORT)
+	_time = 1024
+	ExpeditionManager.observe_foreground()
+	await _settle_report_layout()
+
+
+func test_prepending_preserves_older_reading_position_through_batches_retry_and_completion() -> void:
+	await _open_long_report()
+	var scroll := _node("Scroll") as ScrollContainer
+	var journal := _node("Journal") as VBoxContainer
+	var anchor := journal.get_child(1) as Control
+	scroll.scroll_vertical = int(journal.position.y + anchor.position.y + 40)
+	await _settle_report_layout()
+	assert_lt(journal.get_child(0).get_global_rect().end.y, scroll.get_global_rect().position.y)
+	var anchor_y := anchor.get_global_rect().position.y
+	_time = 1036
+	ExpeditionManager.observe_foreground()
+	_time = 1048
+	ExpeditionManager.observe_foreground()
+	scroll.scroll_vertical += 20
+	anchor_y -= 20.0
+	await _settle_report_layout()
+	_assert_journal_order(8)
+	assert_same(_node("Step2"), anchor)
+	assert_almost_eq(anchor.get_global_rect().position.y, anchor_y, 1.0)
+	var scroll_position := scroll.scroll_vertical
+	_time = 1049
+	ExpeditionManager.observe_foreground()
+	await _settle_report_layout()
+	assert_eq(scroll.scroll_vertical, scroll_position, "Clock-only updates do not move the reader.")
+	SaveManager.fault_injector = func(stage: String) -> bool: return stage == "before_primary_replace"
+	_time = 1054
+	ExpeditionManager.observe_foreground()
+	await _settle_report_layout()
+	_assert_journal_order(8)
+	assert_null(_node("Step8"))
+	anchor_y = anchor.get_global_rect().position.y
+	SaveManager.fault_injector = Callable()
+	_node("RetryButton").pressed.emit()
+	await _settle_report_layout()
+	_assert_journal_order(9)
+	assert_almost_eq(anchor.get_global_rect().position.y, anchor_y, 1.0)
+	_time = 1060
+	ExpeditionManager.observe_foreground()
+	await _settle_report_layout()
+	_assert_journal_order(10)
+	assert_almost_eq(anchor.get_global_rect().position.y, anchor_y, 1.0,
+		"Completion's status and acknowledgment controls must not displace the reader.")
+
+
+func test_reader_at_journal_start_sees_latest_entry_and_navigation_cancels_pending_restore() -> void:
+	await _open_long_report()
+	var scroll := _node("Scroll") as ScrollContainer
+	var journal := _node("Journal") as VBoxContainer
+	scroll.scroll_vertical = int(journal.position.y)
+	await _settle_report_layout()
+	var start_y := journal.get_global_rect().position.y
+	_time = 1036
+	ExpeditionManager.observe_foreground()
+	await _settle_report_layout()
+	_assert_journal_order(6)
+	assert_almost_eq(journal.get_child(0).get_global_rect().position.y, start_y, 1.0)
+	_time = 1048
+	ExpeditionManager.observe_foreground()
+	_node("HomeButton").pressed.emit()
+	await _settle_report_layout()
+	assert_eq(_screen().scene_file_path, HOME)
+
+
+func test_newest_first_report_keeps_combat_rounds_and_actions_chronological() -> void:
+	_combat_fixture("RETREAT")
+	var region := ExpeditionCatalog.GREEN_HOLLOW
+	region.retreat_ends_expedition = false
+	ExpeditionManager.balancing.max_combat_rounds = 3
+	await _dispatch()
+	await _go(REPORT)
+	_time = 1012
+	ExpeditionManager.observe_foreground()
+	_assert_journal_order(2)
+	var text := _visible_text(_node("Step1"))
+	var rounds: Array = ExpeditionManager.get_active_expedition().steps[1].result.rounds
+	assert_eq(rounds.size(), 3)
+	var offset := 0
+	for round_entry in rounds:
+		var round_position := text.find("Round %d\n" % int(round_entry.round_number), offset)
+		assert_gte(round_position, offset)
+		offset = round_position + 1
+		for action in round_entry.actions:
+			var action_position := text.find("%s · %s → %s:" % [
+				action.actor_name, action.action_name, action.target_name], offset)
+			assert_gte(action_position, offset)
+			offset = action_position + 1
 
 
 func test_failed_dispatch_can_retry_on_same_screen_with_canonical_party_identity() -> void:

@@ -118,7 +118,11 @@ godot --path .
   never rerolls them. Later changes to content or roster values do not alter
   an existing journal.
 - Home displays progress and provides access to the Report. Only revealed
-  entries and their earned gold are visible. Revealed Combat entries show the
+  entries and their earned gold are visible. The Report lists the newest
+  committed step first, retaining original step numbers. New entries appear
+  above existing entries; reading older entries preserves your position.
+  Combat rounds and actions within each entry remain chronological.
+  Revealed Combat entries show the
   outcome and round-by-round actors, actions, targets, misses, critical damage,
   healing, and Guard. Planned progress hides future early endings until their
   step is committed. Progress is checked while the
@@ -351,6 +355,31 @@ GUT addon are excluded from the Android APK.
   `Leveling` caches numeric threshold runs, handles cumulative ceiling-rounded
   costs and bounded XP without introducing a second derived-stat calculator.
   Extend this asset rather than replace it, preserving unrelated values.
+
+## Responsive portrait UI
+
+- The 720×1280 design viewport uses `canvas_items` with the `expand` aspect
+  policy: tall phones gain usable vertical space without application
+  letterboxing or distortion. Portrait orientation is unchanged.
+- All seven screens share `scenes/ui/screen_margin.gd`. Content stays
+  single-column, capped at **840 design units** and centered on wider screens;
+  backgrounds fill the window. Existing screen padding and fixed/scrolling
+  sections are preserved.
+- On Android, the shared margin converts the display safe area from physical
+  pixels into local canvas coordinates and intersects it with the window.
+  Do not add a second system-bar inset. Layout updates on resize and resume.
+- Hero status badges stay on one line, including `On expedition`; names and
+  descriptions still wrap. Artwork retains its aspect ratio and filtering.
+- The existing art UI tests cover live resizing at 720×1280, 720×1600 and
+  960×1280. Smoke tests separately resize the actual root window and check
+  full-window, uniform scaling. The existing `ART_PREVIEW_DIR` option also
+  captures these layouts and root-window previews when run with a desktop
+  renderer; use a directory under `/tmp/`.
+- Automated layout checks do not establish physical Android acceptance.
+  Verify cutouts, system bars, ≥48×48dp effective touch targets, readable
+  typography and scrolling on target-density phones/tablets. Android
+  compatibility-mode bars, if present, need device-specific investigation.
+  This update does not complete the full presentation milestone.
 
 ## Procedural pixel art
 

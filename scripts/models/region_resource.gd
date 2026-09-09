@@ -6,6 +6,8 @@ extends Resource
 @export var display_name: String
 @export var travel_title: String
 @export_multiline var travel_text: String
+## Optional additional candidates; [travel_text] + these form the selection pool.
+@export_multiline var travel_text_variants: Array[String] = []
 @export var recommended_party_power: int
 @export var duration_options_seconds: Array[int] = []
 ## Positive; each Travel step is followed by exactly one encounter.

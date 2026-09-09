@@ -34,15 +34,23 @@ static func generate(
 	var step_duration_seconds: int = duration_seconds / candidate_count
 	var terminal_step_index := -1
 	var steps: Array = []
-	for entry in selected:
+	var region_id := String(region.region_id)
+	var previous_travel_text := ""
+	for loop_index in range(selected.size()):
+		var entry: EncounterEntryResource = selected[loop_index]
+		var travel_text := NarrativeVariantSelector.select_travel(
+				region.travel_text, region.travel_text_variants, seed, region_id, loop_index, previous_travel_text)
+		previous_travel_text = travel_text
 		steps.append({"kind": ExpeditionStep.StepKind.TRAVEL, "content_id": "", "outcome_id": "",
-			"title": region.travel_title, "journal_text": region.travel_text, "result": {"gold": 0}})
+			"title": region.travel_title, "journal_text": travel_text, "result": {"gold": 0}})
 		var step := {"kind": ExpeditionStep.StepKind.LOOT, "content_id": String(entry.content_id),
 			"outcome_id": "", "title": "", "journal_text": "", "result": {}}
 		if entry.kind == "Loot":
 			var loot := ExpeditionCatalog.loot_by_id(String(entry.content_id))
 			step.title = loot.display_name
-			step.journal_text = loot.journal_text
+			step.journal_text = NarrativeVariantSelector.select(
+					loot.journal_text, loot.journal_text_variants, seed, region_id, loop_index,
+					String(entry.content_id), "", "loot")
 			step.result = {"gold": rng.randi_range(loot.min_gold, loot.max_gold), "item_ids": []}
 			if not loot.item_pool.is_empty() and loot.item_drop_chance > 0.0:
 				if rng.randf() < loot.item_drop_chance:
@@ -58,7 +66,13 @@ static func generate(
 			var outcome := event.outcomes[_weighted_index(outcome_weights, rng)]
 			step.kind = ExpeditionStep.StepKind.EVENT
 			step.title = event.display_name
-			step.journal_text = event.description + "\n" + outcome.journal_text
+			var description := NarrativeVariantSelector.select(
+					event.description, event.description_variants, seed, region_id, loop_index,
+					String(entry.content_id), "", "event_description")
+			var outcome_text := NarrativeVariantSelector.select(
+					outcome.journal_text, outcome.journal_text_variants, seed, region_id, loop_index,
+					String(entry.content_id), String(outcome.outcome_id), "event_outcome")
+			step.journal_text = description + "\n" + outcome_text
 			step.outcome_id = String(outcome.outcome_id)
 			step.result = outcome.result.duplicate(true)
 			if not step.result.has("item_ids"):
@@ -70,7 +84,9 @@ static func generate(
 				return null
 			step.kind = ExpeditionStep.StepKind.COMBAT
 			step.title = enemies.display_name
-			step.journal_text = "The Party encounters %s." % enemies.display_name
+			step.journal_text = NarrativeVariantSelector.select(
+					"The Party encounters %s." % enemies.display_name, enemies.journal_text_variants,
+					seed, region_id, loop_index, String(entry.content_id), "", "combat_intro")
 			step.outcome_id = combat.outcome
 			step.result = combat
 			hero_states = combat.final_hero_states.duplicate(true)

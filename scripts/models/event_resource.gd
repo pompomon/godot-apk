@@ -5,4 +5,6 @@ extends Resource
 @export var event_id: StringName
 @export var display_name: String
 @export_multiline var description: String
+## Optional additional candidates; [description] + these form the selection pool.
+@export_multiline var description_variants: Array[String] = []
 @export var outcomes: Array[EventOutcomeResource] = []

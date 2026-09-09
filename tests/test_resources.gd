@@ -27,6 +27,7 @@ func test_exported_resource_contracts() -> void:
 		}],
 		[EnemyGroupResource.new(), {
 			"group_id": TYPE_STRING_NAME, "display_name": TYPE_STRING, "enemies": TYPE_ARRAY,
+			"journal_text_variants": TYPE_ARRAY,
 		}],
 		[EncounterEntryResource.new(), {
 			"kind": TYPE_STRING, "content_id": TYPE_STRING_NAME, "weight": TYPE_FLOAT,
@@ -34,19 +35,21 @@ func test_exported_resource_contracts() -> void:
 		[LootResource.new(), {
 			"loot_id": TYPE_STRING_NAME, "min_gold": TYPE_INT, "max_gold": TYPE_INT,
 			"display_name": TYPE_STRING, "journal_text": TYPE_STRING,
+			"journal_text_variants": TYPE_ARRAY,
 			"item_pool": TYPE_DICTIONARY, "item_drop_chance": TYPE_FLOAT,
 		}],
 		[EventOutcomeResource.new(), {
 			"outcome_id": TYPE_STRING_NAME, "journal_text": TYPE_STRING,
+			"journal_text_variants": TYPE_ARRAY,
 			"weight": TYPE_FLOAT, "result": TYPE_DICTIONARY,
 		}],
 		[EventResource.new(), {
 			"event_id": TYPE_STRING_NAME, "display_name": TYPE_STRING,
-			"description": TYPE_STRING, "outcomes": TYPE_ARRAY,
+			"description": TYPE_STRING, "description_variants": TYPE_ARRAY, "outcomes": TYPE_ARRAY,
 		}],
 		[RegionResource.new(), {
 			"region_id": TYPE_STRING_NAME, "display_name": TYPE_STRING,
-			"travel_title": TYPE_STRING, "travel_text": TYPE_STRING,
+			"travel_title": TYPE_STRING, "travel_text": TYPE_STRING, "travel_text_variants": TYPE_ARRAY,
 			"recommended_party_power": TYPE_INT, "duration_options_seconds": TYPE_ARRAY,
 			"travel_step_count": TYPE_INT, "encounter_pool": TYPE_ARRAY,
 			"unlock_condition": TYPE_DICTIONARY, "retreat_ends_expedition": TYPE_BOOL,

@@ -2,6 +2,7 @@ extends RefCounted
 ## Shared presentation only: hero values always come from the domain calculators.
 
 const Art = preload("res://scenes/ui/art_catalog.gd")
+const ScreenMargin = preload("res://scenes/ui/screen_margin.gd")
 const TEXT_COLOR := Color("#edf0f7")
 const MUTED_COLOR := Color("#bdc7da")
 const NOTICE_COLOR := Color("#f8d58b")
@@ -125,7 +126,7 @@ static func decorate_label(target: Label, texture: Texture2D, icon_name: String)
 
 
 static func scrollable_content(screen: Control) -> VBoxContainer:
-	var margin := MarginContainer.new()
+	var margin := ScreenMargin.new()
 	margin.name = "Margin"
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	for side in ["left", "top", "right", "bottom"]:

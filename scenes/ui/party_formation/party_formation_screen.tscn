@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scenes/ui/party_formation/party_formation_screen.gd" id="1_party"]
+[ext_resource type="Script" path="res://scenes/ui/screen_margin.gd" id="2_margin"]
 
 [node name="PartyFormationScreen" type="Control"]
 layout_mode = 3
@@ -22,6 +23,7 @@ mouse_filter = 2
 color = Color(0.055, 0.075, 0.115, 1)
 
 [node name="Margin" type="MarginContainer" parent="."]
+script = ExtResource("2_margin")
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0

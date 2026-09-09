@@ -89,12 +89,46 @@ func test_mobile_project_settings_are_preserved() -> void:
 		"display/window/size/window_width_override": 360,
 		"display/window/size/window_height_override": 640,
 		"display/window/stretch/mode": "canvas_items",
+		"display/window/stretch/aspect": "expand",
 		"display/window/handheld/orientation": 1,
 		"rendering/renderer/rendering_method": "gl_compatibility",
 		"rendering/renderer/rendering_method.mobile": "gl_compatibility",
 	}
 	for setting in expected:
 		assert_eq(ProjectSettings.get_setting(setting), expected[setting], setting)
+
+
+func test_root_window_expands_canvas_without_letterboxing_or_distortion() -> void:
+	var window := get_tree().root
+	var original_size := window.size
+	var main: Control = autofree(load("res://main.tscn").instantiate())
+	window.add_child(main)
+	await get_tree().process_frame
+	assert_eq(window.content_scale_aspect, Window.CONTENT_SCALE_ASPECT_EXPAND)
+	for extent in [Vector2i(360, 640), Vector2i(360, 800), Vector2i(600, 800)]:
+		window.size = extent
+		await get_tree().process_frame
+		await get_tree().process_frame
+		var canvas := window.get_visible_rect()
+		var transform := window.get_final_transform()
+		assert_almost_eq(main.size, canvas.size, Vector2.ONE)
+		assert_almost_eq(transform * canvas.position, Vector2.ZERO, Vector2.ONE)
+		assert_almost_eq(transform * canvas.end, Vector2(window.size), Vector2.ONE)
+		assert_almost_eq(transform.x.length(), transform.y.length(), 0.001)
+		assert_gte(canvas.size.x, 720.0)
+		assert_gte(canvas.size.y, 1280.0)
+		if extent == Vector2i(360, 800):
+			assert_almost_eq(canvas.size, Vector2(720, 1600), Vector2.ONE)
+		if extent == Vector2i(600, 800):
+			assert_almost_eq(canvas.size, Vector2(960, 1280), Vector2.ONE)
+		var directory := OS.get_environment("ART_PREVIEW_DIR")
+		if directory.begins_with("/tmp/") and DisplayServer.get_name() != "headless":
+			assert_eq(DirAccess.make_dir_recursive_absolute(directory), OK)
+			await RenderingServer.frame_post_draw
+			assert_eq(window.get_texture().get_image().save_png(
+				directory.path_join("window_%dx%d.png" % [extent.x, extent.y])), OK)
+	window.size = original_size
+	await get_tree().process_frame
 
 
 func test_application_branding_preserves_android_identity() -> void:

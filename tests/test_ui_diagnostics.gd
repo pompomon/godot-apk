@@ -82,6 +82,7 @@ func test_disabled_probe_does_not_read_write_or_change_presentation() -> void:
 	assert_false(diagnostics.enabled)
 	assert_false(diagnostics.hide_artwork())
 	assert_false(diagnostics.fixed_rows())
+	assert_false(diagnostics.static_margins())
 	assert_eq(diagnostics.mode, UIDiagnostics.Mode.BASELINE)
 	assert_eq(diagnostics.last_record, {})
 	assert_false(FileAccess.file_exists(_path()))
@@ -90,9 +91,9 @@ func test_disabled_probe_does_not_read_write_or_change_presentation() -> void:
 func test_trace_survives_restart_and_ignores_partial_final_line() -> void:
 	var diagnostics := UIDiagnostics.new()
 	diagnostics.initialize(_isolation.directory, true)
-	diagnostics.select_mode(UIDiagnostics.Mode.NO_ARTWORK)
+	diagnostics.select_mode(UIDiagnostics.Mode.STATIC_MARGINS)
 	diagnostics.begin_navigation(ROSTER, _viewport)
-	diagnostics.mark("hero.portrait.constructed")
+	diagnostics.mark("layout.screen_margins.static")
 	var last := diagnostics.last_record.duplicate(true)
 	var file := FileAccess.open(_path(), FileAccess.READ_WRITE)
 	file.seek_end()
@@ -102,9 +103,9 @@ func test_trace_survives_restart_and_ignores_partial_final_line() -> void:
 	var restarted := UIDiagnostics.new()
 	restarted.initialize(_isolation.directory, true)
 	assert_eq(restarted.last_record, last)
-	assert_eq(restarted.mode, UIDiagnostics.Mode.NO_ARTWORK)
+	assert_eq(restarted.mode, UIDiagnostics.Mode.STATIC_MARGINS)
 	assert_eq(FileAccess.get_file_as_bytes(_path()), bytes, "Reading must not erase evidence.")
-	assert_string_contains(restarted.summary(), "hero.portrait.constructed")
+	assert_string_contains(restarted.summary(), "layout.screen_margins.static")
 
 
 func test_malformed_and_oversized_traces_fail_without_touching_company() -> void:
@@ -171,14 +172,16 @@ func test_modes_are_mutually_exclusive_and_locked_for_current_screen() -> void:
 		diagnostics.begin_navigation(ROSTER, _viewport)
 		assert_eq(diagnostics.hide_artwork(), mode == UIDiagnostics.Mode.NO_ARTWORK)
 		assert_eq(diagnostics.fixed_rows(), mode == UIDiagnostics.Mode.FIXED_ROWS)
-		diagnostics.select_mode((mode + 1) % 3)
+		assert_eq(diagnostics.static_margins(), mode == UIDiagnostics.Mode.STATIC_MARGINS)
+		diagnostics.select_mode((mode + 1) % UIDiagnostics.Mode.values().size())
 		assert_eq(diagnostics.mode, mode)
 	diagnostics.stop()
 	diagnostics.select_mode(999)
-	assert_eq(diagnostics.mode, UIDiagnostics.Mode.FIXED_ROWS)
+	assert_eq(diagnostics.mode, UIDiagnostics.Mode.STATIC_MARGINS)
 	diagnostics.begin_navigation(HOME, _viewport)
 	assert_false(diagnostics.hide_artwork())
 	assert_false(diagnostics.fixed_rows())
+	assert_false(diagnostics.static_margins())
 
 
 func test_artwork_comparison_preserves_lookup_extents_layout_and_input() -> void:
@@ -222,6 +225,49 @@ func test_fixed_sizing_comparison_keeps_art_and_skips_only_row_and_slot_measurem
 	assert_false(_stages().has("layout.row.initial_measure.begin"))
 	assert_true(_stages().has("layout.row.fixed_height"))
 	assert_true(_stages().has("layout.slot.fixed_height"))
+
+
+func test_static_margin_comparison_keeps_baseline_content_and_bypasses_dynamic_updates() -> void:
+	await _boot()
+	var static_button := _screen().find_child("DiagnosticMode3", true, false) as Button
+	assert_not_null(static_button)
+	static_button.pressed.emit()
+	assert_eq(UIManager.diagnostics.mode, UIDiagnostics.Mode.STATIC_MARGINS)
+	await _go(ROSTER)
+	var margin := _screen().get_node("Margin") as MarginContainer
+	var row := _screen().get_node("%RosterList").get_child(0) as Button
+	assert_not_null(row.find_child("Portrait", true, false).texture)
+	assert_true(row.get_child(0).minimum_size_changed.get_connections().size() > 0)
+	assert_eq([
+		margin.get_theme_constant("margin_left"),
+		margin.get_theme_constant("margin_top"),
+		margin.get_theme_constant("margin_right"),
+		margin.get_theme_constant("margin_bottom"),
+	], [24, 24, 24, 24])
+	assert_true(_stages().has("layout.screen_margins.static"))
+	assert_false(_stages().has("layout.screen_margins.begin"))
+	_viewport.size = Vector2i(960, 1280)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	margin.notification(NOTIFICATION_APPLICATION_RESUMED)
+	assert_eq([
+		margin.get_theme_constant("margin_left"),
+		margin.get_theme_constant("margin_top"),
+		margin.get_theme_constant("margin_right"),
+		margin.get_theme_constant("margin_bottom"),
+	], [24, 24, 24, 24])
+	await _go(HOME)
+	await _go(FORMATION)
+	margin = _screen().get_node("Margin") as MarginContainer
+	var slot := _screen().get_node("%SlotGrid").get_child(0) as Button
+	row = _screen().get_node("%AvailableList").get_child(0) as Button
+	assert_not_null(row.find_child("Portrait", true, false).texture)
+	assert_true(row.get_child(0).minimum_size_changed.get_connections().size() > 0)
+	assert_true(slot.get_node("MarginContainer").minimum_size_changed.get_connections().size() > 0)
+	assert_eq(margin.get_theme_constant("margin_left"), 24)
+	assert_eq(margin.get_theme_constant("margin_right"), 24)
+	assert_true(_stages().has("layout.screen_margins.static"))
+	assert_false(_stages().has("layout.screen_margins.begin"))
 
 
 func test_every_mode_keeps_formation_drafts_local_and_confirm_cancel_functional() -> void:
@@ -274,6 +320,26 @@ func test_navigation_construction_layout_and_real_draw_have_distinct_markers() -
 		assert_true(stages.has(stage), stage)
 	assert_lt(stages.find("navigation.before_ready"), stages.find("hero.roster.0.begin"))
 	assert_lt(stages.find("hero.roster.0.added"), stages.find("navigation.after_ready"))
+	var margin_stages := [
+		"layout.screen_margins.begin",
+		"layout.screen_margins.calculation.begin",
+		"layout.screen_margins.calculation.end",
+		"layout.screen_margins.overrides.begin",
+		"layout.screen_margins.override.left.begin",
+		"layout.screen_margins.override.left.end",
+		"layout.screen_margins.override.top.begin",
+		"layout.screen_margins.override.top.end",
+		"layout.screen_margins.override.right.begin",
+		"layout.screen_margins.override.right.end",
+		"layout.screen_margins.override.bottom.begin",
+		"layout.screen_margins.override.bottom.end",
+		"layout.screen_margins.overrides.end",
+		"layout.screen_margins.end",
+	]
+	for stage in margin_stages:
+		assert_true(stages.has(stage), stage)
+	for index in margin_stages.size() - 1:
+		assert_lt(stages.find(margin_stages[index]), stages.find(margin_stages[index + 1]))
 	if DisplayServer.get_name() == "headless":
 		assert_true(stages.has("render.unavailable_headless"))
 		assert_false(stages.has("render.first_draw.end"))

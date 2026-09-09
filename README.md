@@ -482,6 +482,11 @@ Party** button:
   and the Hero-row/formation-slot minimum-size callbacks. Hero rows use 400
   design units and formation slots 320; other layout remains unchanged. Long
   text can overflow in this diagnostic mode.
+- **D · Static scene margins:** retains baseline artwork and automatic Hero-row
+  sizing, but preserves the Roster/Formation scene's authored margins. It skips
+  safe-area lookup/conversion, centered-width calculations, theme overrides,
+  and the shared margin's resize, viewport, and resume callbacks. Content may
+  extend into unsafe or unusually wide areas in this diagnostic mode.
 
 Modes are mutually exclusive, apply only to Roster/Formation, and are frozen
 for each visit. They do not change Hero generation, Party drafts, recruitment,
@@ -490,12 +495,15 @@ relaunch. Returning to Home preserves the result; **entering either target
 screen starts a new trace and replaces the previous attempt**.
 
 Milestones bracket navigation/load/instantiation, outgoing-screen removal,
-Hero/offer/slot construction, initial and callback-driven sizing, screen margins,
-and the first rendering cycle. `*.begin`/`before_*` means the operation was
-about to run, not that it succeeded. `render.first_draw.end` means Godot emitted
-`frame_post_draw`, not that Android displayed correct pixels or that a later
-crash is impossible. Headless runs explicitly record rendering as unavailable.
-Each marker is written at most once per attempt, up to 128 markers / 64 KiB.
+Hero/offer/slot construction, initial and callback-driven sizing, and the first
+rendering cycle. Dynamic screen-margin tracing separately brackets Android
+safe-area lookup, physical transform construction, local conversion, margin
+calculation, and each theme override. `*.begin`/`before_*` means the operation
+was about to run, not that it succeeded. `render.first_draw.end` means Godot
+emitted `frame_post_draw`, not that Android displayed correct pixels or that a
+later crash is impossible. Headless runs explicitly record rendering as
+unavailable. Each marker is written at most once per attempt, up to 128 markers
+/ 64 KiB.
 
 The append-and-flush trace is `ui-diagnostics.jsonl`, beside but separate from
 `SaveManager.get_save_path()`. It contains only diagnostic version, mode, screen,
@@ -512,11 +520,14 @@ uninstrumented control.
 1. Install this diagnostic debug APK, preserving any current Company. The
    signing-certificate caveat below still applies; do not clear app data or
    uninstall to resolve a signature mismatch.
-2. On one display (outer or inner), try A → Company Roster. If the app closes,
+2. On the same display and Company state as the reported failure, try **D →
+   Company Roster**. If the app closes,
    relaunch and photograph the diagnostic result **before opening either target
    again**. If it succeeds, return Home and photograph the result.
-3. Repeat with B, then A, then C on that same screen. Test Form Party separately
-   with the same sequence. Keep the Company and device settings unchanged.
+3. Repeat with **A → Company Roster** to capture the finer dynamic-margin
+   milestone. Then test **D → Form Party** and **A → Form Party** separately.
+   Keep the Company and device settings unchanged. The previous B/C comparisons
+   do not need repeating until the shared margin path is excluded.
 4. Repeat on the other display. If entry succeeds, also check scrolling, a
    cancelled Party draft, and background/resume. Do not confirm/recruit between
    comparisons, since that changes the input state.

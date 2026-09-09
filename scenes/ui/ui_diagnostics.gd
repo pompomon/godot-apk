@@ -2,8 +2,13 @@ class_name UIDiagnostics
 extends RefCounted
 ## Debug-only presentation probe. Never reads or writes Company state.
 
-enum Mode { BASELINE, NO_ARTWORK, FIXED_ROWS }
-const MODE_NAMES := ["A · Baseline", "B · No artwork drawing", "C · Fixed row sizing"]
+enum Mode { BASELINE, NO_ARTWORK, FIXED_ROWS, STATIC_MARGINS }
+const MODE_NAMES := [
+	"A · Baseline",
+	"B · No artwork drawing",
+	"C · Fixed row sizing",
+	"D · Static scene margins",
+]
 const SCREENS := {
 	"res://scenes/ui/roster/roster_screen.tscn": "Company Roster",
 	"res://scenes/ui/party_formation/party_formation_screen.tscn": "Party Formation",
@@ -63,7 +68,7 @@ func _valid_record(data: Variant) -> bool:
 	var value: Variant = data.get("mode")
 	if not (value is int or value is float) or not is_finite(float(value)):
 		return false
-	if value < Mode.BASELINE or value > Mode.FIXED_ROWS or value != int(value):
+	if value < Mode.BASELINE or value > Mode.STATIC_MARGINS or value != int(value):
 		return false
 	if data.get("screen") not in SCREENS.values():
 		return false
@@ -103,6 +108,10 @@ func hide_artwork() -> bool:
 
 func fixed_rows() -> bool:
 	return enabled and not _screen.is_empty() and _run_mode == Mode.FIXED_ROWS
+
+
+func static_margins() -> bool:
+	return enabled and not _screen.is_empty() and _run_mode == Mode.STATIC_MARGINS
 
 
 func is_recording(token: int) -> bool:

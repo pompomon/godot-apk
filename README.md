@@ -405,8 +405,10 @@ checkout, not exported assets. Inspect the native/2× contact sheets before
 approving a recipe change. Running without arguments prints help without writes.
 The Android workflow publishes these sheets as `adventurers-march-art-previews`;
 download that artifact for visual review. In a managed agent session, complete
-validation and publish a checkpoint before attempting image-tool inspection:
-an image-download service error is not evidence that generation failed.
+validation and publish a checkpoint, then use a separate visual-review task and
+textual handoff under the [visual evidence policy](AGENTS.md#visual-evidence-and-fresh-tasks).
+An image-download service error is not evidence that generation failed; a
+text-only follow-up in a restored session does not guarantee clean media history.
 To deliberately regenerate the bank and manifest after approval:
 
 ```sh
@@ -520,6 +522,68 @@ milestone details.
 Milestone 6 was manually verified externally by the user on 2026-09-08.
 Milestone 7's separate implementation, balance and physical-device evidence is
 tracked in [Content Expansion](docs/adventurers-march/milestones/07-content-expansion.md).
+
+### Cloud-agent environment
+
+[Copilot setup steps](.github/workflows/copilot-setup-steps.yml) prepare the
+same Godot 4.7.2 editor/templates, Temurin Java 17, Android platform-tools,
+build-tools 36.1.0, and Android platform 36 as the Android workflow. Installation
+verifies the pinned archive checksums, configures Godot's SDK paths, and creates
+a local debug keystore only if absent. It does not cache dependencies, change
+firewall settings, fetch task attachments, or run a second test pipeline.
+Keep both workflows' action pins, toolchain versions, and checksums aligned when
+updating either; changes to either workflow trigger setup validation.
+
+The required single job is `copilot-setup-steps`. Copilot automatically uses it
+only after the file is present on the default branch; a successful standalone
+workflow is not proof that a cloud session used it. Its timeout limits setup,
+not the managed agent session or provider-side media requests. The workflow can
+also be tested by manual dispatch. See GitHub's
+[setup customization documentation](https://docs.github.com/en/copilot/customizing-copilot/customizing-the-development-environment-for-copilot-coding-agent).
+
+**Preflight for work requiring game validation:** inspect setup results, then
+check `godot --headless --version`, Java/JDK 17, matching nonempty Android debug
+templates, the required SDK packages, configured SDK paths, and the readable
+debug signing alias before editing. The final setup step checks toolchain
+readiness, not project behavior.
+A failed setup step skips later setup steps but may still start the agent with
+a partial environment: report the missing prerequisite and use the documented
+setup, without arbitrary installation searches or weakened validation. Debug
+keystores are environment-local, not release credentials or a guarantee that
+APKs from different sessions can update one another.
+
+**Validation and activation:**
+
+1. For guidance-only edits, check links, anchors, whitespace, and the workflow
+   scenarios below; do not run gameplay tests solely for prose.
+2. For setup changes, check YAML/job fields, shell syntax, action pins and
+   toolchain parity. Run setup, then the existing clean import, GUT, artwork
+   verification/previews and Android debug export; inspect actual summaries and
+   a nonempty APK. Keep both GUT hooks. Local shell execution does not certify
+   hosted action execution.
+3. After default-branch activation, use a small authorized fresh implementation
+   task with a textual diagnostic handoff. Verify setup and guidance use from
+   session evidence and record the run URL, revision, published checkpoint,
+   validation results, completion status and blockers in the normal discussion.
+   Leave the hosted pilot pending until actually observed; do not deliberately
+   inject inaccessible attachments or broken gameplay to exercise it.
+
+Review these workflow scenarios alongside the
+[review calibration cases](.github/skills/game-quality-code-review/references/review-rubric.md#calibration-cases):
+
+| Scenario | Required behavior |
+|---|---|
+| Planning-only request | Return analysis/plan without edits or publication. |
+| Unavailable image | Disclose missing evidence and request replacement/transcription; do not invent observations. |
+| CAPI failure after publication | Verify the remote commit, recover it, and identify outstanding checks instead of repeating implementation. |
+| CI awaiting approval | Report `action_required` and the approval blocker, not test success/failure. |
+| No native-device evidence | Leave device acceptance unverified even if headless tests pass. |
+| Restored screenshot-heavy history | Request a fresh task using the textual handoff; do not assume another comment or subagent clears history. |
+| Partial setup | Report the exact missing tool/configuration before work requiring game validation. |
+
+These scenarios are guidance checks, not evidence of a hosted pilot. Platform
+errors follow [failure classification and recovery](AGENTS.md#classify-failures-before-recovery);
+environment preparation is not a fix for provider-side attachment processing.
 
 ## Adventurer's March design & implementation docs
 

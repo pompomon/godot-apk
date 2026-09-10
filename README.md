@@ -363,20 +363,26 @@ GUT addon are excluded from the Android APK.
 - The 720×1280 design viewport uses `canvas_items` with the `expand` aspect
   policy: tall phones gain usable vertical space without application
   letterboxing or distortion. Portrait orientation is unchanged.
-- All seven screens share `scenes/ui/screen_margin.gd`. Content stays
-  single-column, capped at **840 design units** and centered on wider screens;
-  backgrounds fill the window. Existing screen padding and fixed/scrolling
-  sections are preserved.
-- On Android, the shared margin converts the display safe area from physical
-  pixels into local canvas coordinates and intersects it with the window.
-  Do not add a second system-bar inset. Layout updates on resize and resume.
+- Home, Hero Detail, Equipment, Region Select and Expedition Report use
+  `scenes/ui/screen_margin.gd`; their single-column content is capped at
+  **840 design units** and centered on wider screens. On Android, this helper
+  converts the display safe area from physical pixels into local canvas
+  coordinates and updates on resize and resume.
+- Company Roster and Party Formation deliberately keep their authored
+  24-design-unit margins unchanged. They do not perform runtime safe-area,
+  centering or theme-margin updates: physical Fold testing showed that this
+  static strategy consistently retained Hero rows where dynamic modes did not.
+  Backgrounds still fill the window and both screens remain vertically
+  scrollable.
 - Hero status badges stay on one line, including `On expedition`; names and
   descriptions still wrap. Artwork retains its aspect ratio and filtering.
-- The existing art UI tests cover live resizing at 720×1280, 720×1600 and
-  960×1280. Smoke tests separately resize the actual root window and check
-  full-window, uniform scaling. The existing `ART_PREVIEW_DIR` option also
-  captures these layouts and root-window previews when run with a desktop
-  renderer; use a directory under `/tmp/`.
+- The existing art UI tests cover live resizing at 720×1280, 720×1600,
+  960×1280 and the reported 1065×1280 Fold viewport. Party UI coverage checks
+  that all four starting Heroes retain visible, nonzero rows at each size.
+  Smoke tests separately resize the actual root window and check full-window,
+  uniform scaling. The existing `ART_PREVIEW_DIR` option also captures these
+  layouts and root-window previews when run with a desktop renderer; use a
+  directory under `/tmp/`.
 - Automated layout checks do not establish physical Android acceptance.
   Verify cutouts, system bars, ≥48×48dp effective touch targets, readable
   typography and scrolling on target-density phones/tablets. Android
@@ -460,98 +466,6 @@ godot --headless --path . --export-debug "Android" build/android/hello-world.apk
 
 The preset uses the package identifier `com.example.helloworld` and writes the
 APK to `build/android/hello-world.apk`.
-
-### Diagnostic APK: Roster / Form Party crash
-
-The current Android preset includes the `ui_diagnostics` feature. **Only debug
-builds** activate it; release builds neither show diagnostic controls nor read
-or write diagnostic storage. For desktop investigation, opt in with
-`UI_DIAGNOSTICS=1` when running a debug/editor build. The existing Android
-workflow and export command above produce the diagnostic APK without a new
-renderer, dependency, package ID, or save version.
-
-On Home, scroll to **Crash diagnostics · debug build**. It shows the last
-recorded attempt, its mode, target screen, viewport, renderer, and whether the
-first render cycle finished. Startup and mode selection do not overwrite that
-evidence. Select one mode, then use the normal **Company Roster** or **Form
-Party** button:
-
-- **A · Baseline:** existing artwork and automatic row sizing, with tracing.
-  Each batch of dynamic safe-area margin requests is applied after screen sizing;
-  viewport and resume requests are coalesced, and unchanged margins are not
-  reapplied.
-- **B · No artwork drawing:** retains texture lookup, imported resources,
-  controls, reserved image dimensions, and automatic sizing, but removes the
-  textures from the target screen's TextureRects. It does **not** test removal
-  of resource loading or portrait hashing.
-- **C · Fixed row sizing:** retains artwork, but bypasses Hero-row measurement
-  and the Hero-row/formation-slot minimum-size callbacks. Hero rows use 400
-  design units and formation slots 320; other layout remains unchanged. Long
-  text can overflow in this diagnostic mode.
-- **D · Static scene margins:** retains baseline artwork and automatic Hero-row
-  sizing, but preserves the Roster/Formation scene's authored margins. It skips
-  safe-area lookup/conversion, centered-width calculations, theme overrides,
-  and the shared margin's resize, viewport, and resume callbacks. Content may
-  extend into unsafe or unusually wide areas in this diagnostic mode.
-
-Modes are mutually exclusive, apply only to Roster/Formation, and are frozen
-for each visit. They do not change Hero generation, Party drafts, recruitment,
-rewards, or Company persistence. The last attempted mode is restored on
-relaunch. Returning to Home preserves the result; **entering either target
-screen starts a new trace and replaces the previous attempt**.
-
-Milestones bracket navigation/load/instantiation, outgoing-screen removal,
-Hero/offer/slot construction, initial and callback-driven sizing, and the first
-rendering cycle. Dynamic screen-margin tracing separately brackets Android
-safe-area lookup, physical transform construction, local conversion, margin
-calculation, and each theme override. `*.begin`/`before_*` means the operation
-was about to run, not that it succeeded. `render.first_draw.end` means Godot
-emitted `frame_post_draw`, not that Android displayed correct pixels or that a
-later crash is impossible. Headless runs explicitly record rendering as
-unavailable. Each marker is written at most once per attempt, up to 128 markers
-/ 64 KiB.
-
-The append-and-flush trace is `ui-diagnostics.jsonl`, beside but separate from
-`SaveManager.get_save_path()`. It contains only diagnostic version, mode, screen,
-stage, viewport, renderer, and render-cycle status—no Hero names/IDs, seeds, or
-Company snapshots. A partial final JSON line is ignored on reload so earlier
-complete markers remain readable. Flush/close is best-effort, not a power-loss
-durability guarantee. Trace errors are shown in the diagnostic panel and never
-modify SaveManager's results. Tests use the existing isolated save directory.
-Tracing adds synchronous I/O and can change timing; even A is not an
-uninstrumented control.
-
-**Fold 4 / Android 16 comparison:**
-
-On September 9, 2026, physical Fold 4 testing first reproduced both target
-screen failures in A while D reached `render.first_draw.end`. After the
-deferred/coalesced `ScreenMargin` update was applied, the tester reported that
-all four modes passed for both Company Roster and Form Party. The submitted
-1812×2176 screenshots recorded a 1065×1280 diagnostic viewport and
-`gl_compatibility`; the report did not explicitly label the display or record
-fold/unfold, background/resume, scrolling, and Back/Cancel for both displays.
-Those remaining checks must not be inferred from the completed comparisons.
-
-1. Install this diagnostic debug APK, preserving any current Company. The
-   signing-certificate caveat below still applies; do not clear app data or
-   uninstall to resolve a signature mismatch.
-2. On the same display and Company state, run **A → B → A → C** for Company
-   Roster. If the app closes, relaunch and photograph the diagnostic result
-   **before opening either target again**. If it succeeds, return Home and
-   photograph the result after each attempt.
-3. Repeat **A → B → A → C** for Form Party. Run D afterward when a
-   static-margin control is needed. Keep the Company and device settings
-   unchanged.
-4. Repeat on the other display. If entry succeeds, also check scrolling, a
-   cancelled Party draft, and background/resume. Do not confirm/recruit between
-   comparisons, since that changes the input state.
-5. Report the APK's workflow run/commit, outer/inner display, mode, button,
-   outcome, and photographed milestone. A surviving comparison identifies a
-   candidate subsystem, not a confirmed root cause.
-
-Only the physical results recorded above come from the Fold 4; a successful
-test suite or APK export does not imply completion of the remaining device
-checks.
 
 ### App branding and compatibility
 

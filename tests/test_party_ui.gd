@@ -409,7 +409,7 @@ func test_portrait_long_names_wrap_and_controls_pass_scroll_input() -> void:
 
 func test_all_idle_heroes_render_in_static_margin_scroll_at_reported_sizes() -> void:
 	var viewport: SubViewport = add_child_autofree(SubViewport.new())
-	viewport.size = Vector2i(720, 1280)
+	viewport.size = Vector2i(1065, 1280)
 	await _boot(viewport)
 	await _open_formation()
 	var expected_ids := PackedStringArray()

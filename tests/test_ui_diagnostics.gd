@@ -120,6 +120,9 @@ func test_malformed_and_oversized_traces_fail_without_touching_company() -> void
 		diagnostics.initialize(_isolation.directory, true)
 		assert_eq(diagnostics.last_record, {})
 		assert_false(diagnostics.last_error.is_empty())
+		diagnostics.begin_navigation(ROSTER, _viewport)
+		assert_true(diagnostics.last_error.is_empty())
+		assert_eq(diagnostics.last_record.stage, "navigation.begin")
 		assert_eq(FileAccess.get_file_as_bytes(SaveManager.get_save_path()), company)
 
 

@@ -518,19 +518,27 @@ modify SaveManager's results. Tests use the existing isolated save directory.
 Tracing adds synchronous I/O and can change timing; even A is not an
 uninstrumented control.
 
-**Fold 4 / Android 16 comparison (physical-device results pending):**
+**Fold 4 / Android 16 comparison:**
+
+On September 9, 2026, physical Fold 4 testing first reproduced both target
+screen failures in A while D reached `render.first_draw.end`. After the
+deferred/coalesced `ScreenMargin` update was applied, the tester reported that
+all four modes passed for both Company Roster and Form Party. The submitted
+1812×2176 screenshots recorded a 1065×1280 diagnostic viewport and
+`gl_compatibility`; the report did not explicitly label the display or record
+fold/unfold, background/resume, scrolling, and Back/Cancel for both displays.
+Those remaining checks must not be inferred from the completed comparisons.
 
 1. Install this diagnostic debug APK, preserving any current Company. The
    signing-certificate caveat below still applies; do not clear app data or
    uninstall to resolve a signature mismatch.
-2. On the same display and Company state as the reported failure, try **A →
-   Company Roster**. If the app closes,
-   relaunch and photograph the diagnostic result **before opening either target
-   again**. If it succeeds, return Home and photograph the result. Repeat with
-   **A → Form Party**.
-3. Run **D → Company Roster** and **D → Form Party** as the static-margin
-   control. Keep the Company and device settings unchanged. The previous B/C
-   comparisons do not need repeating.
+2. On the same display and Company state, run **A → B → A → C** for Company
+   Roster. If the app closes, relaunch and photograph the diagnostic result
+   **before opening either target again**. If it succeeds, return Home and
+   photograph the result after each attempt.
+3. Repeat **A → B → A → C** for Form Party. Run D afterward when a
+   static-margin control is needed. Keep the Company and device settings
+   unchanged.
 4. Repeat on the other display. If entry succeeds, also check scrolling, a
    cancelled Party draft, and background/resume. Do not confirm/recruit between
    comparisons, since that changes the input state.
@@ -538,7 +546,9 @@ uninstrumented control.
    outcome, and photographed milestone. A surviving comparison identifies a
    candidate subsystem, not a confirmed root cause.
 
-No physical Fold 4 result is implied by a successful test suite or APK export.
+Only the physical results recorded above come from the Fold 4; a successful
+test suite or APK export does not imply completion of the remaining device
+checks.
 
 ### App branding and compatibility
 

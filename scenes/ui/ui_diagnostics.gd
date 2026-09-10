@@ -152,6 +152,7 @@ func mark(stage: String, new_attempt: bool = false) -> void:
 		last_error = "Diagnostic write failed; the last durable milestone is uncertain."
 		return
 	last_record = record
+	last_error = ""
 
 
 func summary() -> String:

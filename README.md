@@ -403,8 +403,9 @@ godot --headless --path . -s res://tools/art/generate_art.gd -- --preview-dir=/t
 the recipes. Preview output goes to an explicit absolute directory outside the
 checkout, not exported assets. Inspect the native/2× contact sheets before
 approving a recipe change. Running without arguments prints help without writes.
-The Android workflow publishes these sheets as `adventurers-march-art-previews`;
-download that artifact for visual review. In a managed agent session, complete
+The Android workflow publishes these sheets on pull requests as
+`adventurers-march-art-previews-<run id>`; download that artifact for visual
+review. In a managed agent session, complete
 validation and publish a checkpoint, then use a separate visual-review task and
 textual handoff under the [visual evidence policy](AGENTS.md#visual-evidence-and-fresh-tasks).
 An image-download service error is not evidence that generation failed; a
@@ -583,16 +584,20 @@ checks.
 
 ## Continuous integration
 
-`.github/workflows/android-apk.yml` runs on pushes, pull requests, and manual
-dispatches. It installs Java and the required Android SDK components, downloads
+`.github/workflows/android-apk.yml` runs on pushes to `main`, pull requests, and
+manual dispatches, with concurrency cancelling superseded runs for the same ref.
+It installs Java and the required Android SDK components, downloads
 Godot and its matching export templates, imports the project, runs the headless
-artwork verification and tests, performs the debug export, and uploads
-the APK as the `hello-world-android-apk` workflow artifact.
+artwork verification and tests, and performs the debug export on every run.
+The APK is uploaded as `hello-world-android-apk-<commit sha>` only after a
+successful push to `main` or a successful manual dispatch, so pull requests still
+validate the export without consuming artifact storage.
 
 Artwork verification compares the **committed** PNGs and manifest with their
 recipes; CI never regenerates the runtime bank to hide missing or stale files.
-Contact sheets are uploaded separately before tests, and import/art/test/export
-logs are retained as `art-and-android-validation`, including on failure.
+Contact sheets are generated on every run before tests and uploaded only for
+pull requests, and import/art/test/export logs are uploaded as
+`art-and-android-validation-<run id>` only when the job fails.
 The preview artifact is review material, not visual or device acceptance.
 
 The workflow intentionally does not use GitHub Actions cache or dependency

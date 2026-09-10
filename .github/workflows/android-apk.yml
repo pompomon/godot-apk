@@ -2,8 +2,14 @@ name: Build Android APK
 
 on:
   push:
+    branches:
+      - main
   pull_request:
   workflow_dispatch:
+
+concurrency:
+  group: android-apk-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -95,9 +101,10 @@ jobs:
           test -s "$RUNNER_TEMP/art-previews/portrait_variants.png"
 
       - name: Upload art review previews
+        if: ${{ github.event_name == 'pull_request' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: adventurers-march-art-previews
+          name: adventurers-march-art-previews-${{ github.run_id }}
           path: ${{ runner.temp }}/art-previews/*.png
           if-no-files-found: error
 
@@ -144,17 +151,28 @@ jobs:
           godot --headless --path . --export-debug "Android" build/android/hello-world.apk 2>&1 | tee "$RUNNER_TEMP/art-validation/export.log"
           test -s build/android/hello-world.apk
 
-      - name: Upload validation logs
-        if: ${{ always() && !cancelled() }}
+      - name: Upload validation logs on failure
+        if: ${{ failure() && !cancelled() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: art-and-android-validation
+          name: art-and-android-validation-${{ github.run_id }}
           path: ${{ runner.temp }}/art-validation/*.log
           if-no-files-found: ignore
 
       - name: Upload APK
+        if: >-
+          ${{
+            success() &&
+            (
+              github.event_name == 'workflow_dispatch' ||
+              (
+                github.event_name == 'push' &&
+                github.ref == 'refs/heads/main'
+              )
+            )
+          }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: hello-world-android-apk
+          name: hello-world-android-apk-${{ github.sha }}
           path: build/android/hello-world.apk
           if-no-files-found: error

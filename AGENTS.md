@@ -92,10 +92,10 @@ The [architecture boundaries](README.md#architecture-boundaries) are authoritati
   layout. `ScreenMargin` instead coalesces initial, viewport, and resume requests
   into one deferred update, ignores detached/re-entrant work, skips unchanged
   values, and applies all four constants in one bulk theme override.
-- A Fold 4 / Android 16 comparison isolated the Roster and Formation failure to
-  dynamic margin invalidation; artwork and row sizing were controls, not causes.
-  The stabilized baseline passed both screens, but no native stack trace proved
-  an engine-level cause. Do not replace this mitigation with assumed recursion.
+- The Fold 4 / Android 16 comparison and stabilized-baseline verification remain
+  pending. The diagnostic modes test dynamic margin invalidation against artwork
+  and row-sizing controls; do not treat the mitigation as an established root
+  cause without matching device evidence.
 - For foldable safe-area changes, device acceptance covers both displays plus
   fold/unfold, background/resume, scrolling, and Back/Cancel. Headless layout
   checks and a successful APK export remain separate evidence.

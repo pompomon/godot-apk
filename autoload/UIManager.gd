@@ -2,6 +2,8 @@ extends Node
 ## Owns the one active screen under main's persistent UI root.
 ## Screens navigate only through show_screen; root binding is bootstrap-only.
 
+const FrameProbe = preload("res://scenes/ui/diagnostic_frame_probe.gd")
+var diagnostics := UIDiagnostics.new()
 var _screen_root: Control
 var _current_screen: Control
 var _root_generation: int = 0
@@ -41,14 +43,19 @@ func _show_screen(
 ) -> void:
 	if not is_instance_valid(_screen_root) or _root_generation != root_generation:
 		return
+	diagnostics.begin_navigation(scene_path, _screen_root.get_viewport())
+	diagnostics.mark("navigation.before_load")
 	if not scene_path.begins_with("res://") or not ResourceLoader.exists(scene_path):
 		push_warning("UIManager screen does not exist: %s" % scene_path)
 		return
 	var scene := load(scene_path) as PackedScene
+	diagnostics.mark("navigation.after_load")
 	if scene == null or not scene.can_instantiate():
 		push_warning("UIManager requires a PackedScene: %s" % scene_path)
 		return
+	diagnostics.mark("navigation.before_instantiate")
 	var next_screen := scene.instantiate()
+	diagnostics.mark("navigation.after_instantiate")
 	if not next_screen is Control:
 		if is_instance_valid(next_screen):
 			next_screen.free()
@@ -63,14 +70,24 @@ func _show_screen(
 
 	var previous_screen := _current_screen
 	_current_screen = next_screen
+	diagnostics.mark("navigation.before_outgoing_removal")
 	if is_instance_valid(previous_screen):
 		_screen_root.remove_child(previous_screen)
 		previous_screen.queue_free()
+	diagnostics.mark("navigation.before_ready")
 	_screen_root.add_child(_current_screen)
+	diagnostics.mark("navigation.after_ready")
 	_current_screen.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	diagnostics.mark("layout.root_sized")
+	if diagnostics.is_recording(diagnostics.generation):
+		var probe := FrameProbe.new()
+		probe.name = "DiagnosticFrameProbe"
+		probe.diagnostics = diagnostics
+		_current_screen.add_child(probe)
 
 
 func _on_screen_root_exiting() -> void:
+	diagnostics.stop()
 	_current_screen = null
 	_screen_root = null
 

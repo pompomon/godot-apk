@@ -458,6 +458,88 @@ godot --headless --path . --export-debug "Android" build/android/hello-world.apk
 The preset uses the package identifier `com.example.helloworld` and writes the
 APK to `build/android/hello-world.apk`.
 
+### Diagnostic APK: Roster / Form Party crash
+
+The current Android preset includes the `ui_diagnostics` feature. **Only debug
+builds** activate it; release builds neither show diagnostic controls nor read
+or write diagnostic storage. For desktop investigation, opt in with
+`UI_DIAGNOSTICS=1` when running a debug/editor build. The existing Android
+workflow and export command above produce the diagnostic APK without a new
+renderer, dependency, package ID, or save version.
+
+On Home, scroll to **Crash diagnostics · debug build**. It shows the last
+recorded attempt, its mode, target screen, viewport, renderer, and whether the
+first render cycle finished. Startup and mode selection do not overwrite that
+evidence. Select one mode, then use the normal **Company Roster** or **Form
+Party** button:
+
+- **A · Baseline:** existing artwork and automatic row sizing, with tracing.
+  Each batch of dynamic safe-area margin requests is applied after screen sizing;
+  viewport and resume requests are coalesced, and unchanged margins are not
+  reapplied.
+- **B · No artwork drawing:** retains texture lookup, imported resources,
+  controls, reserved image dimensions, and automatic sizing, but removes the
+  textures from the target screen's TextureRects. It does **not** test removal
+  of resource loading or portrait hashing.
+- **C · Fixed row sizing:** retains artwork, but bypasses Hero-row measurement
+  and the Hero-row/formation-slot minimum-size callbacks. Hero rows use 400
+  design units and formation slots 320; other layout remains unchanged. Long
+  text can overflow in this diagnostic mode.
+- **D · Static scene margins:** retains baseline artwork and automatic Hero-row
+  sizing, but preserves the Roster/Formation scene's authored margins. It skips
+  safe-area lookup/conversion, centered-width calculations, theme overrides,
+  and the shared margin's resize, viewport, and resume callbacks. Content may
+  extend into unsafe or unusually wide areas in this diagnostic mode.
+
+Modes are mutually exclusive, apply only to Roster/Formation, and are frozen
+for each visit. They do not change Hero generation, Party drafts, recruitment,
+rewards, or Company persistence. The last attempted mode is restored on
+relaunch. Returning to Home preserves the result; **entering either target
+screen starts a new trace and replaces the previous attempt**.
+
+Milestones bracket navigation/load/instantiation, outgoing-screen removal,
+Hero/offer/slot construction, initial and callback-driven sizing, and the first
+rendering cycle. Dynamic screen-margin tracing separately brackets Android
+safe-area lookup, physical transform construction, local conversion, margin
+calculation, and each theme override. `*.begin`/`before_*` means the operation
+was about to run, not that it succeeded. `render.first_draw.end` means Godot
+emitted `frame_post_draw`, not that Android displayed correct pixels or that a
+later crash is impossible. Headless runs explicitly record rendering as
+unavailable. Each marker is written at most once per attempt, up to 128 markers
+/ 64 KiB.
+
+The append-and-flush trace is `ui-diagnostics.jsonl`, beside but separate from
+`SaveManager.get_save_path()`. It contains only diagnostic version, mode, screen,
+stage, viewport, renderer, and render-cycle status—no Hero names/IDs, seeds, or
+Company snapshots. A partial final JSON line is ignored on reload so earlier
+complete markers remain readable. Flush/close is best-effort, not a power-loss
+durability guarantee. Trace errors are shown in the diagnostic panel and never
+modify SaveManager's results. Tests use the existing isolated save directory.
+Tracing adds synchronous I/O and can change timing; even A is not an
+uninstrumented control.
+
+**Fold 4 / Android 16 comparison (physical-device results pending):**
+
+1. Install this diagnostic debug APK, preserving any current Company. The
+   signing-certificate caveat below still applies; do not clear app data or
+   uninstall to resolve a signature mismatch.
+2. On the same display and Company state as the reported failure, try **A →
+   Company Roster**. If the app closes,
+   relaunch and photograph the diagnostic result **before opening either target
+   again**. If it succeeds, return Home and photograph the result. Repeat with
+   **A → Form Party**.
+3. Run **D → Company Roster** and **D → Form Party** as the static-margin
+   control. Keep the Company and device settings unchanged. The previous B/C
+   comparisons do not need repeating.
+4. Repeat on the other display. If entry succeeds, also check scrolling, a
+   cancelled Party draft, and background/resume. Do not confirm/recruit between
+   comparisons, since that changes the input state.
+5. Report the APK's workflow run/commit, outer/inner display, mode, button,
+   outcome, and photographed milestone. A surviving comparison identifies a
+   candidate subsystem, not a confirmed root cause.
+
+No physical Fold 4 result is implied by a successful test suite or APK export.
+
 ### App branding and compatibility
 
 - `project.godot` and the Android preset both use **Adventurer's March**.

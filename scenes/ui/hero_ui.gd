@@ -66,7 +66,7 @@ static func button(text: String) -> Button:
 
 static func artwork(texture: Texture2D, extent: Vector2 = Vector2(48, 48)) -> TextureRect:
 	var image := TextureRect.new()
-	image.texture = texture
+	image.texture = null if UIManager.diagnostics.hide_artwork() else texture
 	image.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	image.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -193,10 +193,13 @@ static func status_badge(hero: HeroData) -> Label:
 
 
 static func hero_header(hero: HeroData) -> HBoxContainer:
+	UIManager.diagnostics.mark("hero.header.begin")
 	var header := HBoxContainer.new()
 	header.name = "HeroHeader"
 	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	UIManager.diagnostics.mark("hero.portrait.before_lookup_and_construction")
 	header.add_child(portrait(hero))
+	UIManager.diagnostics.mark("hero.portrait.constructed")
 	var content := VBoxContainer.new()
 	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -217,18 +220,22 @@ static func hero_header(hero: HeroData) -> HBoxContainer:
 	status_image.name = "StatusIcon"
 	badges.add_child(status_image)
 	badges.add_child(status_badge(hero))
+	UIManager.diagnostics.mark("hero.header.constructed")
 	return header
 
 
 static func refresh_hero_header(parent: Node, hero: HeroData) -> void:
 	parent.find_child("HeroSummary", true, false).text = hero_summary(hero)
 	parent.find_child("StatusBadge", true, false).text = status_name(hero)
-	parent.find_child("StatusIcon", true, false).texture = Art.status_icon(hero.status)
+	var texture := Art.status_icon(hero.status)
+	parent.find_child("StatusIcon", true, false).texture = (
+		null if UIManager.diagnostics.hide_artwork() else texture)
 
 
 static func hero_row(
 	hero: HeroData, open_detail: Callable, hint: String = "View hero details"
 ) -> Button:
+	UIManager.diagnostics.mark("hero.row.begin")
 	var row := button("")
 	row.set_meta("hero_id", hero.hero_id)
 	row.tooltip_text = "View %s's details" % hero.hero_name
@@ -246,10 +253,20 @@ static func hero_row(
 	detail_hint.name = "DetailHint"
 	detail_hint.add_theme_color_override("font_color", MUTED_COLOR)
 	content.add_child(detail_hint)
-	margin.minimum_size_changed.connect(func() -> void:
-		row.custom_minimum_size.y = maxf(144.0, margin.get_combined_minimum_size().y))
-	row.custom_minimum_size.y = maxf(144.0, margin.get_combined_minimum_size().y)
+	if UIManager.diagnostics.fixed_rows():
+		row.custom_minimum_size.y = 400
+		UIManager.diagnostics.mark("layout.row.fixed_height")
+	else:
+		var token := UIManager.diagnostics.generation
+		margin.minimum_size_changed.connect(func() -> void:
+			UIManager.diagnostics.mark_for(token, "layout.row.minimum_change.begin")
+			row.custom_minimum_size.y = maxf(144.0, margin.get_combined_minimum_size().y)
+			UIManager.diagnostics.mark_for(token, "layout.row.minimum_change.end"))
+		UIManager.diagnostics.mark("layout.row.initial_measure.begin")
+		row.custom_minimum_size.y = maxf(144.0, margin.get_combined_minimum_size().y)
+		UIManager.diagnostics.mark("layout.row.initial_measure.end")
 	row.pressed.connect(open_detail)
+	UIManager.diagnostics.mark("hero.row.constructed")
 	return row
 
 

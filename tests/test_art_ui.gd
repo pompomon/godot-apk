@@ -199,27 +199,51 @@ func test_all_seven_screens_keep_art_crisp_passive_and_inside_portrait_width() -
 	await _capture_preview("expedition_report")
 
 
-func test_all_screens_resize_with_centered_content_and_no_horizontal_overflow() -> void:
+func test_all_screens_resize_with_target_static_margins_and_no_horizontal_overflow() -> void:
 	_dispatch()
 	for path in [HOME, ROSTER, DETAIL, EQUIPMENT, FORMATION, REGION, REPORT]:
 		await _go(path)
-		for extent in [Vector2i(720, 1280), Vector2i(720, 1600), Vector2i(960, 1280), Vector2i(720, 1280)]:
+		var margin: MarginContainer = _node("Margin")
+		var target_static: bool = path == ROSTER or path == FORMATION
+		var authored_margins := PackedInt32Array([
+			margin.get_theme_constant("margin_left"),
+			margin.get_theme_constant("margin_top"),
+			margin.get_theme_constant("margin_right"),
+			margin.get_theme_constant("margin_bottom"),
+		])
+		if target_static:
+			assert_null(margin.get_script())
+		else:
+			assert_same(margin.get_script(), ScreenMargin)
+		for extent in [
+			Vector2i(720, 1280), Vector2i(720, 1600), Vector2i(960, 1280),
+			Vector2i(1065, 1280), Vector2i(720, 1280),
+		]:
 			_viewport.size = extent
 			await _check_art_bounds()
 			assert_eq(_screen().size, Vector2(extent))
-			var margin: MarginContainer = _node("Margin")
-			assert_same(margin.get_script(), ScreenMargin)
-			assert_lte(margin.get_child(0).size.x, ScreenMargin.MAX_CONTENT_WIDTH)
-			assert_eq(margin.get_theme_constant("margin_left"), margin.get_theme_constant("margin_right"))
-			assert_false(margin.get("_update_queued"))
-			assert_false(margin.get("_updating"))
-			assert_false(margin.resized.is_connected(Callable(margin, "_update_margins")))
+			if target_static:
+				assert_eq(PackedInt32Array([
+					margin.get_theme_constant("margin_left"),
+					margin.get_theme_constant("margin_top"),
+					margin.get_theme_constant("margin_right"),
+					margin.get_theme_constant("margin_bottom"),
+				]), authored_margins)
+			else:
+				assert_lte(margin.get_child(0).size.x, ScreenMargin.MAX_CONTENT_WIDTH)
+				assert_lte(absi(
+					margin.get_theme_constant("margin_left")
+					- margin.get_theme_constant("margin_right")
+				), 1)
+				assert_false(margin.get("_update_queued"))
+				assert_false(margin.get("_updating"))
+				assert_false(margin.resized.is_connected(Callable(margin, "_update_margins")))
 			_check_control_widths(_screen(), extent.x)
 			await _capture_preview("%s_%dx%d" % [path.get_base_dir().get_file(), extent.x, extent.y])
 
 
 func test_screen_margins_defer_coalesce_and_skip_unchanged_updates() -> void:
-	await _go(ROSTER)
+	await _go(DETAIL)
 	await get_tree().process_frame
 	var margin := _node("Margin") as MarginContainer
 	assert_eq(margin.get("_applied_margins"), PackedInt32Array([24, 24, 24, 24]))

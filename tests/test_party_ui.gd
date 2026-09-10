@@ -407,6 +407,46 @@ func test_portrait_long_names_wrap_and_controls_pass_scroll_input() -> void:
 	_assert_labels_ignore_input(_screen())
 
 
+func test_all_idle_heroes_render_in_static_margin_scroll_at_reported_sizes() -> void:
+	var viewport: SubViewport = add_child_autofree(SubViewport.new())
+	viewport.size = Vector2i(720, 1280)
+	await _boot(viewport)
+	await _open_formation()
+	var expected_ids := PackedStringArray()
+	for hero in GameState.roster:
+		assert_eq(hero.status, HeroData.HeroStatus.IDLE)
+		expected_ids.append(hero.hero_id)
+	var margin := _screen().get_node("Margin") as MarginContainer
+	assert_null(margin.get_script())
+	var scroll := _screen().get_node("%Scroll") as ScrollContainer
+	for extent in [
+		Vector2i(720, 1280), Vector2i(720, 1600),
+		Vector2i(960, 1280), Vector2i(1065, 1280),
+	]:
+		viewport.size = extent
+		await get_tree().process_frame
+		await get_tree().process_frame
+		assert_eq([
+			margin.get_theme_constant("margin_left"),
+			margin.get_theme_constant("margin_top"),
+			margin.get_theme_constant("margin_right"),
+			margin.get_theme_constant("margin_bottom"),
+		], [24, 24, 24, 24])
+		var list := _screen().get_node("%AvailableList") as VBoxContainer
+		assert_true(list.is_visible_in_tree())
+		assert_eq(list.get_child_count(), expected_ids.size())
+		assert_false(_screen().get_node("%NoAvailableLabel").visible)
+		for index in expected_ids.size():
+			var row := list.get_child(index) as Button
+			assert_eq(row.get_meta("hero_id"), expected_ids[index])
+			assert_true(row.is_visible_in_tree())
+			assert_gte(row.size.y, 144.0)
+		var last_row := list.get_child(list.get_child_count() - 1) as Button
+		scroll.ensure_control_visible(last_row)
+		await get_tree().process_frame
+		assert_true(scroll.get_global_rect().intersection(last_row.get_global_rect()).has_area())
+
+
 func _assert_labels_ignore_input(node: Node) -> void:
 	if node is Label:
 		assert_eq(node.mouse_filter, Control.MOUSE_FILTER_IGNORE)

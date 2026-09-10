@@ -23,11 +23,9 @@ func _ready() -> void:
 	HeroUI.apply_theme(self)
 	draft = GameState.current_party.copy() if GameState.current_party != null else PartyData.new()
 	for slot in PartyData.SLOT_ORDER:
-		UIManager.diagnostics.mark("formation.slot.%d.begin" % slot)
 		var button := _slot_button(slot)
 		_slot_buttons.append(button)
 		%SlotGrid.add_child(button)
-		UIManager.diagnostics.mark("formation.slot.%d.added" % slot)
 	%CancelButton.pressed.connect(cancel_draft)
 	%ConfirmButton.pressed.connect(_confirm)
 	%DisbandButton.pressed.connect(_disband)
@@ -75,16 +73,10 @@ func _slot_button(slot: int) -> Button:
 	var text := HeroUI.label("", 28)
 	text.name = "SlotLabel"
 	margin.add_child(text)
-	if UIManager.diagnostics.fixed_rows():
-		button.custom_minimum_size.y = 320
-		UIManager.diagnostics.mark("layout.slot.fixed_height")
-	else:
-		var token := UIManager.diagnostics.generation
-		margin.minimum_size_changed.connect(func() -> void:
-			UIManager.diagnostics.mark_for(token, "layout.slot.minimum_change.begin")
-			button.custom_minimum_size.y = maxf(160.0, margin.get_combined_minimum_size().y)
-			UIManager.diagnostics.mark_for(token, "layout.slot.minimum_change.end"))
-		button.custom_minimum_size.y = 160
+	margin.minimum_size_changed.connect(func() -> void:
+		button.custom_minimum_size.y = maxf(160.0, margin.get_combined_minimum_size().y)
+	)
+	button.custom_minimum_size.y = 160
 	button.pressed.connect(_select_slot.bind(slot))
 	return button
 
@@ -99,8 +91,7 @@ func _refresh() -> void:
 		var text := "%s\n%s" % [PartyData.SLOT_LABELS[slot], hero.hero_name if hero is HeroData else "Empty"]
 		button.get_node("MarginContainer/SlotLabel").text = text
 		var portrait: TextureRect = button.get_node("Portrait")
-		var texture := HeroUI.portrait_texture(hero if hero is HeroData else null)
-		portrait.texture = null if UIManager.diagnostics.hide_artwork() else texture
+		portrait.texture = HeroUI.portrait_texture(hero if hero is HeroData else null)
 		button.set_pressed_no_signal(slot == _selected_slot)
 		button.disabled = blocked
 	%MemberCountLabel.text = "Party: %d / 4 Heroes" % draft.heroes().size()
@@ -132,13 +123,11 @@ func _refresh() -> void:
 	for hero in GameState.roster:
 		if not PartyFormationService.availability_error(hero).is_empty() or draft.contains_id(hero.hero_id):
 			continue
-		UIManager.diagnostics.mark("hero.available.%d.begin" % available)
 		var row := HeroUI.hero_row(hero, _place.bind(hero), "Place in selected slot")
 		row.name = "AvailableHero%d" % available
 		row.tooltip_text = "Place %s in the selected empty slot" % hero.hero_name
 		row.disabled = blocked or selected != null or _moving_from >= 0
 		%AvailableList.add_child(row)
-		UIManager.diagnostics.mark("hero.available.%d.added" % available)
 		available += 1
 	%NoAvailableLabel.visible = available == 0
 	var feedback := _feedback_message

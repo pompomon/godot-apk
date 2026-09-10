@@ -122,6 +122,22 @@ Physical Android checks for cutouts/system bars, effective ≥48×48dp targets,
 typography, scrolling and compatibility-mode bars remain unverified. No
 Milestone 7 or full-Milestone-8 acceptance boxes are closed by this slice.
 
+### Foldable static-margin stabilization (2026-09-10)
+
+The user subsequently tested Company Roster and Party Formation on both Fold 4
+displays in diagnostic modes A–D. All Heroes were Idle; smaller layouts exposed
+their rows through scrolling, larger layouts omitted them in dynamic modes, and
+only static-margin mode D showed them consistently. This is attributed device
+evidence, not testing performed by the implementation agent.
+
+The bounded follow-up retires the temporary debug panel, trace, export feature
+and comparison modes. Company Roster and Party Formation now permanently keep
+their authored margins, while the other five screens retain the shared dynamic
+margin helper. Automated coverage includes the reported 1065×1280 viewport and
+asserts that all four starting Heroes have visible, nonzero Party Formation
+rows. Matching-revision checks and renewed physical-device acceptance are
+recorded separately; the historical diagnostic APK is no longer shipped.
+
 ### Full presentation milestone
 
 1. Produce/source final Hero class icons, status-effect icons, item-slot

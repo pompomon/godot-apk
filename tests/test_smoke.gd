@@ -72,16 +72,19 @@ func test_real_main_scene_boots_to_home() -> void:
 	await get_tree().process_frame
 	var screen_root := main.get_node("ScreenRoot")
 	assert_eq(screen_root.get_child_count(), 1)
+	var home := screen_root.get_child(0)
 	assert_eq(
-		screen_root.get_child(0).scene_file_path,
+		home.scene_file_path,
 		"res://scenes/ui/home/home_screen.tscn")
 	assert_null(main.get_node_or_null("HelloWorld"))
+	assert_null(home.find_child("DiagnosticsPanel", true, false))
 	assert_eq(
-		screen_root.get_child(0).get_node("Margin/Scroll/Content/Title").text,
+		home.get_node("Margin/Scroll/Content/Title").text,
 		ProjectSettings.get_setting("application/config/name"))
 
 
 func test_mobile_project_settings_are_preserved() -> void:
+	assert_false(FileAccess.get_file_as_string("res://export_presets.cfg").contains("ui_diagnostics"))
 	var expected := {
 		"application/run/main_scene": "res://main.tscn",
 		"application/config/quit_on_go_back": false,

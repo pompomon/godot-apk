@@ -19,7 +19,8 @@ func before_each() -> void:
 	safe_entry.kind = "Loot"
 	safe_entry.content_id = ExpeditionCatalog.LOOT.loot_id
 	safe_entry.weight = 1.0
-	REGION.encounter_pool.assign([safe_entry])
+	var region := REGION
+	region.encounter_pool = [safe_entry]
 	_isolation = Isolation.new()
 	assert_true(_isolation.begin())
 	_time = 1000

@@ -54,6 +54,7 @@ func _reset_company() -> void:
 	SaveManager.fault_injector = Callable()
 	_time = 1000
 	assert_true(RecruitmentService.initialize_new_game(12345))
+	SaveManager.save()
 	assert_true(SaveManager.last_committed, SaveManager.last_error)
 
 
@@ -89,6 +90,27 @@ func test_one_run_remains_manual_and_invalid_counts_do_not_mutate() -> void:
 	assert_true(ExpeditionManager.get_automation_state().is_empty())
 	assert_eq(ExpeditionManager.get_active_expedition().party_snapshot.slots.BACK_RIGHT.hero_id,
 		GameState.roster[0].hero_id)
+
+
+func test_automated_start_preflights_frozen_gold_without_consuming_the_party() -> void:
+	var party := _confirm()
+	var candidate := ExpeditionGenerator.generate(
+		REGION, party, ExpeditionManager.next_seed(), 60, _time, ExpeditionManager.balancing)
+	assert_not_null(candidate)
+	var reward_gold := 0
+	for step in candidate.steps:
+		reward_gold += int(step.result.gold)
+	assert_gt(reward_gold, 0)
+	GameState.gold = HeroCatalog.MAX_SAFE_INT
+	SaveManager.save()
+	assert_true(SaveManager.last_committed, SaveManager.last_error)
+	var before := SaveManager.capture_state()
+	ExpeditionManager.start_expedition(REGION, party, 60, 2)
+	assert_false(ExpeditionManager.last_committed)
+	assert_string_contains(ExpeditionManager.last_error, "Gold capacity")
+	assert_eq(SaveManager.capture_state(), before)
+	assert_same(GameState.current_party, party)
+	assert_true(ExpeditionManager.get_automation_state().is_empty())
 
 
 func test_catchup_is_bounded_reentrant_safe_and_preserves_sequential_timestamps() -> void:
@@ -163,6 +185,21 @@ func test_cancel_finishes_only_the_current_run_and_survives_reload() -> void:
 	assert_eq(SaveManager.capture_state(), saved)
 
 
+func test_cancelling_the_final_run_normalizes_to_completed_series() -> void:
+	_start(2)
+	_observe(1060)
+	assert_true(ExpeditionManager.is_expedition_active())
+	assert_eq(int(ExpeditionManager.get_automation_state().completed_runs), 1)
+	ExpeditionManager.stop_automation_after_current()
+	assert_true(ExpeditionManager.last_committed, ExpeditionManager.last_error)
+	_observe(1120)
+	var completed := ExpeditionManager.get_automation_state()
+	assert_eq(int(completed.completed_runs), 2)
+	assert_false(bool(completed.enabled))
+	assert_false(bool(completed.cancelled))
+	assert_eq(String(completed.stop_reason), "Completed all requested Expeditions.")
+
+
 func test_series_stops_safely_when_the_next_duration_is_removed() -> void:
 	_start(3)
 	REGION.duration_options_seconds.assign([120])
@@ -225,6 +262,10 @@ func test_completed_summary_and_running_cancellation_relations_are_strict() -> v
 		bad.expedition_automation.summaries[-1][change[0]] = change[1]
 		assert_true(ExpeditionAutomationState.valid(bad.expedition_automation), str(change))
 		assert_false(SaveManager.validate_snapshot(bad), str(change))
+	bad = completed.duplicate(true)
+	bad.expedition_automation.summaries[-1].resting_hero_count = 1
+	assert_true(ExpeditionAutomationState.valid(bad.expedition_automation))
+	assert_false(SaveManager.validate_snapshot(bad))
 
 
 func test_new_automation_transactions_cover_every_save_fault_boundary() -> void:

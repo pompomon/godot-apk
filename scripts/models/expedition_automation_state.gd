@@ -106,8 +106,9 @@ func append_summary(summary: Dictionary) -> bool:
 	next.cumulative_gold += int(summary.get("gold", 0))
 	next.cumulative_item_count += int(summary.get("item_count", 0))
 	next.cumulative_xp_per_hero += int(summary.get("xp_per_hero", 0))
-	if next.completed_runs >= next.requested_runs and next.enabled:
+	if next.completed_runs >= next.requested_runs:
 		next.enabled = false
+		next.cancelled = false
 		next.stop_reason = "Completed all requested Expeditions."
 	if not valid(next):
 		return false

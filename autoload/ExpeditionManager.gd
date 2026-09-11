@@ -206,10 +206,19 @@ func start_expedition(
 		_fail("The Hero recovery deadline exceeds the supported UTC range. Check the clock and retry.")
 		return
 	var reward_items := 0
+	var reward_gold := 0
 	for step in resolved.steps:
 		reward_items += step.result.get("item_ids", []).size()
+		var step_gold := int(step.result.gold)
+		if step_gold > HeroCatalog.MAX_SAFE_INT - reward_gold:
+			_fail("This Expedition's gold exceeds the supported range.")
+			return
+		reward_gold += step_gold
 	if reward_items > SaveManager.MAX_INVENTORY_ITEMS - GameState.inventory.size():
 		_fail("Inventory capacity would be exceeded. Equip items, then retry.")
+		return
+	if run_count > 1 and reward_gold > HeroCatalog.MAX_SAFE_INT - GameState.gold:
+		_fail("Gold capacity would be exceeded. Spend gold before starting automation.")
 		return
 	var automation := ExpeditionAutomationState.create(
 		region, party, duration_seconds, run_count) if run_count > 1 else null

@@ -302,6 +302,18 @@ func _automation_summary_matches_run(automation: Dictionary, run: Dictionary) ->
 	var terminal := int(run.terminal_step_index)
 	if terminal >= 0:
 		outcome = String(run.steps[terminal].result.outcome)
+	var completed_run := ExpeditionData.new(run)
+	var final_states := completed_run.final_hero_states()
+	var resting_count := 0
+	for member in completed_run.party_snapshot.slots.values():
+		if member == null:
+			continue
+		var state: Dictionary = final_states[member.hero_id]
+		if int(state.status) == HeroData.HeroStatus.WOUNDED or (
+				int(state.hp) > 0
+				and int(state.hp) * 100
+				<= int(member.derived_stats.MaxHP) * completed_run.rest_hp_percent):
+			resting_count += 1
 	var summary: Dictionary = automation.summaries[-1]
 	return (
 		summary.region_name == run.region_name
@@ -309,6 +321,7 @@ func _automation_summary_matches_run(automation: Dictionary, run: Dictionary) ->
 		and int(summary.gold) == gold
 		and int(summary.item_count) == item_count
 		and int(summary.xp_per_hero) == int(run.xp_award)
+		and int(summary.resting_hero_count) == resting_count
 	)
 
 

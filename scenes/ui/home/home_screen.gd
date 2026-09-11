@@ -18,6 +18,7 @@ func _ready() -> void:
 	%CompanyRosterButton.pressed.connect(_open_roster)
 	%FormationButton.pressed.connect(_open_formation)
 	%ExpeditionButton.pressed.connect(_open_expedition)
+	%StopAutomationButton.pressed.connect(_stop_automation)
 	%RetryProgressButton.pressed.connect(_retry_progress)
 	ExpeditionManager.changed.connect(_refresh)
 	ExpeditionManager.operation_failed.connect(_refresh)
@@ -57,6 +58,25 @@ func _refresh() -> void:
 			expedition.region_name, "Running" if ExpeditionManager.is_expedition_active() else "Completed",
 			expedition.last_revealed_index + 1, expedition.display_step_count(),
 			expedition.seconds_remaining()]
+	var automation := ExpeditionManager.get_automation_state()
+	%AutomationLabel.visible = not automation.is_empty()
+	%StopAutomationButton.visible = (
+		not automation.is_empty() and ExpeditionManager.is_expedition_active()
+		and bool(automation.enabled))
+	if not automation.is_empty():
+		var current_run := mini(
+			int(automation.completed_runs) + (1 if ExpeditionManager.is_expedition_active() else 0),
+			int(automation.requested_runs))
+		var state := "Running" if bool(automation.enabled) else (
+			"Stopping after this run" if ExpeditionManager.is_expedition_active()
+			else String(automation.stop_reason))
+		%AutomationLabel.text = (
+			"Automated series: %d / %d completed · Current run %d\n"
+			+ "%s · Total rewards: %d gold, %d items, %d XP per Hero"
+		) % [
+			int(automation.completed_runs), int(automation.requested_runs), current_run,
+			state, int(automation.cumulative_gold), int(automation.cumulative_item_count),
+			int(automation.cumulative_xp_per_hero)]
 	%RetryProgressButton.visible = not ExpeditionManager.last_error.is_empty()
 	HeroUI.show_feedback(_feedback_label, ExpeditionManager.last_error)
 	if UIManager.is_current_screen(self) and ExpeditionManager.take_completion_route():
@@ -77,4 +97,9 @@ func _open_expedition() -> void:
 
 func _retry_progress() -> void:
 	ExpeditionManager.reveal_progress()
+	_refresh()
+
+
+func _stop_automation() -> void:
+	ExpeditionManager.stop_automation_after_current()
 	_refresh()

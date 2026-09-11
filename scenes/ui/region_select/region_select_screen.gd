@@ -5,6 +5,7 @@ const HOME_SCREEN := "res://scenes/ui/home/home_screen.tscn"
 var _party: PartyData
 var _region: RegionResource
 var _duration: OptionButton
+var _run_count: OptionButton
 var _start: Button
 var _feedback: Label
 var _gold: Label
@@ -66,6 +67,23 @@ func _ready() -> void:
 	_duration.get_popup().add_theme_constant_override("v_separation", 64)
 	content.add_child(_duration)
 	_duration.item_selected.connect(func(_index: int) -> void: _refresh())
+	content.add_child(HeroUI.label("Number of Expeditions"))
+	_run_count = OptionButton.new()
+	_run_count.name = "RunCountOptions"
+	_run_count.custom_minimum_size.y = 96
+	_run_count.mouse_filter = Control.MOUSE_FILTER_PASS
+	_run_count.get_popup().add_theme_constant_override("v_separation", 64)
+	for count in range(1, ExpeditionAutomationState.MAX_REQUESTED_RUNS + 1):
+		_run_count.add_item(
+			"1 Expedition (manual)" if count == 1 else "%d Expeditions (automated)" % count)
+		_run_count.set_item_metadata(_run_count.item_count - 1, count)
+	_run_count.select(0)
+	_run_count.item_selected.connect(func(_index: int) -> void: _refresh())
+	content.add_child(_run_count)
+	content.add_child(HeroUI.label(
+		"Automated runs reuse this formation and destination. They stop after the "
+		+ "selected count, after cancellation, when a Hero needs rest, or before "
+		+ "a reward or save limit would be exceeded.", 24))
 	_feedback = HeroUI.label("")
 	_feedback.name = "FeedbackLabel"
 	content.add_child(_feedback)
@@ -108,6 +126,14 @@ func _seconds() -> int:
 	return int(value) if ExpeditionCatalog.integer(value, 1) else 0
 
 
+func _runs() -> int:
+	if _run_count.selected < 0 or _run_count.selected >= _run_count.item_count:
+		return 0
+	var value: Variant = _run_count.get_item_metadata(_run_count.selected)
+	return int(value) if ExpeditionCatalog.integer(
+		value, 1, ExpeditionAutomationState.MAX_REQUESTED_RUNS) else 0
+
+
 func _refresh() -> void:
 	if _leaving or not is_inside_tree():
 		return
@@ -130,7 +156,9 @@ func _refresh() -> void:
 			requirement.text += "\nHeld gold: %d / %d" % [GameState.gold, threshold]
 	_recommendation.text = "%s\nRecommended Party Power: %d (advisory only)" % [
 		_region.display_name, _region.recommended_party_power]
-	var error := ExpeditionManager.start_error(_region, _party, _seconds())
+	var runs := _runs()
+	_start.text = "Start Expedition" if runs == 1 else "Start Automated Series"
+	var error := ExpeditionManager.start_error(_region, _party, _seconds(), runs)
 	_start.disabled = not error.is_empty()
 	HeroUI.show_feedback(_feedback, error)
 
@@ -144,7 +172,7 @@ func _show_operation_error() -> void:
 func _dispatch() -> void:
 	if _leaving or not is_inside_tree():
 		return
-	ExpeditionManager.start_expedition(_region, _party, _seconds())
+	ExpeditionManager.start_expedition(_region, _party, _seconds(), _runs())
 	if ExpeditionManager.last_committed:
 		_leaving = true
 		UIManager.show_screen(HOME_SCREEN)

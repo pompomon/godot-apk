@@ -29,6 +29,7 @@ func _start() -> Dictionary:
 func _v4(snapshot: Dictionary) -> Dictionary:
 	var legacy := snapshot.duplicate(true)
 	legacy.save_version = 4
+	legacy.erase("expedition_automation")
 	if legacy.expedition != null:
 		for key in ["xp_award", "recovery_seconds", "rest_hp_percent"]:
 			legacy.expedition.erase(key)
@@ -195,7 +196,7 @@ func test_old_schemas_reject_new_items_and_fields_before_normalization() -> void
 			for hero in old.roster + old.recruitment_offers:
 				hero.erase("recovery_ready_at")
 		if version < 3:
-			for key in ["expedition", "expedition_seed", "expedition_sequence"]:
+			for key in ["expedition", "expedition_seed", "expedition_sequence", "expedition_automation"]:
 				old.erase(key)
 		if version == 1:
 			old.erase("current_party")

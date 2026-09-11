@@ -2,7 +2,7 @@ extends Node
 ## Versioned, validated snapshots and best-effort same-directory replacement.
 ## No fsync or cross-platform atomicity guarantees are available through these APIs.
 
-const SAVE_VERSION := 6
+const SAVE_VERSION := 7
 const MAX_SAVE_BYTES := 1048576
 const MAX_INVENTORY_ITEMS := 1024
 const LEGACY_ROOT_KEYS := [
@@ -11,7 +11,8 @@ const LEGACY_ROOT_KEYS := [
 	"recruitment_sequence", "offer_seeds",
 ]
 const V2_ROOT_KEYS := LEGACY_ROOT_KEYS + ["current_party"]
-const ROOT_KEYS := V2_ROOT_KEYS + ["expedition_seed", "expedition_sequence", "expedition"]
+const V6_ROOT_KEYS := V2_ROOT_KEYS + ["expedition_seed", "expedition_sequence", "expedition"]
+const ROOT_KEYS := V6_ROOT_KEYS + ["expedition_automation"]
 const LEGACY_HERO_KEYS := [
 	"hero_id", "hero_name", "class_id", "level", "xp", "attributes", "trait_ids",
 	"status", "equipped_weapon", "equipped_armor",
@@ -109,9 +110,10 @@ func migrate(data: Variant) -> Dictionary:
 	if not data is Dictionary or not _integer(data.get("save_version"), 1, HeroCatalog.MAX_SAFE_INT):
 		return {}
 	match int(data.save_version):
-		1, 2, 3, 4, 5:
+		1, 2, 3, 4, 5, 6:
 			var version := int(data.save_version)
-			var keys := LEGACY_ROOT_KEYS if version == 1 else (V2_ROOT_KEYS if version == 2 else ROOT_KEYS)
+			var keys := LEGACY_ROOT_KEYS if version == 1 else (
+				V2_ROOT_KEYS if version == 2 else V6_ROOT_KEYS)
 			if not _validate_schema(data, version, keys):
 				return {}
 			if version >= 2 and not _validate_party(data):
@@ -146,6 +148,7 @@ func migrate(data: Variant) -> Dictionary:
 					hero.recovery_ready_at = 0
 				elif version == 4 and hero.status == "WOUNDED" and hero.recovery_ready_at > 0:
 					hero.status = "RESTING"
+			migrated.expedition_automation = null
 			return migrated if validate_snapshot(migrated) else {}
 		SAVE_VERSION:
 			return data if validate_snapshot(data) else {}
@@ -176,6 +179,7 @@ func capture_state() -> Dictionary:
 		"current_party": _serialize_party(GameState.current_party),
 		"expedition_seed": GameState.expedition_seed, "expedition_sequence": GameState.expedition_sequence,
 		"expedition": ExpeditionManager.serialize(),
+		"expedition_automation": ExpeditionManager.serialize_automation(),
 	}
 
 
@@ -232,6 +236,9 @@ func validate_snapshot(data: Variant) -> bool:
 func _validate_expedition_relations(data: Dictionary, version: int = SAVE_VERSION) -> bool:
 	var participants := {}
 	var running := false
+	var automation: Variant = data.expedition_automation if version >= 7 else null
+	if automation != null and not ExpeditionAutomationState.valid(automation):
+		return false
 	if data.expedition != null:
 		var valid_run := ExpeditionData.valid(data.expedition) if version >= 5 else (
 			ExpeditionData.valid_legacy(data.expedition) if version == 3 else ExpeditionData.valid_version_four(data.expedition))
@@ -251,6 +258,32 @@ func _validate_expedition_relations(data: Dictionary, version: int = SAVE_VERSIO
 			participants[member.hero_id] = true
 			if running and roster_by_id[member.hero_id].status != "ON_EXPEDITION":
 				return false
+		if automation != null:
+			if automation.region_id != data.expedition.region_id \
+					or int(automation.duration_seconds) != int(data.expedition.duration_seconds):
+				return false
+			if ExpeditionCatalog.region_by_id(automation.region_id) == null:
+				return false
+			var snapshot_ids: Array = []
+			for slot in PartyData.SLOT_NAMES:
+				var member: Variant = data.expedition.party_snapshot[slot]
+				snapshot_ids.append(member.hero_id if member != null else null)
+			if snapshot_ids != automation.party_hero_ids:
+				return false
+			for id in automation.party_hero_ids:
+				if id != null and (not roster_by_id.has(id) or not participants.has(id)):
+					return false
+			if running:
+				if int(automation.completed_runs) >= int(automation.requested_runs):
+					return false
+			else:
+				if automation.enabled or int(automation.pending_offline_seconds) != 0 \
+						or int(automation.completed_runs) < 1:
+					return false
+				if automation.summaries[-1].region_name != data.expedition.region_name:
+					return false
+	elif automation != null:
+		return false
 	for hero in data.roster:
 		if hero.status == "ON_EXPEDITION" and (not running or not participants.has(hero.hero_id)):
 			return false
@@ -427,7 +460,7 @@ func _apply_validated(data: Dictionary) -> void:
 	GameState.recruitment_sequence = int(data.recruitment_sequence)
 	GameState.expedition_seed = int(data.expedition_seed)
 	GameState.expedition_sequence = int(data.expedition_sequence)
-	ExpeditionManager.replace_from_save(data.expedition)
+	ExpeditionManager.replace_from_save(data.expedition, data.expedition_automation)
 	GameState.offer_seeds.clear()
 	for seed in data.offer_seeds:
 		GameState.offer_seeds.append(int(seed))

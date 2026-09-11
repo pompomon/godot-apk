@@ -35,7 +35,7 @@ func _read(path: String) -> String:
 func _legacy() -> Dictionary:
 	var data := SaveManager.capture_state()
 	data.erase("current_party")
-	for key in ["expedition", "expedition_seed", "expedition_sequence"]:
+	for key in ["expedition", "expedition_seed", "expedition_sequence", "expedition_automation"]:
 		data.erase(key)
 	for hero in data.roster + data.recruitment_offers:
 		hero.erase("recovery_ready_at")
@@ -154,6 +154,7 @@ func test_version_one_migration_preserves_all_old_data_except_orphan_assigned() 
 	expected.unlocked_regions = []
 	expected.current_party = null
 	expected.expedition = null
+	expected.expedition_automation = null
 	expected.expedition_seed = expected.recruitment_seed
 	expected.expedition_sequence = 0
 	expected.roster[1].status = "IDLE"

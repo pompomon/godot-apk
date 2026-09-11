@@ -276,7 +276,7 @@ func test_v2_migration_validates_original_party_before_releasing_legacy_on_exped
 	party.place_hero(3, GameState.roster[0])
 	assert_true(PartyFormationService.confirm(party, ExpeditionManager.balancing))
 	var legacy := SaveManager.capture_state()
-	for key in ["expedition", "expedition_seed", "expedition_sequence"]:
+	for key in ["expedition", "expedition_seed", "expedition_sequence", "expedition_automation"]:
 		legacy.erase(key)
 	for hero in legacy.roster + legacy.recruitment_offers:
 		hero.erase("recovery_ready_at")
@@ -287,6 +287,7 @@ func test_v2_migration_validates_original_party_before_releasing_legacy_on_exped
 	expected.save_version = SaveManager.SAVE_VERSION
 	expected.unlocked_regions = []
 	expected.expedition = null
+	expected.expedition_automation = null
 	expected.expedition_seed = expected.recruitment_seed
 	expected.expedition_sequence = 0
 	expected.roster[1].status = "IDLE"
@@ -313,6 +314,7 @@ func test_v2_migration_validates_original_party_before_releasing_legacy_on_exped
 func _version_three(snapshot: Dictionary) -> Dictionary:
 	var legacy := snapshot.duplicate(true)
 	legacy.save_version = 3
+	legacy.erase("expedition_automation")
 	for hero in legacy.roster + legacy.recruitment_offers:
 		hero.erase("recovery_ready_at")
 	if legacy.expedition != null:

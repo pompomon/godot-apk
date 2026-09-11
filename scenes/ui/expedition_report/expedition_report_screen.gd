@@ -4,6 +4,7 @@ const HeroUI = preload("res://scenes/ui/hero_ui.gd")
 const HOME_SCREEN := "res://scenes/ui/home/home_screen.tscn"
 var _report: ExpeditionData
 var _status: Label
+var _series_status: Label
 var _feedback: Label
 var _journal: VBoxContainer
 var _acknowledge: Button
@@ -32,6 +33,9 @@ func _ready() -> void:
 	_status = HeroUI.label("")
 	_status.name = "StatusLabel"
 	content.add_child(_status)
+	_series_status = HeroUI.label("")
+	_series_status.name = "SeriesStatusLabel"
+	content.add_child(_series_status)
 	_feedback = HeroUI.label("")
 	_feedback.name = "FeedbackLabel"
 	content.add_child(_feedback)
@@ -51,15 +55,7 @@ func _ready() -> void:
 	_party_art.name = "DispatchedPartyArt"
 	_party_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	content.add_child(_party_art)
-	if _report != null:
-		for member in _report.party_snapshot.slots.values():
-			if member == null:
-				continue
-			var portrait := HeroUI.artwork(
-				HeroUI.Art.portrait(member.hero_id, member.class_id), Vector2(64, 64))
-			portrait.set_meta("hero_id", member.hero_id)
-			portrait.tooltip_text = "%s · %s (at dispatch)" % [member.hero_name, member.class_name]
-			_party_art.add_child(portrait)
+	_populate_party_art()
 	_journal = VBoxContainer.new()
 	_journal.name = "Journal"
 	content.add_child(_journal)
@@ -72,14 +68,24 @@ func _ready() -> void:
 func _refresh() -> void:
 	if _leaving or not is_inside_tree() or _pointer_down or _scrolling:
 		return
+	var current := ExpeditionManager.get_active_expedition()
+	var automation := ExpeditionManager.get_automation_state()
+	if (_report != current and current != null and not automation.is_empty()):
+		_report = current
+		_shown_cursor = -2
+		_scroll_anchor = null
+		_backdrop.texture = HeroUI.Art.region(_report.region_id)
+		_populate_party_art()
 	var available := _report != null and _report == ExpeditionManager.get_active_expedition()
 	if available and _shown_cursor != _report.last_revealed_index:
 		_remember_reading_position()
 	_acknowledge.visible = available and _report.status == ExpeditionData.Status.COMPLETED
 	_backdrop.visible = available
 	_party_art.visible = available
+	_series_status.visible = available and not automation.is_empty()
 	if not available:
 		_status.text = "No report is available. Return Home."
+		_series_status.text = ""
 		HeroUI.clear_children(_journal)
 		_shown_cursor = -2
 		_scroll_anchor = null
@@ -93,6 +99,21 @@ func _refresh() -> void:
 		_report.seconds_remaining(), _report.credited_gold()]
 	if _report.status == ExpeditionData.Status.COMPLETED:
 		_status.text += "\nXP credited: +%d per participating Hero" % _report.xp_award
+	if not automation.is_empty():
+		var lines := PackedStringArray([
+			"Automated series: %d / %d completed" % [
+				int(automation.completed_runs), int(automation.requested_runs)],
+			"Cumulative rewards: %d gold · %d items · %d XP per Hero" % [
+				int(automation.cumulative_gold), int(automation.cumulative_item_count),
+				int(automation.cumulative_xp_per_hero)],
+		])
+		for summary in automation.summaries:
+			lines.append("Run %d · %s · %d gold · %d items" % [
+				int(summary.run_number), String(summary.outcome).capitalize(),
+				int(summary.gold), int(summary.item_count)])
+		if not bool(automation.enabled):
+			lines.append(String(automation.stop_reason))
+		_series_status.text = "\n".join(lines)
 	if _shown_cursor != _report.last_revealed_index:
 		if _shown_cursor < 0 or _report.last_revealed_index < _shown_cursor:
 			HeroUI.clear_children(_journal)
@@ -109,6 +130,23 @@ func _refresh() -> void:
 	if is_instance_valid(_scroll_anchor) and not _restoring_scroll:
 		_restoring_scroll = true
 		_restore_reading_position()
+
+
+func _populate_party_art() -> void:
+	if _party_art == null:
+		return
+	HeroUI.clear_children(_party_art)
+	if _report == null:
+		return
+	for member in _report.party_snapshot.slots.values():
+		if member == null:
+			continue
+		var portrait := HeroUI.artwork(
+			HeroUI.Art.portrait(member.hero_id, member.class_id), Vector2(64, 64))
+		portrait.set_meta("hero_id", member.hero_id)
+		portrait.tooltip_text = "%s · %s (at dispatch)" % [
+			member.hero_name, member.class_name]
+		_party_art.add_child(portrait)
 
 
 func _input(event: InputEvent) -> void:

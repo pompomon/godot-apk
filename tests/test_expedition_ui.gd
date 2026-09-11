@@ -88,6 +88,20 @@ func _dispatch() -> void:
 	assert_eq(_screen().scene_file_path, HOME)
 
 
+func _dispatch_automated(run_count: int) -> void:
+	_confirm()
+	await _go(REGION)
+	var options := _node("RunCountOptions") as OptionButton
+	options.select(run_count - 1)
+	options.item_selected.emit(run_count - 1)
+	assert_eq(options.get_item_metadata(options.selected), run_count)
+	assert_eq(_node("StartButton").text, "Start Automated Series")
+	_node("StartButton").pressed.emit()
+	await get_tree().process_frame
+	assert_true(ExpeditionManager.last_committed, ExpeditionManager.last_error)
+	assert_eq(_screen().scene_file_path, HOME)
+
+
 func _visible_text(node: Node) -> String:
 	var result := ""
 	if node is Control and not node.is_visible_in_tree():
@@ -160,6 +174,60 @@ func test_multiple_durations_invalid_selection_stale_party_and_start_save_retry(
 	assert_eq(_screen().scene_file_path, HOME)
 	assert_eq(ExpeditionManager.get_active_expedition().duration_seconds, 120)
 	region.duration_options_seconds.assign(durations)
+
+
+func test_automated_series_selection_stop_retry_and_report_acknowledgment() -> void:
+	await _dispatch_automated(3)
+	assert_string_contains(_node("AutomationLabel").text, "0 / 3 completed")
+	assert_string_contains(_node("AutomationLabel").text, "Current run 1")
+	assert_true(_node("StopAutomationButton").visible)
+	SaveManager.fault_injector = func(stage: String) -> bool:
+		return stage == "before_primary_replace"
+	_node("StopAutomationButton").pressed.emit()
+	assert_true(bool(ExpeditionManager.get_automation_state().enabled))
+	assert_string_contains(_node("FeedbackLabel").text, "not saved")
+	assert_true(_node("StopAutomationButton").visible)
+	SaveManager.fault_injector = Callable()
+	_node("StopAutomationButton").pressed.emit()
+	assert_true(ExpeditionManager.last_committed, ExpeditionManager.last_error)
+	assert_false(bool(ExpeditionManager.get_automation_state().enabled))
+	assert_string_contains(_node("AutomationLabel").text, "Stopping after this run")
+	_time = 1060
+	ExpeditionManager.observe_foreground()
+	await get_tree().process_frame
+	assert_eq(_screen().scene_file_path, REPORT)
+	assert_string_contains(_node("SeriesStatusLabel").text, "1 / 3 completed")
+	assert_string_contains(_node("SeriesStatusLabel").text, "Stopped by the player")
+	assert_true(_node("AcknowledgeButton").visible)
+	_node("AcknowledgeButton").pressed.emit()
+	await get_tree().process_frame
+	assert_eq(_screen().scene_file_path, HOME)
+	assert_true(ExpeditionManager.get_automation_state().is_empty())
+
+
+func test_automated_report_switches_to_successor_and_retains_compact_history() -> void:
+	await _dispatch_automated(2)
+	var first := ExpeditionManager.get_active_expedition()
+	_node("ExpeditionButton").pressed.emit()
+	await get_tree().process_frame
+	assert_eq(_screen().scene_file_path, REPORT)
+	_time = 1060
+	ExpeditionManager.observe_foreground()
+	var second := ExpeditionManager.get_active_expedition()
+	assert_ne(second, first)
+	assert_eq(second.start_timestamp, first.effective_end_timestamp)
+	assert_eq(int(ExpeditionManager.get_automation_state().completed_runs), 1)
+	assert_string_contains(_node("SeriesStatusLabel").text, "Run 1")
+	assert_eq(_node("Journal").get_child_count(), 1)
+	assert_string_contains(_visible_text(_node("Journal")), "departed")
+	_time = 1120
+	ExpeditionManager.observe_foreground()
+	assert_false(ExpeditionManager.is_expedition_active())
+	assert_eq(int(ExpeditionManager.get_automation_state().completed_runs), 2)
+	assert_string_contains(_node("SeriesStatusLabel").text, "2 / 2 completed")
+	assert_string_contains(_node("SeriesStatusLabel").text, "Run 2")
+	assert_string_contains(_node("SeriesStatusLabel").text, "Completed all requested")
+	assert_true(_node("AcknowledgeButton").visible)
 
 
 func test_running_and_partial_report_never_disclose_unrevealed_results() -> void:

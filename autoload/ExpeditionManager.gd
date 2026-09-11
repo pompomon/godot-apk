@@ -17,6 +17,7 @@ var _completion_presented: bool = false
 var _timer: Timer
 var _lifecycle_enabled: bool = false
 var _foreground: bool = true
+var _observation_in_progress: bool = false
 
 
 func _ready() -> void:
@@ -240,6 +241,14 @@ func stop_automation_after_current() -> void:
 
 
 func reveal_progress() -> void:
+	if _observation_in_progress:
+		return
+	_observation_in_progress = true
+	_reveal_progress()
+	_observation_in_progress = false
+
+
+func _reveal_progress() -> void:
 	if not GameState.initialized:
 		return
 	var active_run := _expedition != null and is_expedition_active()
@@ -449,7 +458,7 @@ func _reveal_automated_progress(now: int) -> void:
 			_automation.set_pending_seconds(0)
 			series_finished = true
 			break
-		var successor_start := maxi(0, now - available)
+		var successor_start := run.effective_end_timestamp
 		var successor_error := _start_automated_successor(run, successor_start)
 		if not successor_error.is_empty():
 			_automation.stop(successor_error)

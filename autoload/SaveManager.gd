@@ -276,11 +276,13 @@ func _validate_expedition_relations(data: Dictionary, version: int = SAVE_VERSIO
 			if running:
 				if int(automation.completed_runs) >= int(automation.requested_runs):
 					return false
+				if not automation.enabled and not automation.cancelled:
+					return false
 			else:
 				if automation.enabled or int(automation.pending_offline_seconds) != 0 \
 						or int(automation.completed_runs) < 1:
 					return false
-				if automation.summaries[-1].region_name != data.expedition.region_name:
+				if not _automation_summary_matches_run(automation, data.expedition):
 					return false
 	elif automation != null:
 		return false
@@ -288,6 +290,26 @@ func _validate_expedition_relations(data: Dictionary, version: int = SAVE_VERSIO
 		if hero.status == "ON_EXPEDITION" and (not running or not participants.has(hero.hero_id)):
 			return false
 	return true
+
+
+func _automation_summary_matches_run(automation: Dictionary, run: Dictionary) -> bool:
+	var gold := 0
+	var item_count := 0
+	for step in run.steps:
+		gold += int(step.result.gold)
+		item_count += step.result.get("item_ids", []).size()
+	var outcome := "COMPLETED"
+	var terminal := int(run.terminal_step_index)
+	if terminal >= 0:
+		outcome = String(run.steps[terminal].result.outcome)
+	var summary: Dictionary = automation.summaries[-1]
+	return (
+		summary.region_name == run.region_name
+		and summary.outcome == outcome
+		and int(summary.gold) == gold
+		and int(summary.item_count) == item_count
+		and int(summary.xp_per_hero) == int(run.xp_award)
+	)
 
 
 func _validate_schema(data: Variant, version: int, keys: Array) -> bool:

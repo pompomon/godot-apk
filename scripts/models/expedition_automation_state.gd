@@ -150,6 +150,8 @@ static func valid(data: Variant) -> bool:
 		return false
 	if not data.enabled and data.stop_reason.is_empty():
 		return false
+	if int(data.duration_seconds) > HeroCatalog.MAX_SAFE_INT / int(data.requested_runs):
+		return false
 	if not ExpeditionCatalog.integer(
 			data.pending_offline_seconds, 0,
 			int(data.duration_seconds) * int(data.requested_runs)):
@@ -184,6 +186,8 @@ static func valid(data: Variant) -> bool:
 		for key in ["gold", "item_count", "xp_per_hero", "resting_hero_count"]:
 			if not ExpeditionCatalog.integer(summary[key]):
 				return false
+		if int(summary.resting_hero_count) > ids.size():
+			return false
 		for pair in [
 				[total_gold, int(summary.gold)],
 				[total_items, int(summary.item_count)],

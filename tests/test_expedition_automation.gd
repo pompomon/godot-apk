@@ -15,12 +15,17 @@ var _original_durations: Array[int] = []
 func before_each() -> void:
 	_original_pool.assign(REGION.encounter_pool)
 	_original_durations.assign(REGION.duration_options_seconds)
-	REGION.encounter_pool.assign(_original_pool.filter(
-		func(entry: EncounterEntryResource) -> bool: return entry.kind != "Combat"))
+	var safe_entry := EncounterEntryResource.new()
+	safe_entry.kind = "Loot"
+	safe_entry.content_id = ExpeditionCatalog.LOOT.loot_id
+	safe_entry.weight = 1.0
+	REGION.encounter_pool.assign([safe_entry])
 	_isolation = Isolation.new()
 	assert_true(_isolation.begin())
 	_time = 1000
 	ExpeditionManager.clock = func() -> int: return _time
+	ExpeditionManager.balancing = ExpeditionManager.DEFAULT_BALANCING.duplicate(true)
+	ExpeditionManager.balancing.recovery_hp_percent = 0
 	SaveManager.load_or_create()
 	assert_true(SaveManager.last_success, SaveManager.last_error)
 

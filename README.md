@@ -405,12 +405,15 @@ GUT addon are excluded from the Android APK.
 
 ## Procedural pixel art
 
-The initial visual pack is original, static pixel art generated offline with
+The visual pack is original, static pixel art generated offline with
 Godot's built-in CPU image facilities. No additional art dependencies, network
 services, runtime generation or save migration are required. Editable recipes,
 the palette and the versioned pixel-checksum manifest live in `tools/art/`;
-the 66 runtime PNGs live in `assets/art/`. The existing launcher branding is
-unchanged. Tools and tests remain excluded from the Android APK.
+the 91 runtime PNGs live in `assets/art/`. The bank contains the original 66
+portraits, icons and Region banners unchanged, plus six enemy-group vignettes,
+15 narrative-event vignettes, a neutral encounter fallback, and three shared
+decorations. The existing launcher branding is unchanged. Tools and tests
+remain excluded from the Android APK.
 
 After a clean import, run from the repository root:
 
@@ -421,7 +424,7 @@ godot --headless --path . -s res://tools/art/generate_art.gd -- --preview-dir=/t
 
 `--check` is read-only and verifies decoded pixels and manifest metadata against
 the recipes. Preview output goes to an explicit absolute directory outside the
-checkout, not exported assets. Inspect the native/2× contact sheets before
+checkout, not exported assets. Inspect all three native/2× contact sheets before
 approving a recipe change. Running without arguments prints help without writes.
 The Android workflow publishes these sheets on pull requests as
 `adventurers-march-art-previews-<run id>`; download that artifact for visual
@@ -451,13 +454,21 @@ changes retain appearance. Reused portraits are intentional; portraits depict
 class clothing, not currently equipped gear. Historical reports use frozen
 Hero/class IDs and only decorate revealed journal entries.
 
+Enemy and event illustrations are also explicit allowlist entries keyed by
+canonical content IDs. Frozen IDs are never converted into resource paths, and
+unknown values receive a neutral encounter fallback. Expedition Report creates
+encounter artwork only when its corresponding journal step has been revealed.
+Shared ornaments and screen theme styles remain presentation-only; they do not
+change Party, Expedition, combat, reward, or save contracts.
+
 Artwork uses lossless imports without mipmaps and nearest-neighbor sampling;
-text retains the existing fonts and labels. Native sizes are 64×64 for portraits,
-24×24 for small icons, 32×32 for items and 320×144 for banners. Aspect-preserving
-display targets integer artwork scales where space permits; `canvas_items`
-scaling can still produce fractional physical pixels on Android. Texture
-clarity, ≥48×48dp touch areas, contrast and scrolling require device inspection,
-not an inference from the 720×1280 design viewport.
+text retains the existing fonts and labels. Native sizes are 64×64 for portraits
+and encounter vignettes, 24×24 for small icons, 32×32 for items, 320×144 for
+banners, and 96×96, 320×16, and 64×64 for the three decorations.
+Aspect-preserving display targets integer artwork scales where space permits;
+`canvas_items` scaling can still produce fractional physical pixels on Android.
+Texture clarity, ≥48×48dp touch areas, contrast and scrolling require device
+inspection, not an inference from the 720×1280 design viewport.
 
 This is an initial visual slice, **not completion of Milestone 8**. Audio,
 Settings, animation, per-enemy/event illustrations, a full accessibility audit

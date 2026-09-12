@@ -138,6 +138,45 @@ asserts that all four starting Heroes have visible, nonzero Party Formation
 rows. Matching-revision checks and renewed physical-device acceptance are
 recorded separately; the historical diagnostic APK is no longer shipped.
 
+### Graphics-only expansion slice (2026-09-12)
+
+This bounded slice retains the existing 66 procedural images pixel-for-pixel and
+extends the bank to **91 PNGs**. It adds one 64×64 vignette for each of the six
+enemy groups and 15 narrative events, a neutral encounter fallback, a Home
+crest, a section divider, and a formation emblem. A third generated contact
+sheet covers the complete addition. Runtime lookup remains an explicit preload
+allowlist; frozen encounter IDs never become resource paths.
+
+The seven existing screens share expanded button, option, panel, progress, focus,
+and scrollbar styling. Status badges use distinct high-contrast colors while
+retaining both text and icons. Decorative assets are passive, nearest-filtered
+controls. Region choices are grouped as visual cards, and Expedition Report adds
+enemy/event artwork only after the matching journal step is revealed. Journal
+ordering, scroll-anchor ownership, Party drafts, gameplay results, persistence,
+and the established static-margin behavior of Company Roster and Party Formation
+are unchanged. The stale Party Formation statement that Expeditions were
+unavailable has been replaced.
+
+Local validation of code revision **`b47bc26`**:
+
+- Clean Godot 4.7.2 import and the read-only 91-asset pixel/manifest check passed.
+  Decoded hashes confirm that all 66 pre-existing images are unchanged.
+- Focused generator, catalog, presentation, Roster, Party Formation, Region,
+  Equipment, and Expedition UI suites passed during implementation.
+- Full GUT passed **439 tests / 46,707 assertions** across 41 scripts with no
+  test failures. Expected negative save-recovery and navigation cases emitted
+  their documented warnings.
+- Android debug export passed and produced a valid, nonempty
+  **28,838,773-byte APK**.
+- Three contact sheets were generated under `/tmp` but were not visually
+  inspected in this implementation task. Current-revision CI and physical-device
+  artwork, density, touch-target, contrast, scrolling, fold/unfold, and
+  background/resume acceptance remain unverified.
+
+Audio, `AudioManager`, Settings, and new gameplay/content remain explicitly
+deferred. Milestone 7 is still incomplete, so this graphics slice does not close
+any full-Milestone-8 acceptance checkbox below.
+
 ### Full presentation milestone
 
 1. Produce/source final Hero class icons, status-effect icons, item-slot

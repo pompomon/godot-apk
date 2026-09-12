@@ -184,7 +184,8 @@ func test_automated_start_preflights_frozen_gold_without_consuming_the_party() -
 
 
 func test_catchup_is_bounded_reentrant_safe_and_preserves_sequential_timestamps() -> void:
-	_start(10)
+	var first := _start(10)
+	var first_seed := first.seed
 	var reenter := func() -> void: ExpeditionManager.reveal_progress()
 	ExpeditionManager.changed.connect(reenter)
 	_observe(2000)
@@ -194,6 +195,10 @@ func test_catchup_is_bounded_reentrant_safe_and_preserves_sequential_timestamps(
 	assert_eq(int(state.pending_offline_seconds), 360)
 	assert_eq(ExpeditionManager.get_active_expedition().start_timestamp, 1240)
 	assert_eq(GameState.expedition_sequence, 5)
+	assert_eq(
+		ExpeditionManager.get_active_expedition().seed,
+		(first_seed + 4) % (HeroCatalog.MAX_SAFE_INT + 1),
+		"The active fifth run uses the fourth deterministic successor seed.")
 	_observe(1900)
 	state = ExpeditionManager.get_automation_state()
 	assert_eq(int(state.completed_runs), 8)

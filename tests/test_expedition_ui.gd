@@ -228,6 +228,12 @@ func test_automated_report_switches_to_successor_and_retains_compact_history() -
 	assert_string_contains(_node("SeriesStatusLabel").text, "Run 2")
 	assert_string_contains(_node("SeriesStatusLabel").text, "Completed all requested")
 	assert_true(_node("AcknowledgeButton").visible)
+	_node("HomeButton").pressed.emit()
+	await get_tree().process_frame
+	assert_eq(_screen().scene_file_path, HOME)
+	var terminal_status: String = _node("AutomationLabel").text
+	assert_string_contains(terminal_status, "Last completed run 2")
+	assert_false(terminal_status.contains("Current run"))
 
 
 func test_running_and_partial_report_never_disclose_unrevealed_results() -> void:

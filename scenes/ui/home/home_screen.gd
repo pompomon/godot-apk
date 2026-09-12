@@ -64,17 +64,19 @@ func _refresh() -> void:
 		not automation.is_empty() and ExpeditionManager.is_expedition_active()
 		and bool(automation.enabled))
 	if not automation.is_empty():
+		var active := ExpeditionManager.is_expedition_active()
 		var current_run := mini(
-			int(automation.completed_runs) + (1 if ExpeditionManager.is_expedition_active() else 0),
+			int(automation.completed_runs) + (1 if active else 0),
 			int(automation.requested_runs))
+		var run_label := ("Current run %d" if active else "Last completed run %d") % current_run
 		var state := "Running" if bool(automation.enabled) else (
-			"Stopping after this run" if ExpeditionManager.is_expedition_active()
+			"Stopping after this run" if active
 			else String(automation.stop_reason))
 		%AutomationLabel.text = (
-			"Automated series: %d / %d completed · Current run %d\n"
+			"Automated series: %d / %d completed · %s\n"
 			+ "%s · Total rewards: %d gold, %d items, %d XP per Hero"
 		) % [
-			int(automation.completed_runs), int(automation.requested_runs), current_run,
+			int(automation.completed_runs), int(automation.requested_runs), run_label,
 			state, int(automation.cumulative_gold), int(automation.cumulative_item_count),
 			int(automation.cumulative_xp_per_hero)]
 	%RetryProgressButton.visible = not ExpeditionManager.last_error.is_empty()

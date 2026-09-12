@@ -4,6 +4,7 @@ extends RefCounted
 const UNKNOWN_PORTRAIT = preload("res://assets/art/portraits/unknown.png")
 const UNKNOWN_ICON = preload("res://assets/art/icons/unknown.png")
 const UNKNOWN_REGION = preload("res://assets/art/backdrops/unknown.png")
+const UNKNOWN_ENCOUNTER = preload("res://assets/art/encounters/unknown.png")
 const PORTRAITS := {
 	"knight": [
 		preload("res://assets/art/portraits/knight_00.png"),
@@ -93,6 +94,36 @@ const UTILITIES := {
 	"xp": preload("res://assets/art/icons/utility_xp.png"),
 	"locked": preload("res://assets/art/icons/utility_locked.png"),
 }
+const ENEMIES := {
+	"bandit_skirmishers": preload("res://assets/art/encounters/enemy_bandit_skirmishers.png"),
+	"forest_wolves": preload("res://assets/art/encounters/enemy_forest_wolves.png"),
+	"ashen_raiders": preload("res://assets/art/encounters/enemy_ashen_raiders.png"),
+	"ashen_jackals": preload("res://assets/art/encounters/enemy_ashen_jackals.png"),
+	"frostbound_sentinels": preload("res://assets/art/encounters/enemy_frostbound_sentinels.png"),
+	"frostbound_prowlers": preload("res://assets/art/encounters/enemy_frostbound_prowlers.png"),
+}
+const EVENTS := {
+	"green_hollow_bridge": preload("res://assets/art/encounters/event_green_hollow_bridge.png"),
+	"green_hollow_spring": preload("res://assets/art/encounters/event_green_hollow_spring.png"),
+	"green_hollow_caravan": preload("res://assets/art/encounters/event_green_hollow_caravan.png"),
+	"green_hollow_fireflies": preload("res://assets/art/encounters/event_green_hollow_fireflies.png"),
+	"green_hollow_ruins": preload("res://assets/art/encounters/event_green_hollow_ruins.png"),
+	"ashen_cistern": preload("res://assets/art/encounters/event_ashen_cistern.png"),
+	"ashen_kiln": preload("res://assets/art/encounters/event_ashen_kiln.png"),
+	"ashen_obelisk": preload("res://assets/art/encounters/event_ashen_obelisk.png"),
+	"ashen_glass": preload("res://assets/art/encounters/event_ashen_glass.png"),
+	"ashen_pilgrims": preload("res://assets/art/encounters/event_ashen_pilgrims.png"),
+	"frostbound_bells": preload("res://assets/art/encounters/event_frostbound_bells.png"),
+	"frostbound_crevasse": preload("res://assets/art/encounters/event_frostbound_crevasse.png"),
+	"frostbound_shelter": preload("res://assets/art/encounters/event_frostbound_shelter.png"),
+	"frostbound_aurora": preload("res://assets/art/encounters/event_frostbound_aurora.png"),
+	"frostbound_sled": preload("res://assets/art/encounters/event_frostbound_sled.png"),
+}
+const DECORATIONS := {
+	"home_crest": preload("res://assets/art/decorations/home_crest.png"),
+	"section_divider": preload("res://assets/art/decorations/section_divider.png"),
+	"formation_emblem": preload("res://assets/art/decorations/formation_emblem.png"),
+}
 
 
 static func portrait(hero_id: String, class_id: String) -> Texture2D:
@@ -134,3 +165,15 @@ static func outcome_icon(outcome: String) -> Texture2D:
 
 static func utility_icon(kind: String) -> Texture2D:
 	return UTILITIES.get(kind, UNKNOWN_ICON)
+
+
+static func enemy(group_id: String) -> Texture2D:
+	return ENEMIES.get(group_id, UNKNOWN_ENCOUNTER)
+
+
+static func event(event_id: String) -> Texture2D:
+	return EVENTS.get(event_id, UNKNOWN_ENCOUNTER)
+
+
+static func decoration(decoration_id: String) -> Texture2D:
+	return DECORATIONS.get(decoration_id, UNKNOWN_ICON)

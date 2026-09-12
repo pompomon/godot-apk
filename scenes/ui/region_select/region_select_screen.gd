@@ -19,6 +19,7 @@ func _ready() -> void:
 	HeroUI.apply_theme(self)
 	var content := HeroUI.scrollable_content(self)
 	content.add_child(HeroUI.label("Choose an Expedition", 44))
+	HeroUI.add_section_divider(content)
 	_party = GameState.current_party
 	_region = ExpeditionCatalog.GREEN_HOLLOW
 	var summary := HeroUI.label("No confirmed Party. Return Home and form one.")
@@ -42,19 +43,24 @@ func _ready() -> void:
 	content.add_child(regions)
 	var group := ButtonGroup.new()
 	for region in ExpeditionCatalog.regions():
+		var card := PanelContainer.new()
+		card.name = "RegionCard_%s" % region.region_id
+		regions.add_child(card)
+		var card_content := VBoxContainer.new()
+		card.add_child(card_content)
 		var backdrop := HeroUI.region_banner(String(region.region_id))
 		backdrop.name = "RegionBackdrop_%s" % region.region_id
-		regions.add_child(backdrop)
+		card_content.add_child(backdrop)
 		var choice := HeroUI.button("")
 		choice.name = "RegionButton_%s" % region.region_id
 		choice.toggle_mode = true
 		choice.button_group = group
 		choice.pressed.connect(_select_region.bind(region))
-		regions.add_child(choice)
+		card_content.add_child(choice)
 		_region_buttons[region.region_id] = choice
 		var requirement := HeroUI.label("", 24)
 		requirement.name = "RegionRequirement_%s" % region.region_id
-		regions.add_child(requirement)
+		card_content.add_child(requirement)
 		_requirements[region.region_id] = requirement
 	_recommendation = HeroUI.label("", 34)
 	_recommendation.name = "RegionSummary"

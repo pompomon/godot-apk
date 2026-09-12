@@ -14,6 +14,9 @@ const BALANCING: BalancingConfig = preload("res://data/balancing/default_balanci
 
 func _ready() -> void:
 	HeroUI.apply_theme(self)
+	var content := $Margin/Scroll/Content as VBoxContainer
+	HeroUI.add_decoration(content, "home_crest", Vector2(96, 96), "HomeCrest", 0)
+	HeroUI.add_section_divider(content, 2)
 	HeroUI.decorate_label(_gold_label, HeroUI.Art.utility_icon("gold"), "GoldIcon")
 	%CompanyRosterButton.pressed.connect(_open_roster)
 	%FormationButton.pressed.connect(_open_formation)

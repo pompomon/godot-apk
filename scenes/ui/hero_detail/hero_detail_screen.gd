@@ -44,6 +44,7 @@ func _ready() -> void:
 	_status_icon = HeroUI.artwork(HeroUI.Art.UNKNOWN_ICON)
 	_status_icon.name = "StatusIcon"
 	identity.add_child(_status_icon)
+	HeroUI.add_section_divider(_hero_content, 1)
 	_weapon_icon = HeroUI.decorate_label(_weapon_label,
 		HeroUI.Art.equipment_icon(null, "Weapon"), "WeaponIcon")
 	_armor_icon = HeroUI.decorate_label(_armor_label,

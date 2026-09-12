@@ -16,6 +16,10 @@ func test_all_current_content_has_art_without_fallbacks() -> void:
 		assert_same(Art.equipment_icon(item, item.slot), Art.item_icon(String(item.item_id)))
 	for region in ExpeditionCatalog.regions():
 		assert_ne(Art.region(String(region.region_id)), Art.UNKNOWN_REGION)
+	for group in CombatCatalog.enemy_groups():
+		assert_ne(Art.enemy(String(group.group_id)), Art.UNKNOWN_ENCOUNTER)
+	for event in ExpeditionCatalog.events():
+		assert_ne(Art.event(String(event.event_id)), Art.UNKNOWN_ENCOUNTER)
 	for kind in ExpeditionStep.StepKind.values():
 		assert_ne(Art.journal_icon(kind), Art.UNKNOWN_ICON)
 	for outcome in CombatResult.OUTCOMES:
@@ -24,9 +28,11 @@ func test_all_current_content_has_art_without_fallbacks() -> void:
 		assert_ne(Art.equipment_icon(null, slot), Art.UNKNOWN_ICON)
 	for key in ["gold", "xp", "locked"]:
 		assert_ne(Art.utility_icon(key), Art.UNKNOWN_ICON)
+	for key in ["home_crest", "section_divider", "formation_emblem"]:
+		assert_ne(Art.decoration(key), Art.UNKNOWN_ICON)
 
 
-func test_catalog_contains_66_unique_imported_textures_at_native_dimensions() -> void:
+func test_catalog_contains_91_unique_imported_textures_at_native_dimensions() -> void:
 	var paths := {}
 	for bank in Art.PORTRAITS.values():
 		for texture in bank:
@@ -41,7 +47,15 @@ func test_catalog_contains_66_unique_imported_textures_at_native_dimensions() ->
 	for texture in Art.REGIONS.values():
 		_check_texture(texture, Vector2(320, 144), paths)
 	_check_texture(Art.UNKNOWN_REGION, Vector2(320, 144), paths)
-	assert_eq(paths.size(), 66)
+	for texture in Art.ENEMIES.values():
+		_check_texture(texture, Vector2(64, 64), paths)
+	for texture in Art.EVENTS.values():
+		_check_texture(texture, Vector2(64, 64), paths)
+	_check_texture(Art.UNKNOWN_ENCOUNTER, Vector2(64, 64), paths)
+	_check_texture(Art.DECORATIONS.home_crest, Vector2(96, 96), paths)
+	_check_texture(Art.DECORATIONS.section_divider, Vector2(320, 16), paths)
+	_check_texture(Art.DECORATIONS.formation_emblem, Vector2(64, 64), paths)
+	assert_eq(paths.size(), 91)
 
 
 func _check_texture(texture: Texture2D, expected: Vector2, paths: Dictionary) -> void:
@@ -73,6 +87,9 @@ func test_unknown_ids_never_become_paths_and_have_neutral_fallbacks() -> void:
 		assert_same(Art.equipment_icon(null, id), Art.UNKNOWN_ICON)
 		assert_same(Art.outcome_icon(id), Art.UNKNOWN_ICON)
 		assert_same(Art.utility_icon(id), Art.UNKNOWN_ICON)
+		assert_same(Art.enemy(id), Art.UNKNOWN_ENCOUNTER)
+		assert_same(Art.event(id), Art.UNKNOWN_ENCOUNTER)
+		assert_same(Art.decoration(id), Art.UNKNOWN_ICON)
 	assert_same(Art.portrait("", "knight"), Art.UNKNOWN_PORTRAIT)
 	assert_same(Art.status_icon(-1), Art.UNKNOWN_ICON)
 	assert_same(Art.status_icon(999), Art.UNKNOWN_ICON)

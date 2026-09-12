@@ -14,6 +14,7 @@ const TEXT_COLOR := Color("#edf0f7")
 const MUTED_COLOR := Color("#bdc7da")
 const NOTICE_COLOR := Color("#f8d58b")
 const BADGE_TEXT_COLOR := Color("#182235")
+const SCROLLBAR_THICKNESS := 48.0
 
 
 static func apply_theme(screen: Control) -> void:
@@ -30,12 +31,18 @@ static func apply_theme(screen: Control) -> void:
 	ui_theme.set_stylebox("background", "ProgressBar", _box(Color("#111a28"), 4, 10))
 	ui_theme.set_stylebox("fill", "ProgressBar", _box(Color("#4e91a8"), 4, 10))
 	for type_name in ["VScrollBar", "HScrollBar"]:
-		ui_theme.set_stylebox("scroll", type_name, _box(Color("#111a28"), 0, 8))
+		var scroll := _box(Color("#111a28"), 0, 8)
+		if type_name == "VScrollBar":
+			scroll.content_margin_left = SCROLLBAR_THICKNESS / 2.0
+			scroll.content_margin_right = SCROLLBAR_THICKNESS / 2.0
+		else:
+			scroll.content_margin_top = SCROLLBAR_THICKNESS / 2.0
+			scroll.content_margin_bottom = SCROLLBAR_THICKNESS / 2.0
+		ui_theme.set_stylebox("scroll", type_name, scroll)
 		ui_theme.set_stylebox("scroll_focus", type_name, _box(Color("#17243a"), 0, 8))
 		ui_theme.set_stylebox("grabber", type_name, _box(BORDER_COLOR, 0, 8))
 		ui_theme.set_stylebox("grabber_highlight", type_name, _box(NOTICE_COLOR, 0, 8))
 		ui_theme.set_stylebox("grabber_pressed", type_name, _box(Color("#d5a94d"), 0, 8))
-		ui_theme.set_constant("minimum_grab_thickness", type_name, 48)
 	ui_theme.set_color("font_color", "PopupMenu", TEXT_COLOR)
 	ui_theme.set_color("font_hover_color", "PopupMenu", TEXT_COLOR)
 	ui_theme.set_stylebox("panel", "PopupMenu", panel)

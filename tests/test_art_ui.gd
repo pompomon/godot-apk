@@ -228,6 +228,19 @@ func test_shared_theme_decorations_and_design_touch_targets_cover_every_screen()
 	_assert_presentation_foundation({"SectionDivider": Art.decoration("section_divider")})
 
 
+func test_shared_theme_sets_scrollbar_cross_axis_dimensions() -> void:
+	var scroll := ScrollContainer.new()
+	scroll.theme = _screen().theme
+	scroll.size = Vector2(200, 200)
+	_viewport.add_child(scroll)
+	var overflowing_content := Control.new()
+	overflowing_content.custom_minimum_size = Vector2(400, 400)
+	scroll.add_child(overflowing_content)
+	await get_tree().process_frame
+	assert_gte(scroll.get_v_scroll_bar().size.x, 48.0)
+	assert_gte(scroll.get_h_scroll_bar().size.y, 48.0)
+
+
 func test_presentation_palette_meets_text_contrast_targets_and_never_uses_color_alone() -> void:
 	assert_gte(_contrast(HeroUI.TEXT_COLOR, HeroUI.BACKGROUND_COLOR), 4.5)
 	assert_gte(_contrast(HeroUI.MUTED_COLOR, HeroUI.BACKGROUND_COLOR), 4.5)

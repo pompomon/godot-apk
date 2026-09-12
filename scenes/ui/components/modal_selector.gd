@@ -2,7 +2,15 @@ extends Control
 
 signal closed
 
+const ScreenMargin = preload("res://scenes/ui/screen_margin.gd")
+
+@export var use_safe_area_margins: bool = false
 var _return_focus: Control
+
+
+func _enter_tree() -> void:
+	if use_safe_area_margins:
+		get_node("ModalMargin").set_script(ScreenMargin)
 
 
 func _ready() -> void:
@@ -64,11 +72,36 @@ func set_feedback(message: String) -> void:
 
 
 func focus_first_option() -> void:
+	var focusable := _focusable_controls()
+	_link_focus_cycle(focusable)
 	for child in %ModalOptions.get_children():
 		if child is BaseButton and child.visible and not child.disabled:
 			call_deferred("_grab_focus_if_available", child)
 			return
 	call_deferred("_grab_focus_if_available", %ModalCloseButton)
+
+
+func _focusable_controls() -> Array[Control]:
+	var controls: Array[Control] = []
+	for child in %ModalOptions.get_children():
+		if (child is Control and child.visible and child.focus_mode != Control.FOCUS_NONE
+				and (not child is BaseButton or not child.disabled)):
+			controls.append(child)
+	controls.append(%ModalCloseButton)
+	return controls
+
+
+func _link_focus_cycle(controls: Array[Control]) -> void:
+	for index in controls.size():
+		var control := controls[index]
+		var previous := controls[posmod(index - 1, controls.size())]
+		var next := controls[(index + 1) % controls.size()]
+		control.focus_previous = control.get_path_to(previous)
+		control.focus_next = control.get_path_to(next)
+		control.focus_neighbor_top = control.get_path_to(previous)
+		control.focus_neighbor_bottom = control.get_path_to(next)
+		control.focus_neighbor_left = control.get_path_to(control)
+		control.focus_neighbor_right = control.get_path_to(control)
 
 
 func _grab_focus_if_available(target: Control) -> void:

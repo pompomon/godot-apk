@@ -463,6 +463,7 @@ func test_all_idle_heroes_render_in_static_margin_scroll_at_reported_sizes() -> 
 		expected_ids.append(hero.hero_id)
 	var margin := _screen().get_node("Margin") as MarginContainer
 	assert_null(margin.get_script())
+	assert_null((_selector().get_node("ModalMargin") as MarginContainer).get_script())
 	var scroll := _selector().find_child("ModalScroll", true, false) as ScrollContainer
 	for extent in [
 		Vector2i(720, 1280), Vector2i(720, 1600),

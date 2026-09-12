@@ -1,6 +1,7 @@
 extends GutTest
 
 const Isolation = preload("res://tests/isolated_state.gd")
+const ScreenMargin = preload("res://scenes/ui/screen_margin.gd")
 const DETAIL := "res://scenes/ui/hero_detail/hero_detail_screen.tscn"
 const EQUIPMENT := "res://scenes/ui/equipment/equipment_screen.tscn"
 const ROSTER := "res://scenes/ui/roster/roster_screen.tscn"
@@ -195,3 +196,33 @@ func test_item_picker_filters_slots_and_blocks_the_screen_until_closed() -> void
 	assert_string_contains(_node("ModalTitle").text, "armor")
 	assert_null(_node("Item_short_sword"))
 	assert_not_null(_node("Item_leather_armor"))
+
+
+func test_item_picker_traps_focus_and_restores_the_slot_button() -> void:
+	await _go(EQUIPMENT)
+	var slot_button := _node("WeaponButton") as Button
+	slot_button.grab_focus()
+	_open_items()
+	await get_tree().process_frame
+	var first_option := _node("UnequipButton") as Button
+	var close_button := _node("ModalCloseButton") as Button
+	assert_same(get_viewport().gui_get_focus_owner(), first_option)
+	for action in [&"ui_focus_prev", &"ui_focus_next", &"ui_focus_next", &"ui_focus_prev"]:
+		var event := InputEventAction.new()
+		event.action = action
+		event.pressed = true
+		get_viewport().push_input(event, true)
+		await get_tree().process_frame
+		var focused := get_viewport().gui_get_focus_owner()
+		assert_true(focused == first_option or focused == close_button
+			or _options().is_ancestor_of(focused))
+	_node("ModalCloseButton").pressed.emit()
+	await get_tree().process_frame
+	assert_same(get_viewport().gui_get_focus_owner(), slot_button)
+
+
+func test_equipment_picker_uses_shared_safe_area_margins() -> void:
+	await _go(EQUIPMENT)
+	_open_items()
+	var margin := _selector().get_node("ModalMargin") as MarginContainer
+	assert_same(margin.get_script(), ScreenMargin)

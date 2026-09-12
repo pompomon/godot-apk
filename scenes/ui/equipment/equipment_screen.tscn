@@ -13,3 +13,4 @@ grow_vertical = 2
 script = ExtResource("1")
 
 [node name="EquipmentSelector" parent="." instance=ExtResource("2_selector")]
+use_safe_area_margins = true

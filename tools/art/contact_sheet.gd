@@ -79,26 +79,34 @@ static func variants(images: Dictionary) -> Image:
 
 
 static func encounters(images: Dictionary) -> Image:
-	var c := CANVAS.new(1024, 840, "navy")
+	var c := CANVAS.new(1024, 1152, "navy")
 	_text(c, 16, 14, "ENCOUNTERS AND DECORATIONS - NATIVE AND 2X", 2)
 	_text(c, 16, 38, "ENEMY GROUPS", 2)
 	for index in RECIPES.ENEMIES.size():
 		var subject: String = RECIPES.ENEMIES[index]
-		var x := 8 + index * 168
-		_tile(c, images["encounter.enemy_%s.00" % subject], x, 58, 2)
-		_text(c, x, 190, subject.replace("_", " ").to_upper(), 1)
-	_text(c, 16, 216, "NARRATIVE EVENTS", 2)
+		var x := 8 + (index % 3) * 336
+		var y := 58 + (index / 3) * 158
+		_tile(c, images["encounter.enemy_%s.00" % subject], x, y, 1)
+		_tile(c, images["encounter.enemy_%s.00" % subject], x + 72, y, 2)
+		_text(c, x, y + 132, subject.replace("_", " ").to_upper(), 1)
+	_text(c, 16, 374, "NARRATIVE EVENTS", 2)
 	for index in RECIPES.EVENTS.size():
 		var subject: String = RECIPES.EVENTS[index]
 		var x := 8 + (index % 5) * 202
-		var y := 238 + (index / 5) * 154
-		_tile(c, images["encounter.event_%s.00" % subject], x, y, 2)
+		var y := 398 + (index / 5) * 154
+		_tile(c, images["encounter.event_%s.00" % subject], x, y, 1)
+		_tile(c, images["encounter.event_%s.00" % subject], x + 72, y, 2)
 		_text(c, x, y + 132, subject.replace("_", " ").to_upper(), 1)
-	_text(c, 16, 704, "SHARED ORNAMENTS AND FALLBACK", 2)
-	_tile(c, images["encounter.unknown.00"], 16, 730, 1)
-	_tile(c, images["decoration.home_crest.00"], 104, 730, 1)
-	_tile(c, images["decoration.formation_emblem.00"], 224, 730, 1)
-	_tile(c, images["decoration.section_divider.00"], 320, 760, 1)
+	_text(c, 16, 866, "SHARED ORNAMENTS AND FALLBACK", 2)
+	_tile(c, images["encounter.unknown.00"], 16, 892, 1)
+	_tile(c, images["encounter.unknown.00"], 88, 892, 2)
+	_tile(c, images["decoration.home_crest.00"], 240, 892, 1)
+	_tile(c, images["decoration.home_crest.00"], 344, 892, 2)
+	_tile(c, images["decoration.formation_emblem.00"], 592, 892, 1)
+	_tile(c, images["decoration.formation_emblem.00"], 664, 892, 2)
+	_text(c, 16, 1048, "SECTION DIVIDER", 1)
+	_tile(c, images["decoration.section_divider.00"], 16, 1066, 1)
+	_tile(c, images["decoration.section_divider.00"], 16, 1090, 2)
 	return c.image
 
 

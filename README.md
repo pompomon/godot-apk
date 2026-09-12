@@ -471,8 +471,8 @@ Texture clarity, ≥48×48dp touch areas, contrast and scrolling require device
 inspection, not an inference from the 720×1280 design viewport.
 
 This is an initial visual slice, **not completion of Milestone 8**. Audio,
-Settings, animation, per-enemy/event illustrations, a full accessibility audit
-and physical-device visual acceptance remain separate work. No balancing or
+Settings, animation, a full accessibility audit and physical-device visual
+acceptance remain separate work. No balancing or
 Milestone 7 acceptance criteria are changed.
 
 ## Build the Android APK

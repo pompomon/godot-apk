@@ -132,7 +132,7 @@ func test_contact_sheets_are_deterministic_and_contain_nearest_scaled_art() -> v
 	var encounters := Contact.encounters(images)
 	assert_eq(representative.get_size(), Vector2i(1024, 1568))
 	assert_eq(variants.get_size(), Vector2i(1168, 672))
-	assert_eq(encounters.get_size(), Vector2i(1024, 840))
+	assert_eq(encounters.get_size(), Vector2i(1024, 1152))
 	assert_eq(Bank.pixel_sha256(representative), Bank.pixel_sha256(Contact.representative(images)))
 	assert_eq(Bank.pixel_sha256(variants), Bank.pixel_sha256(Contact.variants(images)))
 	assert_eq(Bank.pixel_sha256(encounters), Bank.pixel_sha256(Contact.encounters(images)))
@@ -150,7 +150,8 @@ func test_contact_sheets_are_deterministic_and_contain_nearest_scaled_art() -> v
 			var expected := enemy.get_pixel(x, y)
 			if expected.a8 == 0:
 				expected = Palette.color("ink")
-			assert_eq(encounters.get_pixel(8 + x * 2, 58 + y * 2), expected)
+			assert_eq(encounters.get_pixel(8 + x, 58 + y), expected)
+			assert_eq(encounters.get_pixel(80 + x * 2, 58 + y * 2), expected)
 
 
 func test_canvas_clips_shapes_and_preserves_nearest_pixels() -> void:

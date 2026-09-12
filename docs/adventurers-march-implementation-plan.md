@@ -499,6 +499,30 @@ reproducible for testing and support/debugging. The approach:
    concerns, at the cost of not supporting player interrupts mid-Expedition
    for MVP (a documented non-goal).
 
+### Finite automated series
+
+After confirming a Party, the player may dispatch one manual Expedition or
+request a finite series of 2–10 runs. A series stores its Region, duration,
+slot-aligned stable Hero IDs, requested/completed counts, cumulative rewards,
+compact per-run summaries, cancellation/stop state, and any bounded offline
+seconds not processed in the current observation. `ExpeditionManager` owns this
+state beside the latest full Expedition record.
+
+Successors are strictly sequential. Each completed run commits its rewards,
+progression, Hero status, summary, next seed, and replacement frozen Expedition
+in one transaction. The next run starts at the previous run's effective end,
+uses the same canonical Heroes and formation, and snapshots their newly
+committed levels and statistics. Automation stops after the requested count,
+after a stop-after-current request, when a Hero needs rest, or before a content,
+inventory, gold, timestamp, progression, or save-size constraint would fail.
+
+Offline time is clamped once per observation and consumed in order. At most four
+runs complete in one observation; leftover clamped time is saved and resumed in
+later observations. This processing bound must not change successor timestamps,
+reroll outcomes, duplicate rewards, or expose a completed result before its save
+commits. Only the latest full journal is retained; older completed runs remain
+available as validated compact summaries.
+
 ## 9. Auto-combat simulation design
 
 Combat is resolved as a deterministic, round-based simulation (not

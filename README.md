@@ -117,6 +117,13 @@ godot --path .
   entire journal using a saved seed. Time reveals those stored results; it
   never rerolls them. Later changes to content or roster values do not alter
   an existing journal.
+- Region Select can dispatch one manual Expedition or a finite automated series
+  of 2–10 sequential Expeditions. Automation reuses the selected Region,
+  duration, Heroes, and formation, but each successor gets a new seed and a
+  fresh snapshot after committed XP/level changes. It stops after the requested
+  count, after the player requests **Stop after current Expedition**, when a
+  participating Hero needs rest, or before inventory, gold, timestamp, or save
+  limits would be exceeded.
 - Home displays progress and provides access to the Report. Only revealed
   entries and their earned gold are visible. The Report lists the newest
   committed step first, retaining original step numbers. New entries appear
@@ -132,7 +139,10 @@ godot --path .
 - Closing the app does not require background execution. On return, the
   game credits elapsed UTC time since its previous saved observation.
   Backward clock changes credit zero; a single forward observation credits
-  at most the configured **24 hours**, capped at the Expedition duration.
+  at most the configured **24 hours**. For automation, that elapsed time is
+  distributed in order across consecutive runs. One observation completes at
+  most four runs; any remaining clamped time is persisted and resumed without
+  rerolling or double-crediting.
   This is an offline clock policy, not protection against repeated clock
   manipulation.
 - Each observation persists clock accounting together with any newly
@@ -148,6 +158,8 @@ godot --path .
   on load; later positive awards use the current threshold curve.
 - A completed report remains available across restarts until explicitly
   acknowledged. Acknowledgment does **not** award gold, items or XP again.
+  Automated series retain compact summaries and cumulative rewards for every
+  completed run while keeping the latest run's full journal.
   Forming a new Party is allowed after completion, but the previous report must be
   acknowledged before dispatching another Expedition. Back leaves a report
   available rather than silently dismissing it.
@@ -159,14 +171,15 @@ godot --path .
   refreshes only after commit. Legacy Wounded Heroes without a deadline remain
   unchanged. Recovery duration and the heavy-damage percentage are frozen at
   dispatch; subsequent content changes do not alter a pending run's policy.
-- Version-6 saves preserve inventory copies, equipped item IDs, pending Parties
-  and active/completed Expeditions,
+- Version-7 saves preserve inventory copies, equipped item IDs, pending Parties,
+  active/completed Expeditions, and optional automated-series state,
   including frozen combat payloads, planned step counts, terminal rules, and
-  Hero recovery deadlines and frozen progression rewards. Versions 1–5 migrate
-  without regenerating Heroes,
+  Hero recovery deadlines, frozen progression rewards, pending offline time,
+  cumulative rewards, and compact summaries. Versions 1–6 migrate without
+  regenerating Heroes,
   recruitment offers, or historical journals. Combat dispatch, finalization,
   recovery observation, equipment and presentation share the existing transaction
-  boundary.
+  boundary; migrated saves start with no automated series.
   Old Expeditions gain no retroactive XP or items. Existing positive Wounded
   deadlines migrate to Resting without restarting their timer; legacy
   Wounded/Resting states with no deadline remain unchanged.
@@ -317,10 +330,11 @@ GUT addon are excluded from the Android APK.
   Green Hollow resolves authored encounters at dispatch. `CombatResult` validates
   saved logs by applying recorded HP changes, without rerunning simulation or
   reading current combat tuning.
-- `ExpeditionManager` is the sole owner of the active or completed Expedition.
-  `SaveManager` serializes/restores it alongside `GameState`; no second copy
-  belongs on `GameState`. Expedition seed advancement is independent of
-  recruitment and is committed with dispatch.
+- `ExpeditionManager` is the sole owner of the active or completed Expedition
+  and optional automated-series state. `SaveManager` serializes/restores them
+  alongside `GameState`; no second copy belongs on `GameState`. Expedition seed
+  advancement is independent of recruitment and is committed with dispatch or
+  each automated successor.
 - `ExpeditionGenerator` is pure: it selects all encounters with replacement
   before resolving their outcomes using the same seeded RNG stream.
   Step duration is computed from the complete candidate count and persisted,

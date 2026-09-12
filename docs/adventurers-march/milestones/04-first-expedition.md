@@ -212,10 +212,12 @@ var status: Status
 
 # ExpeditionManager (autoload)
 func start_expedition(region: RegionResource, party: PartyData,
-        duration_seconds: int) -> void
+        duration_seconds: int, run_count: int = 1) -> void
 func reveal_progress() -> void
 func is_expedition_active() -> bool
 func get_active_expedition() -> ExpeditionData
+func get_automation_state() -> Dictionary
+func stop_automation_after_current() -> void
 func acknowledge_report(expected: ExpeditionData) -> void
 ```
 
@@ -229,6 +231,16 @@ Start/acknowledgment callers check the manager's `last_committed` and
 `last_error`; a queued navigation is not proof that a transaction succeeded.
 Acknowledgment requires the current report identity, so a stale screen cannot
 clear a replacement record.
+
+The optional `ExpeditionAutomationState` describes a finite series of 2–10
+sequential runs. It stores the selected Region/duration, slot-aligned stable Hero
+IDs, requested/completed counts, cancellation and stop state, pending bounded
+offline time, cumulative rewards, and compact summaries. The manager retains
+only the latest run's full journal. Successors start at the prior run's effective
+end, use a new committed Expedition seed, and snapshot the same canonical Heroes
+after progression. A series stops after the requested count, after
+stop-after-current, when a Hero needs rest, or before a configured content,
+reward, timestamp, progression, or save-size limit would be exceeded.
 
 The snapshot's fractional `Evasion` and `CritChance` values are encoded on disk
 as validated 16-character float64 hexadecimal strings; runtime readers receive
@@ -277,6 +289,13 @@ malformed encodings, nonfinite values, and probabilities outside `[0, 1]`.
   failed-save retry, Back without acknowledgment, and lifecycle progress while
   another screen is open. Include same-frame cancellation followed by an outgoing
   Start/Acknowledge callback and a failed dispatch retried on the same screen.
+- Automation tests: finite configuration validation, manual one-run compatibility,
+  deterministic successor seeds/timestamps, four-completion catch-up batches,
+  pending-time reload, stop-after-current, safety stops, compact-summary
+  validation, v6→v7 migration, and every save fault boundary.
+- Automation UI tests: run-count selection, transactional stop retry, Home status,
+  Report replacement by a successor, compact history, terminal reason, and
+  acknowledgment.
 - Manual test: full offline-progress check described in Task 11.
 
 ## Acceptance criteria

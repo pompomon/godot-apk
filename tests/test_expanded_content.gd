@@ -36,7 +36,7 @@ func _full_snapshot(run: ExpeditionData, party: PartyData) -> Dictionary:
 		"roster_capacity": 20, "next_hero_id": 24,
 		"recruitment_seed": 21, "recruitment_sequence": 0, "offer_seeds": [21, 22, 23],
 		"current_party": null, "expedition_seed": 1, "expedition_sequence": 1,
-		"expedition": run.serialize(),
+		"expedition": run.serialize(), "expedition_automation": null,
 	}
 
 

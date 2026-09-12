@@ -81,7 +81,7 @@ func _start() -> ExpeditionData:
 func test_new_company_starts_with_green_hollow_and_saved_capacity() -> void:
 	assert_eq(GameState.unlocked_regions, [&"green_hollow"])
 	assert_eq(GameState.roster_capacity, 12)
-	assert_eq(SaveManager.capture_state().save_version, 6)
+	assert_eq(SaveManager.capture_state().save_version, SaveManager.SAVE_VERSION)
 	var saved := SaveManager.capture_state()
 	ExpeditionManager.reveal_progress()
 	assert_eq(SaveManager.capture_state(), saved)
@@ -293,11 +293,13 @@ func test_v5_active_and_completed_saves_preserve_frozen_combat_rewards_equipment
 		ExpeditionManager.reveal_progress()
 		var legacy := SaveManager.capture_state()
 		legacy.save_version = 5
+		legacy.erase("expedition_automation")
 		legacy.roster_capacity = 12
 		legacy.unlocked_regions = ["green_hollow", "reserved-before-m7", "ashen_reach"]
 		var untouched := legacy.duplicate(true)
 		var expected := legacy.duplicate(true)
-		expected.save_version = 6
+		expected.save_version = SaveManager.SAVE_VERSION
+		expected.expedition_automation = null
 		expected.unlocked_regions = ["green_hollow", "ashen_reach"]
 		var migrated := SaveManager.migrate(legacy)
 		assert_eq(migrated, expected)
@@ -327,6 +329,7 @@ func test_v5_keeps_its_exact_expedition_schema_instead_of_using_v4_validation() 
 	_start()
 	var original := SaveManager.capture_state()
 	original.save_version = 5
+	original.erase("expedition_automation")
 	assert_false(SaveManager.migrate(original).is_empty())
 	for key in ["xp_award", "recovery_seconds", "rest_hp_percent"]:
 		var missing := original.duplicate(true)
@@ -345,6 +348,7 @@ func test_legacy_versions_validate_original_capacity_and_ids_before_normalizatio
 	for version in [1, 2, 3, 4, 5]:
 		var legacy := SaveManager.capture_state()
 		legacy.save_version = version
+		legacy.erase("expedition_automation")
 		legacy.unlocked_regions = ["reserved", "green_hollow", "ashen_reach", "res://old/region.tres"]
 		if version < 4:
 			for hero in legacy.roster + legacy.recruitment_offers:
@@ -403,6 +407,7 @@ func test_every_shipped_trait_id_round_trips_as_the_registered_resource() -> voi
 func test_recovered_legacy_backup_is_not_overwritten_by_its_unlock_observation() -> void:
 	var legacy := SaveManager.capture_state()
 	legacy.save_version = 5
+	legacy.erase("expedition_automation")
 	legacy.gold = 400
 	legacy.unlocked_regions = ["reserved-before-m7"]
 	_write(legacy, ".bak")
@@ -416,5 +421,5 @@ func test_recovered_legacy_backup_is_not_overwritten_by_its_unlock_observation()
 	assert_string_contains(SaveManager.last_warning, "Recovered")
 	assert_eq(FileAccess.get_file_as_string(SaveManager.get_save_path() + ".bak"), backup)
 	var saved: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(SaveManager.get_save_path()))
-	assert_eq(int(saved.save_version), 6)
+	assert_eq(int(saved.save_version), SaveManager.SAVE_VERSION)
 	assert_eq(int(saved.gold), 400)

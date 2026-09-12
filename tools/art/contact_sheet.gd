@@ -78,6 +78,30 @@ static func variants(images: Dictionary) -> Image:
 	return c.image
 
 
+static func encounters(images: Dictionary) -> Image:
+	var c := CANVAS.new(1024, 840, "navy")
+	_text(c, 16, 14, "ENCOUNTERS AND DECORATIONS - NATIVE AND 2X", 2)
+	_text(c, 16, 38, "ENEMY GROUPS", 2)
+	for index in RECIPES.ENEMIES.size():
+		var subject: String = RECIPES.ENEMIES[index]
+		var x := 8 + index * 168
+		_tile(c, images["encounter.enemy_%s.00" % subject], x, 58, 2)
+		_text(c, x, 190, subject.replace("_", " ").to_upper(), 1)
+	_text(c, 16, 216, "NARRATIVE EVENTS", 2)
+	for index in RECIPES.EVENTS.size():
+		var subject: String = RECIPES.EVENTS[index]
+		var x := 8 + (index % 5) * 202
+		var y := 238 + (index / 5) * 154
+		_tile(c, images["encounter.event_%s.00" % subject], x, y, 2)
+		_text(c, x, y + 132, subject.replace("_", " ").to_upper(), 1)
+	_text(c, 16, 704, "SHARED ORNAMENTS AND FALLBACK", 2)
+	_tile(c, images["encounter.unknown.00"], 16, 730, 1)
+	_tile(c, images["decoration.home_crest.00"], 104, 730, 1)
+	_tile(c, images["decoration.formation_emblem.00"], 224, 730, 1)
+	_tile(c, images["decoration.section_divider.00"], 320, 760, 1)
+	return c.image
+
+
 static func _tile(c: RefCounted, image: Image, x: int, y: int, scale: int) -> void:
 	var displayed := image.duplicate() as Image
 	if scale > 1:

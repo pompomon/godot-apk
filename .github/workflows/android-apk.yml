@@ -99,6 +99,7 @@ jobs:
           godot --headless --path . -s res://tools/art/generate_art.gd -- "--preview-dir=$RUNNER_TEMP/art-previews" 2>&1 | tee "$RUNNER_TEMP/art-validation/art-preview.log"
           test -s "$RUNNER_TEMP/art-previews/representative.png"
           test -s "$RUNNER_TEMP/art-previews/portrait_variants.png"
+          test -s "$RUNNER_TEMP/art-previews/encounters_and_decorations.png"
 
       - name: Upload art review previews
         if: ${{ github.event_name == 'pull_request' }}

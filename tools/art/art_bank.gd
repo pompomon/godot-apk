@@ -6,6 +6,8 @@ const PALETTE := preload("res://tools/art/art_palette.gd")
 const PORTRAITS := preload("res://tools/art/portrait_painter.gd")
 const ICONS := preload("res://tools/art/icon_painter.gd")
 const BACKDROPS := preload("res://tools/art/backdrop_painter.gd")
+const ENCOUNTERS := preload("res://tools/art/encounter_painter.gd")
+const DECORATIONS := preload("res://tools/art/decoration_painter.gd")
 const CONTACT := preload("res://tools/art/contact_sheet.gd")
 const MANIFEST_PATH := "res://tools/art/manifest.json"
 
@@ -17,6 +19,8 @@ static func render(recipe: Dictionary) -> Image:
 		"portrait": return PORTRAITS.paint(recipe)
 		"icon": return ICONS.paint(recipe)
 		"backdrop": return BACKDROPS.paint(recipe)
+		"encounter": return ENCOUNTERS.paint(recipe)
+		"decoration": return DECORATIONS.paint(recipe)
 	return null
 
 
@@ -145,7 +149,10 @@ static func preview(directory: String) -> String:
 	error = _save_png(CONTACT.representative(images), directory.path_join("representative.png"))
 	if not error.is_empty():
 		return error
-	return _save_png(CONTACT.variants(images), directory.path_join("portrait_variants.png"))
+	error = _save_png(CONTACT.variants(images), directory.path_join("portrait_variants.png"))
+	if not error.is_empty():
+		return error
+	return _save_png(CONTACT.encounters(images), directory.path_join("encounters_and_decorations.png"))
 
 
 static func _reject_links(path: String) -> String:

@@ -2,7 +2,7 @@ extends RefCounted
 ## Canonical authoring inputs. IDs, seeds and variant ordering are release-stable.
 
 const PALETTE := preload("res://tools/art/art_palette.gd")
-const VERSION := "busts-and-waypoints-1"
+const VERSION := "busts-waypoints-and-tales-2"
 const CLASSES := ["knight", "ranger", "wizard", "cleric"]
 const PORTRAIT_SEEDS := {
 	"knight": 1100, "ranger": 1200, "wizard": 1300, "cleric": 1400,
@@ -30,6 +30,32 @@ const ICON_SEEDS := {
 const REGIONS := ["green_hollow", "ashen_reach", "frostbound_pass", "unknown"]
 const BACKDROP_SEEDS := {
 	"green_hollow": 3100, "ashen_reach": 3101, "frostbound_pass": 3102, "unknown": 3103,
+}
+const ENEMIES := [
+	"bandit_skirmishers", "forest_wolves", "ashen_raiders", "ashen_jackals",
+	"frostbound_sentinels", "frostbound_prowlers",
+]
+const EVENTS := [
+	"green_hollow_bridge", "green_hollow_spring", "green_hollow_caravan",
+	"green_hollow_fireflies", "green_hollow_ruins", "ashen_cistern", "ashen_kiln",
+	"ashen_obelisk", "ashen_glass", "ashen_pilgrims", "frostbound_bells",
+	"frostbound_crevasse", "frostbound_shelter", "frostbound_aurora", "frostbound_sled",
+]
+const ENCOUNTER_SEEDS := {
+	"enemy_bandit_skirmishers": 4100, "enemy_forest_wolves": 4101,
+	"enemy_ashen_raiders": 4102, "enemy_ashen_jackals": 4103,
+	"enemy_frostbound_sentinels": 4104, "enemy_frostbound_prowlers": 4105,
+	"event_green_hollow_bridge": 4200, "event_green_hollow_spring": 4201,
+	"event_green_hollow_caravan": 4202, "event_green_hollow_fireflies": 4203,
+	"event_green_hollow_ruins": 4204, "event_ashen_cistern": 4205,
+	"event_ashen_kiln": 4206, "event_ashen_obelisk": 4207,
+	"event_ashen_glass": 4208, "event_ashen_pilgrims": 4209,
+	"event_frostbound_bells": 4210, "event_frostbound_crevasse": 4211,
+	"event_frostbound_shelter": 4212, "event_frostbound_aurora": 4213,
+	"event_frostbound_sled": 4214, "unknown": 4900,
+}
+const DECORATION_SEEDS := {
+	"home_crest": 5100, "section_divider": 5101, "formation_emblem": 5102,
 }
 const FACES := [
 	{"skin": 0, "hair": 0, "cut": "short", "beard": false, "wide": false},
@@ -67,6 +93,22 @@ static func all() -> Array:
 	for region: String in REGIONS:
 		result.append(_recipe("backdrop", region, 0, BACKDROP_SEEDS[region],
 			320, 144, false, "backdrops/%s.png" % region))
+	for enemy: String in ENEMIES:
+		var subject := "enemy_" + enemy
+		result.append(_recipe("encounter", subject, 0, ENCOUNTER_SEEDS[subject],
+			64, 64, true, "encounters/%s.png" % subject))
+	for event: String in EVENTS:
+		var subject := "event_" + event
+		result.append(_recipe("encounter", subject, 0, ENCOUNTER_SEEDS[subject],
+			64, 64, true, "encounters/%s.png" % subject))
+	result.append(_recipe("encounter", "unknown", 0, ENCOUNTER_SEEDS.unknown,
+		64, 64, true, "encounters/unknown.png"))
+	result.append(_recipe("decoration", "home_crest", 0, DECORATION_SEEDS.home_crest,
+		96, 96, true, "decorations/home_crest.png"))
+	result.append(_recipe("decoration", "section_divider", 0, DECORATION_SEEDS.section_divider,
+		320, 16, true, "decorations/section_divider.png"))
+	result.append(_recipe("decoration", "formation_emblem", 0, DECORATION_SEEDS.formation_emblem,
+		64, 64, true, "decorations/formation_emblem.png"))
 	return result
 
 

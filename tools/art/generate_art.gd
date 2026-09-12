@@ -6,9 +6,9 @@ const BANK := preload("res://tools/art/art_bank.gd")
 const HELP := """Offline pixel-art authoring (CPU Image; no player-save access).
 Choose exactly one mode after --:
   --check                     Compare committed decoded PNG pixels and manifest (read only).
-  --write                     Regenerate the 66 pinned PNGs and tools/art/manifest.json.
-  --preview-dir=/absolute/path Write representative.png and portrait_variants.png outside
-                              the checkout; never writes the runtime asset bank.
+  --write                     Regenerate the 91 pinned PNGs and tools/art/manifest.json.
+  --preview-dir=/absolute/path Write all three review sheets outside the checkout;
+                              never writes the runtime asset bank.
 No arguments or --help prints this message without changing files."""
 
 

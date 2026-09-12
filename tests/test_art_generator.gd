@@ -121,6 +121,22 @@ func test_output_paths_are_explicit_and_cannot_escape_the_bank() -> void:
 		ProjectSettings.globalize_path("res://"),
 		ProjectSettings.globalize_path("res://assets/art")]:
 		assert_ne(Bank.validate_preview_directory(path), "", path)
+	var temporary := DirAccess.create_temp("godot-apk-art-output")
+	assert_not_null(temporary)
+	var directory := temporary.get_current_dir()
+	var target := directory.path_join("target.png")
+	var file := FileAccess.open(target, FileAccess.WRITE)
+	assert_not_null(file)
+	file.store_string("unchanged")
+	file.close()
+	var preview := directory.path_join("previews")
+	assert_eq(DirAccess.make_dir_absolute(preview), OK)
+	var output := preview.path_join("encounters_and_decorations.png")
+	assert_eq(temporary.create_link(target, output), OK)
+	assert_ne(Bank.validate_preview_directory(preview), "")
+	assert_eq(DirAccess.remove_absolute(output), OK)
+	assert_eq(DirAccess.remove_absolute(preview), OK)
+	assert_eq(DirAccess.remove_absolute(target), OK)
 
 
 func test_contact_sheets_are_deterministic_and_contain_nearest_scaled_art() -> void:
@@ -132,7 +148,7 @@ func test_contact_sheets_are_deterministic_and_contain_nearest_scaled_art() -> v
 	var encounters := Contact.encounters(images)
 	assert_eq(representative.get_size(), Vector2i(1024, 1568))
 	assert_eq(variants.get_size(), Vector2i(1168, 672))
-	assert_eq(encounters.get_size(), Vector2i(1024, 1152))
+	assert_eq(encounters.get_size(), Contact.ENCOUNTER_SHEET_SIZE)
 	assert_eq(Bank.pixel_sha256(representative), Bank.pixel_sha256(Contact.representative(images)))
 	assert_eq(Bank.pixel_sha256(variants), Bank.pixel_sha256(Contact.variants(images)))
 	assert_eq(Bank.pixel_sha256(encounters), Bank.pixel_sha256(Contact.encounters(images)))
@@ -152,6 +168,14 @@ func test_contact_sheets_are_deterministic_and_contain_nearest_scaled_art() -> v
 				expected = Palette.color("ink")
 			assert_eq(encounters.get_pixel(8 + x, 58 + y), expected)
 			assert_eq(encounters.get_pixel(80 + x * 2, 58 + y * 2), expected)
+	var ornament_rects: Array[Rect2i] = []
+	for tile: Dictionary in Contact.ORNAMENT_TILES:
+		var image: Image = images[tile.id]
+		var rect := Rect2i(tile.position, image.get_size() * int(tile.scale))
+		assert_eq(rect.intersection(Rect2i(Vector2i.ZERO, Contact.ENCOUNTER_SHEET_SIZE)), rect)
+		for other in ornament_rects:
+			assert_false(rect.intersects(other), "%s overlaps %s" % [rect, other])
+		ornament_rects.append(rect)
 
 
 func test_canvas_clips_shapes_and_preserves_nearest_pixels() -> void:

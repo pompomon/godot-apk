@@ -4,6 +4,17 @@ extends RefCounted
 const CANVAS := preload("res://tools/art/pixel_canvas.gd")
 const RECIPES := preload("res://tools/art/art_recipes.gd")
 const PALETTE := preload("res://tools/art/art_palette.gd")
+const ENCOUNTER_SHEET_SIZE := Vector2i(1024, 1496)
+const ORNAMENT_TILES := [
+	{"id": "encounter.unknown.00", "position": Vector2i(16, 892), "scale": 1},
+	{"id": "encounter.unknown.00", "position": Vector2i(88, 892), "scale": 2},
+	{"id": "decoration.home_crest.00", "position": Vector2i(16, 1048), "scale": 1},
+	{"id": "decoration.home_crest.00", "position": Vector2i(120, 1048), "scale": 2},
+	{"id": "decoration.formation_emblem.00", "position": Vector2i(16, 1264), "scale": 1},
+	{"id": "decoration.formation_emblem.00", "position": Vector2i(88, 1264), "scale": 2},
+	{"id": "decoration.section_divider.00", "position": Vector2i(16, 1416), "scale": 1},
+	{"id": "decoration.section_divider.00", "position": Vector2i(16, 1440), "scale": 2},
+]
 const GLYPHS := {
 	"A": "010101111101101", "B": "110101110101110", "C": "011100100100011",
 	"D": "110101101101110", "E": "111100110100111", "F": "111100110100100",
@@ -79,7 +90,7 @@ static func variants(images: Dictionary) -> Image:
 
 
 static func encounters(images: Dictionary) -> Image:
-	var c := CANVAS.new(1024, 1152, "navy")
+	var c := CANVAS.new(ENCOUNTER_SHEET_SIZE.x, ENCOUNTER_SHEET_SIZE.y, "navy")
 	_text(c, 16, 14, "ENCOUNTERS AND DECORATIONS - NATIVE AND 2X", 2)
 	_text(c, 16, 38, "ENEMY GROUPS", 2)
 	for index in RECIPES.ENEMIES.size():
@@ -98,15 +109,9 @@ static func encounters(images: Dictionary) -> Image:
 		_tile(c, images["encounter.event_%s.00" % subject], x + 72, y, 2)
 		_text(c, x, y + 132, subject.replace("_", " ").to_upper(), 1)
 	_text(c, 16, 866, "SHARED ORNAMENTS AND FALLBACK", 2)
-	_tile(c, images["encounter.unknown.00"], 16, 892, 1)
-	_tile(c, images["encounter.unknown.00"], 88, 892, 2)
-	_tile(c, images["decoration.home_crest.00"], 240, 892, 1)
-	_tile(c, images["decoration.home_crest.00"], 344, 892, 2)
-	_tile(c, images["decoration.formation_emblem.00"], 592, 892, 1)
-	_tile(c, images["decoration.formation_emblem.00"], 664, 892, 2)
-	_text(c, 16, 1048, "SECTION DIVIDER", 1)
-	_tile(c, images["decoration.section_divider.00"], 16, 1066, 1)
-	_tile(c, images["decoration.section_divider.00"], 16, 1090, 2)
+	for tile: Dictionary in ORNAMENT_TILES:
+		var position: Vector2i = tile.position
+		_tile(c, images[tile.id], position.x, position.y, tile.scale)
 	return c.image
 
 

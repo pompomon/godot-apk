@@ -132,7 +132,7 @@ static func validate_preview_directory(directory: String) -> String:
 	var error := _reject_links(path)
 	if not error.is_empty():
 		return error
-	for filename in ["representative.png", "portrait_variants.png"]:
+	for filename in ["representative.png", "portrait_variants.png", "encounters_and_decorations.png"]:
 		error = _reject_links(path.path_join(filename))
 		if not error.is_empty():
 			return error

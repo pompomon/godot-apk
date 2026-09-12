@@ -182,6 +182,77 @@ func test_report_portraits_use_frozen_identity_not_live_roster_or_unrevealed_out
 	assert_same(_node("DispatchedPartyArt").get_child(0).texture, expected)
 
 
+func test_report_only_adds_matching_encounter_art_after_each_step_is_revealed() -> void:
+	_dispatch()
+	var report := ExpeditionManager.get_active_expedition()
+	var frozen := report.serialize()
+	await _go(REPORT)
+	assert_null(_node("EncounterArt"))
+	for cursor in report.steps.size():
+		_time = report.start_timestamp + (cursor + 1) * report.step_duration_seconds
+		ExpeditionManager.observe_foreground()
+		var row := _node("Step%d" % cursor)
+		assert_not_null(row)
+		var art := row.find_child("EncounterArt", true, false) as TextureRect
+		var step: ExpeditionStep = report.steps[cursor]
+		match step.kind:
+			ExpeditionStep.StepKind.COMBAT:
+				assert_not_null(art)
+				assert_same(art.texture, Art.enemy(step.content_id))
+			ExpeditionStep.StepKind.EVENT:
+				assert_not_null(art)
+				assert_same(art.texture, Art.event(step.content_id))
+			_:
+				assert_null(art)
+		if cursor + 1 < report.steps.size():
+			assert_null(_node("Step%d" % (cursor + 1)))
+	assert_eq(report.serialize().steps, frozen.steps)
+
+
+func test_shared_theme_decorations_and_design_touch_targets_cover_every_screen() -> void:
+	var decorations := {
+		HOME: {"HomeCrest": Art.decoration("home_crest"), "SectionDivider": Art.decoration("section_divider")},
+		ROSTER: {"SectionDivider": Art.decoration("section_divider")},
+		DETAIL: {"SectionDivider": Art.decoration("section_divider")},
+		EQUIPMENT: {"SectionDivider": Art.decoration("section_divider")},
+		FORMATION: {"FormationEmblem": Art.decoration("formation_emblem")},
+		REGION: {"SectionDivider": Art.decoration("section_divider")},
+	}
+	for path in decorations:
+		await _go(path)
+		await get_tree().process_frame
+		_assert_presentation_foundation(decorations[path])
+	_dispatch()
+	await _go(REPORT)
+	await get_tree().process_frame
+	_assert_presentation_foundation({"SectionDivider": Art.decoration("section_divider")})
+
+
+func test_presentation_palette_meets_text_contrast_targets_and_never_uses_color_alone() -> void:
+	assert_gte(_contrast(HeroUI.TEXT_COLOR, HeroUI.BACKGROUND_COLOR), 4.5)
+	assert_gte(_contrast(HeroUI.MUTED_COLOR, HeroUI.BACKGROUND_COLOR), 4.5)
+	assert_gte(_contrast(HeroUI.NOTICE_COLOR, HeroUI.BACKGROUND_COLOR), 4.5)
+	assert_gte(_contrast(HeroUI.TEXT_COLOR, HeroUI.BUTTON_COLOR), 4.5)
+	var hero := GameState.roster[0]
+	for status in HeroData.HeroStatus.values():
+		hero.status = status
+		var badge := HeroUI.status_badge(hero)
+		add_child_autofree(badge)
+		assert_eq(badge.text, HeroUI.status_name(hero))
+		assert_same(Art.status_icon(status), Art.STATUSES[status])
+		assert_gte(_contrast(HeroUI.BADGE_TEXT_COLOR, HeroUI.status_badge_color(status)), 4.5)
+		var style := badge.get_theme_stylebox("normal") as StyleBoxFlat
+		assert_eq(style.bg_color, HeroUI.status_badge_color(status))
+
+
+func test_visible_copy_has_no_known_placeholder_language() -> void:
+	for path in [HOME, ROSTER, DETAIL, EQUIPMENT, FORMATION, REGION]:
+		await _go(path)
+		var copy := _visible_text(_screen()).to_lower()
+		for placeholder in ["lorem ipsum", "todo", "expeditions are not available yet"]:
+			assert_false(copy.contains(placeholder), "%s contains %s" % [path, placeholder])
+
+
 func test_all_seven_screens_keep_art_crisp_passive_and_inside_portrait_width() -> void:
 	GameState.roster[0].hero_name = "Alexandria of the Distant Northern Mountains and Moonlit Lakes"
 	for path in [HOME, ROSTER, DETAIL, EQUIPMENT, FORMATION, REGION]:
@@ -313,6 +384,61 @@ func _check_control_widths(parent: Node, width: float) -> void:
 			assert_gte(child.get_global_rect().position.x, 0.0, str(child.get_path()))
 			assert_lte(child.get_global_rect().end.x, width, str(child.get_path()))
 		_check_control_widths(child, width)
+
+
+func _visible_text(parent: Node) -> String:
+	var result := ""
+	if parent is Label and parent.visible:
+		result += parent.text + "\n"
+	elif parent is BaseButton and parent.visible:
+		result += parent.text + "\n"
+	for child in parent.get_children():
+		result += _visible_text(child)
+	return result
+
+
+func _assert_presentation_foundation(decorations: Dictionary) -> void:
+	var background := _node("Background") as ColorRect
+	assert_not_null(background)
+	assert_eq(background.color, HeroUI.BACKGROUND_COLOR)
+	assert_not_null(_screen().theme)
+	assert_true(_screen().theme.has_stylebox("normal", "Button"))
+	assert_true(_screen().theme.has_stylebox("focus", "Button"))
+	assert_true(_screen().theme.has_stylebox("normal", "OptionButton"))
+	assert_true(_screen().theme.has_stylebox("fill", "ProgressBar"))
+	assert_true(_screen().theme.has_stylebox("grabber", "VScrollBar"))
+	for node_name in decorations:
+		var image := _node(node_name) as TextureRect
+		assert_not_null(image)
+		assert_same(image.texture, decorations[node_name])
+		assert_eq(image.texture_filter, CanvasItem.TEXTURE_FILTER_NEAREST)
+		assert_eq(image.mouse_filter, Control.MOUSE_FILTER_IGNORE)
+	_assert_touch_targets(_screen())
+
+
+func _assert_touch_targets(parent: Node) -> void:
+	for child in parent.get_children():
+		if child is BaseButton:
+			assert_gte(child.get_combined_minimum_size().y, 96.0, str(child.get_path()))
+		_assert_touch_targets(child)
+
+
+func _contrast(first: Color, second: Color) -> float:
+	var light := maxf(_luminance(first), _luminance(second))
+	var dark := minf(_luminance(first), _luminance(second))
+	return (light + 0.05) / (dark + 0.05)
+
+
+func _luminance(color: Color) -> float:
+	return (
+		0.2126 * _linear_channel(color.r)
+		+ 0.7152 * _linear_channel(color.g)
+		+ 0.0722 * _linear_channel(color.b)
+	)
+
+
+func _linear_channel(value: float) -> float:
+	return value / 12.92 if value <= 0.04045 else pow((value + 0.055) / 1.055, 2.4)
 
 
 func _check_art_bounds() -> void:

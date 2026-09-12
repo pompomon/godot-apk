@@ -9,7 +9,7 @@ const Contact = preload("res://tools/art/contact_sheet.gd")
 
 func test_all_pinned_recipes_produce_palette_bounded_images_at_native_sizes() -> void:
 	var recipes := Recipes.all()
-	assert_eq(recipes.size(), 66)
+	assert_eq(recipes.size(), 91)
 	assert_eq(Recipes.validate(recipes), "")
 	var colors := {0: true}
 	for hex: String in Palette.HEX.values():
@@ -65,6 +65,10 @@ func test_recipe_seeds_are_pinned_to_asset_identity() -> void:
 		assert_eq(seeds["icon.%s.00" % icon_id], Recipes.ICON_SEEDS[icon_id])
 	for region_id: String in Recipes.BACKDROP_SEEDS:
 		assert_eq(seeds["backdrop.%s.00" % region_id], Recipes.BACKDROP_SEEDS[region_id])
+	for encounter_id: String in Recipes.ENCOUNTER_SEEDS:
+		assert_eq(seeds["encounter.%s.00" % encounter_id], Recipes.ENCOUNTER_SEEDS[encounter_id])
+	for decoration_id: String in Recipes.DECORATION_SEEDS:
+		assert_eq(seeds["decoration.%s.00" % decoration_id], Recipes.DECORATION_SEEDS[decoration_id])
 	assert_eq(seeds["portrait.unknown.00"], 1900)
 	assert_eq(seeds["icon.unknown.00"], 2900)
 
@@ -82,7 +86,7 @@ func test_committed_bank_and_manifest_match_without_writes() -> void:
 	var manifest: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(Bank.MANIFEST_PATH))
 	assert_eq(manifest.recipe_version, Recipes.VERSION)
 	assert_eq(manifest.palette_version, Palette.VERSION)
-	assert_eq(manifest.assets.size(), 66)
+	assert_eq(manifest.assets.size(), 91)
 	assert_eq(manifest.pixel_format, "RGBA8")
 
 
@@ -119,16 +123,19 @@ func test_output_paths_are_explicit_and_cannot_escape_the_bank() -> void:
 		assert_ne(Bank.validate_preview_directory(path), "", path)
 
 
-func test_contact_sheets_are_deterministic_and_contain_nearest_scaled_portraits() -> void:
+func test_contact_sheets_are_deterministic_and_contain_nearest_scaled_art() -> void:
 	var images := {}
 	for recipe: Dictionary in Recipes.all():
 		images[recipe.id] = Bank.render(recipe)
 	var representative := Contact.representative(images)
 	var variants := Contact.variants(images)
+	var encounters := Contact.encounters(images)
 	assert_eq(representative.get_size(), Vector2i(1024, 1568))
 	assert_eq(variants.get_size(), Vector2i(1168, 672))
+	assert_eq(encounters.get_size(), Vector2i(1024, 840))
 	assert_eq(Bank.pixel_sha256(representative), Bank.pixel_sha256(Contact.representative(images)))
 	assert_eq(Bank.pixel_sha256(variants), Bank.pixel_sha256(Contact.variants(images)))
+	assert_eq(Bank.pixel_sha256(encounters), Bank.pixel_sha256(Contact.encounters(images)))
 	var portrait: Image = images["portrait.knight.00"]
 	for y in portrait.get_height():
 		for x in portrait.get_width():
@@ -137,6 +144,13 @@ func test_contact_sheets_are_deterministic_and_contain_nearest_scaled_portraits(
 				expected = Palette.color("ink")
 			assert_eq(variants.get_pixel(16 + x * 2, 56 + y * 2), expected)
 			assert_eq(variants.get_pixel(17 + x * 2, 57 + y * 2), expected)
+	var enemy: Image = images["encounter.enemy_bandit_skirmishers.00"]
+	for y in enemy.get_height():
+		for x in enemy.get_width():
+			var expected := enemy.get_pixel(x, y)
+			if expected.a8 == 0:
+				expected = Palette.color("ink")
+			assert_eq(encounters.get_pixel(8 + x * 2, 58 + y * 2), expected)
 
 
 func test_canvas_clips_shapes_and_preserves_nearest_pixels() -> void:

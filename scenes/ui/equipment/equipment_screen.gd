@@ -32,6 +32,7 @@ func _ready() -> void:
 	var content := HeroUI.scrollable_content(self)
 	_title = HeroUI.label("Equipment", 44)
 	content.add_child(_title)
+	HeroUI.add_section_divider(content)
 	_portrait = HeroUI.portrait(draft.hero)
 	content.add_child(_portrait)
 	_feedback = HeroUI.label("")

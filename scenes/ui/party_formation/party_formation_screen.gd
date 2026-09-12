@@ -21,6 +21,8 @@ func configure(context: Dictionary) -> void:
 
 func _ready() -> void:
 	HeroUI.apply_theme(self)
+	HeroUI.add_decoration(%SlotGrid.get_parent(), "formation_emblem", Vector2(64, 64),
+		"FormationEmblem", %SlotGrid.get_index())
 	draft = GameState.current_party.copy() if GameState.current_party != null else PartyData.new()
 	for slot in PartyData.SLOT_ORDER:
 		var button := _slot_button(slot)

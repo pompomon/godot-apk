@@ -83,7 +83,7 @@ autowrap_mode = 3
 [node name="EstimateHelp" type="Label" parent="Margin/Layout/Scroll/Content"]
 layout_mode = 2
 mouse_filter = 2
-text = "Power is an estimate, not a combat outcome. Confirm returns Home; Expeditions are not available yet."
+text = "Power is an estimate, not a combat outcome. Confirm saves this formation and returns Home."
 autowrap_mode = 3
 
 [node name="SlotGrid" type="GridContainer" parent="Margin/Layout/Scroll/Content"]

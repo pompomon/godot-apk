@@ -3,30 +3,45 @@ extends RefCounted
 
 const Art = preload("res://scenes/ui/art_catalog.gd")
 const ScreenMargin = preload("res://scenes/ui/screen_margin.gd")
+const BACKGROUND_COLOR := Color("#0e131d")
+const SURFACE_COLOR := Color("#1c273b")
+const BORDER_COLOR := Color("#526d96")
+const BUTTON_COLOR := Color("#263e61")
+const BUTTON_HOVER_COLOR := Color("#355582")
+const BUTTON_PRESSED_COLOR := Color("#1b2e4a")
+const BUTTON_DISABLED_COLOR := Color("#282f3c")
 const TEXT_COLOR := Color("#edf0f7")
 const MUTED_COLOR := Color("#bdc7da")
 const NOTICE_COLOR := Color("#f8d58b")
+const BADGE_TEXT_COLOR := Color("#182235")
 
 
 static func apply_theme(screen: Control) -> void:
+	_ensure_background(screen)
 	var ui_theme := Theme.new()
 	ui_theme.default_font_size = 28
 	ui_theme.set_color("font_color", "Label", TEXT_COLOR)
-	ui_theme.set_color("font_color", "Button", TEXT_COLOR)
-	ui_theme.set_color("font_hover_color", "Button", TEXT_COLOR)
-	ui_theme.set_color("font_pressed_color", "Button", TEXT_COLOR)
-	ui_theme.set_color("font_focus_color", "Button", TEXT_COLOR)
-	ui_theme.set_color("font_disabled_color", "Button", Color("#a5afc1"))
-	ui_theme.set_font_size("font_size", "Button", 30)
-	ui_theme.set_stylebox("normal", "Button", _box(Color("#263e61")))
-	ui_theme.set_stylebox("hover", "Button", _box(Color("#355582")))
-	ui_theme.set_stylebox("pressed", "Button", _box(Color("#1b2e4a")))
-	ui_theme.set_stylebox("disabled", "Button", _box(Color("#282f3c")))
-	var focus := _box(Color.TRANSPARENT)
-	focus.set_border_width_all(3)
-	focus.border_color = Color("#f8d58b")
-	ui_theme.set_stylebox("focus", "Button", focus)
-	ui_theme.set_stylebox("panel", "PanelContainer", _box(Color("#1c273b")))
+	_set_button_theme(ui_theme, "Button")
+	_set_button_theme(ui_theme, "OptionButton")
+	var panel := _box(SURFACE_COLOR)
+	panel.set_border_width_all(2)
+	panel.border_color = BORDER_COLOR.darkened(0.25)
+	ui_theme.set_stylebox("panel", "PanelContainer", panel)
+	ui_theme.set_stylebox("background", "ProgressBar", _box(Color("#111a28"), 4, 10))
+	ui_theme.set_stylebox("fill", "ProgressBar", _box(Color("#4e91a8"), 4, 10))
+	for type_name in ["VScrollBar", "HScrollBar"]:
+		ui_theme.set_stylebox("scroll", type_name, _box(Color("#111a28"), 0, 8))
+		ui_theme.set_stylebox("scroll_focus", type_name, _box(Color("#17243a"), 0, 8))
+		ui_theme.set_stylebox("grabber", type_name, _box(BORDER_COLOR, 0, 8))
+		ui_theme.set_stylebox("grabber_highlight", type_name, _box(NOTICE_COLOR, 0, 8))
+		ui_theme.set_stylebox("grabber_pressed", type_name, _box(Color("#d5a94d"), 0, 8))
+		ui_theme.set_constant("minimum_grab_thickness", type_name, 48)
+	ui_theme.set_color("font_color", "PopupMenu", TEXT_COLOR)
+	ui_theme.set_color("font_hover_color", "PopupMenu", TEXT_COLOR)
+	ui_theme.set_stylebox("panel", "PopupMenu", panel)
+	ui_theme.set_stylebox("hover", "PopupMenu", _box(BUTTON_HOVER_COLOR, 8, 8))
+	ui_theme.set_constant("item_start_padding", "PopupMenu", 20)
+	ui_theme.set_constant("item_end_padding", "PopupMenu", 20)
 	ui_theme.set_constant("separation", "VBoxContainer", 16)
 	ui_theme.set_constant("separation", "HBoxContainer", 16)
 	ui_theme.set_constant("h_separation", "GridContainer", 20)
@@ -34,14 +49,50 @@ static func apply_theme(screen: Control) -> void:
 	screen.theme = ui_theme
 
 
-static func _box(color: Color) -> StyleBoxFlat:
+static func _ensure_background(screen: Control) -> void:
+	var background := screen.get_node_or_null("Background") as ColorRect
+	if background == null:
+		background = ColorRect.new()
+		background.name = "Background"
+		background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		background.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		screen.add_child(background)
+		screen.move_child(background, 0)
+	background.color = BACKGROUND_COLOR
+
+
+static func _set_button_theme(ui_theme: Theme, type_name: String) -> void:
+	ui_theme.set_color("font_color", type_name, TEXT_COLOR)
+	ui_theme.set_color("font_hover_color", type_name, TEXT_COLOR)
+	ui_theme.set_color("font_pressed_color", type_name, TEXT_COLOR)
+	ui_theme.set_color("font_focus_color", type_name, TEXT_COLOR)
+	ui_theme.set_color("font_disabled_color", type_name, Color("#a5afc1"))
+	ui_theme.set_font_size("font_size", type_name, 30)
+	var state_colors := {
+		"normal": BUTTON_COLOR,
+		"hover": BUTTON_HOVER_COLOR,
+		"pressed": BUTTON_PRESSED_COLOR,
+		"disabled": BUTTON_DISABLED_COLOR,
+	}
+	for state in state_colors:
+		var style := _box(state_colors[state])
+		style.set_border_width_all(2)
+		style.border_color = BORDER_COLOR if state != "disabled" else Color("#3a4558")
+		ui_theme.set_stylebox(state, type_name, style)
+	var focus := _box(Color.TRANSPARENT, 0, 16)
+	focus.set_border_width_all(3)
+	focus.border_color = NOTICE_COLOR
+	ui_theme.set_stylebox("focus", type_name, focus)
+
+
+static func _box(color: Color, padding: int = 20, radius: int = 16) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = color
-	style.set_corner_radius_all(16)
-	style.content_margin_left = 20
-	style.content_margin_right = 20
-	style.content_margin_top = 20
-	style.content_margin_bottom = 20
+	style.set_corner_radius_all(radius)
+	style.content_margin_left = padding
+	style.content_margin_right = padding
+	style.content_margin_top = padding
+	style.content_margin_bottom = padding
 	return style
 
 
@@ -75,6 +126,23 @@ static func artwork(texture: Texture2D, extent: Vector2 = Vector2(48, 48)) -> Te
 	image.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	image.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return image
+
+
+static func add_decoration(
+	parent: Container, decoration_id: String, extent: Vector2,
+	node_name: String, index: int = -1
+) -> TextureRect:
+	var image := artwork(Art.decoration(decoration_id), extent)
+	image.name = node_name
+	image.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	parent.add_child(image)
+	if index >= 0:
+		parent.move_child(image, index)
+	return image
+
+
+static func add_section_divider(parent: Container, index: int = -1) -> TextureRect:
+	return add_decoration(parent, "section_divider", Vector2(320, 16), "SectionDivider", index)
 
 
 static func portrait(hero: HeroData, pixels: int = 128) -> TextureRect:
@@ -182,14 +250,31 @@ static func status_badge(hero: HeroData) -> Label:
 	badge.autowrap_mode = TextServer.AUTOWRAP_OFF
 	badge.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	badge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	badge.add_theme_color_override("font_color", Color("#182235"))
-	var background := _box(NOTICE_COLOR)
-	background.content_margin_left = 12
-	background.content_margin_right = 12
-	background.content_margin_top = 6
-	background.content_margin_bottom = 6
-	badge.add_theme_stylebox_override("normal", background)
+	badge.add_theme_color_override("font_color", BADGE_TEXT_COLOR)
+	badge.add_theme_stylebox_override("normal", _status_badge_box(hero.status))
 	return badge
+
+
+static func status_badge_color(status: int) -> Color:
+	match status:
+		HeroData.HeroStatus.IDLE:
+			return Color("#b9e29a")
+		HeroData.HeroStatus.ASSIGNED:
+			return Color("#9dd8f7")
+		HeroData.HeroStatus.ON_EXPEDITION:
+			return NOTICE_COLOR
+		HeroData.HeroStatus.RESTING:
+			return Color("#c7b7ff")
+		HeroData.HeroStatus.WOUNDED:
+			return Color("#f2a27f")
+		HeroData.HeroStatus.DEAD:
+			return Color("#c1c4ce")
+		_:
+			return Color("#d5d9e2")
+
+
+static func _status_badge_box(status: int) -> StyleBoxFlat:
+	return _box(status_badge_color(status), 8, 10)
 
 
 static func hero_header(hero: HeroData) -> HBoxContainer:
@@ -222,7 +307,9 @@ static func hero_header(hero: HeroData) -> HBoxContainer:
 
 static func refresh_hero_header(parent: Node, hero: HeroData) -> void:
 	parent.find_child("HeroSummary", true, false).text = hero_summary(hero)
-	parent.find_child("StatusBadge", true, false).text = status_name(hero)
+	var badge := parent.find_child("StatusBadge", true, false) as Label
+	badge.text = status_name(hero)
+	badge.add_theme_stylebox_override("normal", _status_badge_box(hero.status))
 	var texture := Art.status_icon(hero.status)
 	parent.find_child("StatusIcon", true, false).texture = texture
 

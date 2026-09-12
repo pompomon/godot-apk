@@ -28,6 +28,7 @@ func _ready() -> void:
 	_scroll.scroll_started.connect(func() -> void: _scrolling = true)
 	_scroll.scroll_ended.connect(_on_scroll_ended)
 	content.add_child(HeroUI.label("Expedition Report", 44))
+	HeroUI.add_section_divider(content)
 	_backdrop = HeroUI.region_banner(_report.region_id if _report != null else "")
 	content.add_child(_backdrop)
 	_status = HeroUI.label("")
@@ -189,6 +190,16 @@ func _journal_entry(step: ExpeditionStep, index: int) -> HBoxContainer:
 	var kind_icon := HeroUI.artwork(HeroUI.Art.journal_icon(step.kind))
 	kind_icon.name = "StepKindIcon"
 	icons.add_child(kind_icon)
+	if step.kind == ExpeditionStep.StepKind.COMBAT or step.kind == ExpeditionStep.StepKind.EVENT:
+		var encounter_texture := (
+			HeroUI.Art.enemy(step.content_id)
+			if step.kind == ExpeditionStep.StepKind.COMBAT
+			else HeroUI.Art.event(step.content_id)
+		)
+		var encounter_art := HeroUI.artwork(encounter_texture, Vector2(64, 64))
+		encounter_art.name = "EncounterArt"
+		encounter_art.tooltip_text = "%s artwork" % step.title
+		icons.add_child(encounter_art)
 	if step.kind == ExpeditionStep.StepKind.COMBAT:
 		var outcome_icon := HeroUI.artwork(HeroUI.Art.outcome_icon(step.result.outcome))
 		outcome_icon.name = "OutcomeIcon"

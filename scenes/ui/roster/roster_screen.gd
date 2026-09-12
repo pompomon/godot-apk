@@ -18,6 +18,7 @@ var _feedback_message: String = ""
 
 func _ready() -> void:
 	HeroUI.apply_theme(self)
+	HeroUI.add_section_divider(_roster_list.get_parent(), _roster_list.get_index())
 	HeroUI.decorate_label(_gold_label, HeroUI.Art.utility_icon("gold"), "GoldIcon")
 	%BackButton.pressed.connect(_go_home)
 	%FormationButton.pressed.connect(_open_formation)

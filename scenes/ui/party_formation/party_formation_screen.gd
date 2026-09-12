@@ -1,6 +1,7 @@
 extends Control
 
 const HeroUI = preload("res://scenes/ui/hero_ui.gd")
+const ModalSelector = preload("res://scenes/ui/components/modal_selector.gd")
 const HOME_SCREEN := "res://scenes/ui/home/home_screen.tscn"
 const ROSTER_SCREEN := "res://scenes/ui/roster/roster_screen.tscn"
 const BALANCING: BalancingConfig = preload("res://data/balancing/default_balancing.tres")
@@ -12,6 +13,8 @@ var _moving_from: int = -1
 var _feedback_message: String = ""
 var _leaving: bool = false
 var _slot_buttons: Array[Button] = []
+
+@onready var _hero_selector: ModalSelector = $HeroSelector
 
 
 func configure(context: Dictionary) -> void:
@@ -113,12 +116,33 @@ func _refresh() -> void:
 	elif selected != null:
 		%SelectionLabel.text = "Selected: %s. Move or remove this Hero, or select another empty slot." % PartyData.SLOT_LABELS[_selected_slot]
 	else:
-		%SelectionLabel.text = "Selected: %s. Tap an available Hero to place them." % PartyData.SLOT_LABELS[_selected_slot]
+		%SelectionLabel.text = "Selected: %s. Tap this slot to choose an available Hero." % PartyData.SLOT_LABELS[_selected_slot]
 	var reason := PartyFormationService.validation_error(draft, BALANCING)
 	%ConfirmButton.disabled = not reason.is_empty()
 	%DisbandButton.visible = GameState.current_party != null
 	%DisbandButton.disabled = not editing_error.is_empty()
-	HeroUI.clear_children(%AvailableList)
+	if _hero_selector.is_open():
+		_refresh_hero_picker()
+	var feedback := _feedback_message
+	if not reason.is_empty():
+		feedback += ("\n" if not feedback.is_empty() else "") + reason
+	HeroUI.show_feedback(%FeedbackLabel, feedback)
+
+
+func _open_hero_picker(return_focus: Control) -> void:
+	_hero_selector.show_selector(
+		"Choose Hero · %s" % PartyData.SLOT_LABELS[_selected_slot],
+		"Idle roster Heroes and retained members of your confirmed Party only. Selected Heroes are excluded.",
+		return_focus
+	)
+	_refresh_hero_picker()
+
+
+func _refresh_hero_picker() -> void:
+	_hero_selector.clear_options()
+	var editing_error := PartyFormationService.editing_error()
+	var model_error := draft.validation_error()
+	var blocked := not editing_error.is_empty() or not model_error.is_empty()
 	var available := 0
 	for hero in GameState.roster:
 		if not PartyFormationService.availability_error(hero).is_empty() or draft.contains_id(hero.hero_id):
@@ -126,14 +150,19 @@ func _refresh() -> void:
 		var row := HeroUI.hero_row(hero, _place.bind(hero), "Place in selected slot")
 		row.name = "AvailableHero%d" % available
 		row.tooltip_text = "Place %s in the selected empty slot" % hero.hero_name
-		row.disabled = blocked or selected != null or _moving_from >= 0
-		%AvailableList.add_child(row)
+		row.disabled = blocked or draft.slots.get(_selected_slot) != null or _moving_from >= 0
+		_hero_selector.add_option(row)
 		available += 1
-	%NoAvailableLabel.visible = available == 0
+	_hero_selector.set_empty(
+		"No available Heroes. Remove a draft member, or return to Company Roster to inspect or recruit Heroes."
+		if available == 0 else ""
+	)
 	var feedback := _feedback_message
-	if not reason.is_empty():
-		feedback += ("\n" if not feedback.is_empty() else "") + reason
-	HeroUI.show_feedback(%FeedbackLabel, feedback)
+	for error in [editing_error, model_error]:
+		if not error.is_empty() and not feedback.contains(error):
+			feedback += ("\n" if not feedback.is_empty() else "") + error
+	_hero_selector.set_feedback(feedback)
+	_hero_selector.focus_first_option()
 
 
 func _can_edit() -> bool:
@@ -155,16 +184,26 @@ func _select_slot(slot: int) -> void:
 			_refresh()
 			return
 		_moving_from = -1
+		_selected_slot = slot
+		_refresh()
+		return
 	_selected_slot = slot
 	_refresh()
+	if draft.slots.get(slot) == null:
+		_open_hero_picker(_slot_buttons[slot])
 
 
 func _place(hero: HeroData) -> void:
 	if not _can_edit():
 		return
 	_feedback_message = PartyFormationService.availability_error(hero)
-	if _feedback_message.is_empty() and not draft.place_hero(_selected_slot, hero):
-		_feedback_message = "Choose an empty slot and an unselected Hero; occupied slots are never replaced."
+	var placed := false
+	if _feedback_message.is_empty():
+		placed = draft.place_hero(_selected_slot, hero)
+		if not placed:
+			_feedback_message = "Choose an empty slot and an unselected Hero; occupied slots are never replaced."
+	if placed:
+		_hero_selector.close()
 	_refresh()
 
 
@@ -208,6 +247,9 @@ func _disband() -> void:
 
 
 func cancel_draft() -> void:
+	if _hero_selector.is_open():
+		_hero_selector.close()
+		return
 	if not _leaving and is_inside_tree():
 		_leaving = true
 		UIManager.show_screen(_origin)

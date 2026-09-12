@@ -1,6 +1,7 @@
 extends Control
 
 const HeroUI = preload("res://scenes/ui/hero_ui.gd")
+const ModalSelector = preload("res://scenes/ui/components/modal_selector.gd")
 const DETAIL_SCREEN := "res://scenes/ui/hero_detail/hero_detail_screen.tscn"
 const ROSTER_SCREEN := "res://scenes/ui/roster/roster_screen.tscn"
 var draft: EquipmentService
@@ -11,11 +12,12 @@ var _title: Label
 var _feedback: Label
 var _slots: Label
 var _stats: Label
-var _items: VBoxContainer
 var _confirm_button: Button
 var _message: String = ""
 var _portrait: TextureRect
 var _slot_buttons: Dictionary = {}
+
+@onready var _equipment_selector: ModalSelector = $EquipmentSelector
 
 
 func configure(context: Dictionary) -> void:
@@ -57,9 +59,6 @@ func _ready() -> void:
 	cancel.name = "CancelButton"
 	cancel.pressed.connect(cancel_draft)
 	content.add_child(cancel)
-	_items = VBoxContainer.new()
-	_items.name = "InventoryList"
-	content.add_child(_items)
 	ExpeditionManager.changed.connect(_refresh)
 	ExpeditionManager.operation_failed.connect(_refresh)
 	_refresh()
@@ -90,17 +89,34 @@ func _refresh() -> void:
 				stat, HeroUI._number(before[stat], stat), HeroUI._number(preview[stat], stat),
 				"+" if delta >= 0 else "", change])
 		_stats.text = "\n".join(lines)
-	HeroUI.clear_children(_items)
+	var message := _message
+	for error in [reason, ExpeditionManager.last_error]:
+		if not error.is_empty():
+			message += ("\n" if not message.is_empty() else "") + error
+	HeroUI.show_feedback(_feedback, message)
+	if _equipment_selector.is_open():
+		_refresh_item_picker()
+
+
+func _open_item_picker(return_focus: Control) -> void:
+	_equipment_selector.show_selector(
+		"Choose %s" % _slot.to_lower(),
+		"Select a compatible inventory item or unequip the current %s." % _slot.to_lower(),
+		return_focus
+	)
+	_refresh_item_picker()
+
+
+func _refresh_item_picker() -> void:
+	_equipment_selector.clear_options()
 	var remove := HeroUI.button("Unequip %s" % _slot.to_lower())
 	remove.name = "UnequipButton"
 	remove.disabled = draft.hero == null
 	remove.pressed.connect(_select_item.bind(null))
-	_items.add_child(remove)
+	_equipment_selector.add_option(remove)
 	var counts := {}
 	for item in draft.available_items(_slot):
 		counts[item] = counts.get(item, 0) + 1
-	if counts.is_empty():
-		_items.add_child(HeroUI.label("No %s items available." % _slot.to_lower()))
 	for item in counts:
 		var button := HeroUI.button("%s · %s · ×%d" % [item.display_name, item.rarity, counts[item]])
 		button.name = "Item_%s" % item.item_id
@@ -108,12 +124,16 @@ func _refresh() -> void:
 		HeroUI.set_button_icon(button, HeroUI.Art.item_icon(String(item.item_id)))
 		button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		button.pressed.connect(_select_item.bind(item))
-		_items.add_child(button)
+		_equipment_selector.add_option(button)
+	_equipment_selector.set_empty(
+		"No %s items available." % _slot.to_lower() if counts.is_empty() else ""
+	)
 	var message := _message
-	for error in [reason, ExpeditionManager.last_error]:
+	for error in [draft.validation_error(), ExpeditionManager.last_error]:
 		if not error.is_empty():
 			message += ("\n" if not message.is_empty() else "") + error
-	HeroUI.show_feedback(_feedback, message)
+	_equipment_selector.set_feedback(message)
+	_equipment_selector.focus_first_option()
 
 
 func _item_name(item: ItemResource) -> String:
@@ -125,6 +145,7 @@ func _choose_slot(slot: String) -> void:
 		return
 	_slot = slot
 	_refresh()
+	_open_item_picker(_slot_buttons[slot])
 
 
 func _select_item(item: ItemResource) -> void:
@@ -135,6 +156,7 @@ func _select_item(item: ItemResource) -> void:
 	else:
 		draft.armor = item
 	_message = ""
+	_equipment_selector.close()
 	_refresh()
 
 
@@ -155,6 +177,9 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func cancel_draft() -> void:
+	if _equipment_selector.is_open():
+		_equipment_selector.close()
+		return
 	if not _leaving and is_inside_tree():
 		_leaving = true
 		if GameState.find_hero(_hero_id) != null:

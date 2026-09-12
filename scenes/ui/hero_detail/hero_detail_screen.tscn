@@ -87,6 +87,31 @@ unique_name_in_owner = true
 layout_mode = 2
 autowrap_mode = 3
 
+[node name="EquipmentHeading" type="Label" parent="Margin/Layout/Scroll/Content/HeroContent"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 36
+text = "Equipment"
+autowrap_mode = 3
+
+[node name="WeaponLabel" type="Label" parent="Margin/Layout/Scroll/Content/HeroContent"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Weapon: Empty"
+autowrap_mode = 3
+
+[node name="ArmorLabel" type="Label" parent="Margin/Layout/Scroll/Content/HeroContent"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Armor: Empty"
+autowrap_mode = 3
+
+[node name="EquipmentButton" type="Button" parent="Margin/Layout/Scroll/Content/HeroContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+mouse_filter = 1
+text = "Manage equipment"
+
 [node name="AttributesAndStats" type="VBoxContainer" parent="Margin/Layout/Scroll/Content/HeroContent"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -128,28 +153,3 @@ autowrap_mode = 3
 unique_name_in_owner = true
 layout_mode = 2
 autowrap_mode = 3
-
-[node name="EquipmentHeading" type="Label" parent="Margin/Layout/Scroll/Content/HeroContent"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 36
-text = "Equipment"
-autowrap_mode = 3
-
-[node name="WeaponLabel" type="Label" parent="Margin/Layout/Scroll/Content/HeroContent"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "Weapon: Empty"
-autowrap_mode = 3
-
-[node name="ArmorLabel" type="Label" parent="Margin/Layout/Scroll/Content/HeroContent"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "Armor: Empty"
-autowrap_mode = 3
-
-[node name="EquipmentButton" type="Button" parent="Margin/Layout/Scroll/Content/HeroContent"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 96)
-layout_mode = 2
-mouse_filter = 1
-text = "Manage equipment"

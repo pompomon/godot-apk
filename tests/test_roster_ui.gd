@@ -248,7 +248,11 @@ func test_status_badges_fit_one_line_in_rows_offers_and_formation_after_refresh(
 	UIManager.show_screen("res://scenes/ui/party_formation/party_formation_screen.tscn")
 	await get_tree().process_frame
 	await get_tree().process_frame
-	for available in _screen().get_node("%AvailableList").get_children():
+	_screen().get_node("%SlotGrid").get_child(0).pressed.emit()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var available_list := _screen().find_child("ModalOptions", true, false)
+	for available in available_list.get_children():
 		_assert_single_line_badge(available, "Idle")
 
 

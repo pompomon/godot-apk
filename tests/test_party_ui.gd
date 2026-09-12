@@ -68,15 +68,35 @@ func _slot(slot: int) -> Button:
 	return _screen().get_node("%SlotGrid").get_child(slot) as Button
 
 
+func _selector() -> Control:
+	return _screen().get_node("HeroSelector") as Control
+
+
+func _available_list() -> VBoxContainer:
+	return _selector().find_child("ModalOptions", true, false) as VBoxContainer
+
+
+func _open_picker(slot: int) -> void:
+	if _selector().visible:
+		_selector().call("close")
+	_slot(slot).pressed.emit()
+	assert_true(_selector().visible)
+
+
+func _close_picker() -> void:
+	if _selector().visible:
+		_selector().call("close")
+
+
 func _available(hero_id: String) -> Button:
-	for row in _screen().get_node("%AvailableList").get_children():
+	for row in _available_list().get_children():
 		if row.get_meta("hero_id") == hero_id:
 			return row as Button
 	return null
 
 
 func _place(index: int, slot: int) -> void:
-	_slot(slot).pressed.emit()
+	_open_picker(slot)
 	var row := _available(GameState.roster[index].hero_id)
 	assert_not_null(row)
 	if row != null:
@@ -102,7 +122,10 @@ func test_home_draft_live_power_move_remove_and_cancel_do_not_mutate_or_save() -
 	var before := SaveManager.capture_state()
 	var disk := _disk()
 	await _open_formation()
-	assert_eq(_screen().get_node("%AvailableList").get_child_count(), 4)
+	assert_false(_selector().visible)
+	_open_picker(0)
+	assert_eq(_available_list().get_child_count(), 4)
+	_close_picker()
 	assert_true(_screen().get_node("%ConfirmButton").disabled)
 	assert_string_contains(_screen().get_node("%FeedbackLabel").text, "at least one")
 	_place(0, 2)
@@ -120,7 +143,9 @@ func test_home_draft_live_power_move_remove_and_cancel_do_not_mutate_or_save() -
 	_screen().get_node("%RemoveButton").pressed.emit()
 	assert_eq(_draft().heroes(), [])
 	assert_true(_screen().get_node("%ConfirmButton").disabled)
-	assert_eq(_screen().get_node("%AvailableList").get_child_count(), 4)
+	_open_picker(0)
+	assert_eq(_available_list().get_child_count(), 4)
+	_close_picker()
 	assert_eq(SaveManager.capture_state(), before)
 	assert_eq(_disk(), disk)
 	_screen().get_node("%CancelButton").pressed.emit()
@@ -143,10 +168,14 @@ func test_confirm_edit_replace_and_cold_restart_keep_statuses_and_summary() -> v
 	await _open_formation()
 	assert_same(_draft().slots[0], GameState.roster[0])
 	assert_same(_draft().slots[3], GameState.roster[1])
-	assert_eq(_screen().get_node("%AvailableList").get_child_count(), 2)
+	_open_picker(1)
+	assert_eq(_available_list().get_child_count(), 2)
+	_close_picker()
 	_slot(0).pressed.emit()
 	_screen().get_node("%RemoveButton").pressed.emit()
+	_open_picker(0)
 	assert_not_null(_available(GameState.roster[0].hero_id), "Retained Assigned Hero may be re-added.")
+	_close_picker()
 	assert_eq(GameState.roster[0].status, HeroData.HeroStatus.ASSIGNED)
 	_place(2, 1)
 	await _confirm()
@@ -277,8 +306,14 @@ func test_android_back_and_ui_cancel_discard_draft_without_quitting_or_saving() 
 	assert_false(get_tree().quit_on_go_back)
 	assert_false(get_tree().auto_accept_quit)
 	await _open_formation()
-	_place(0, 0)
 	var before := _disk()
+	_open_picker(0)
+	_main.notification(NOTIFICATION_WM_GO_BACK_REQUEST)
+	await get_tree().process_frame
+	assert_eq(_screen().scene_file_path, FORMATION)
+	assert_false(_selector().visible)
+	assert_eq(_disk(), before)
+	_place(0, 0)
 	_main.notification(NOTIFICATION_WM_GO_BACK_REQUEST)
 	await get_tree().process_frame
 	assert_eq(_screen().scene_file_path, HOME)
@@ -287,10 +322,15 @@ func test_android_back_and_ui_cancel_discard_draft_without_quitting_or_saving() 
 	UIManager.show_screen(ROSTER)
 	await get_tree().process_frame
 	await _open_formation()
-	_place(1, 3)
+	_open_picker(3)
 	var event := InputEventAction.new()
 	event.action = &"ui_cancel"
 	event.pressed = true
+	_screen().get_viewport().push_input(event, true)
+	await get_tree().process_frame
+	assert_eq(_screen().scene_file_path, FORMATION)
+	assert_false(_selector().visible)
+	_place(1, 3)
 	_screen().get_viewport().push_input(event, true)
 	await get_tree().process_frame
 	assert_eq(_screen().scene_file_path, ROSTER)
@@ -313,8 +353,9 @@ func test_unavailable_heroes_are_not_selectable_and_empty_state_is_visible() -> 
 		GameState.roster[index].status = [HeroData.HeroStatus.RESTING, HeroData.HeroStatus.WOUNDED,
 			HeroData.HeroStatus.DEAD, HeroData.HeroStatus.ON_EXPEDITION][index]
 	await _open_formation()
-	assert_eq(_screen().get_node("%AvailableList").get_child_count(), 0)
-	assert_true(_screen().get_node("%NoAvailableLabel").visible)
+	_open_picker(0)
+	assert_eq(_available_list().get_child_count(), 0)
+	assert_true(_selector().find_child("ModalEmptyLabel", true, false).visible)
 	assert_true(_screen().get_node("%ConfirmButton").disabled)
 	_screen().call("_place", GameState.recruitment_offers[0])
 	assert_eq(_draft().heroes(), [])
@@ -387,10 +428,13 @@ func test_portrait_long_names_wrap_and_controls_pass_scroll_input() -> void:
 		hero.hero_name = "Alexandria of the Distant Northern Mountains and Moonlit Lakes of the Ancient Silver Shield Order"
 	await _open_formation()
 	_place(0, 0)
+	_open_picker(1)
 	await get_tree().process_frame
 	await get_tree().process_frame
 	var scroll := _screen().get_node("%Scroll") as ScrollContainer
+	var picker_scroll := _selector().find_child("ModalScroll", true, false) as ScrollContainer
 	assert_eq(scroll.horizontal_scroll_mode, ScrollContainer.SCROLL_MODE_DISABLED)
+	assert_eq(picker_scroll.horizontal_scroll_mode, ScrollContainer.SCROLL_MODE_DISABLED)
 	assert_gt(scroll.get_v_scroll_bar().max_value, scroll.size.y)
 	assert_lte(_screen().get_node("%SlotGrid").size.x, scroll.size.x)
 	for button in _screen().get_node("%SlotGrid").get_children():
@@ -399,9 +443,9 @@ func test_portrait_long_names_wrap_and_controls_pass_scroll_input() -> void:
 		var label := button.get_node("MarginContainer/SlotLabel")
 		assert_eq(label.autowrap_mode, TextServer.AUTOWRAP_WORD_SMART)
 		assert_lte(label.size.x, button.size.x)
-	for row in _screen().get_node("%AvailableList").get_children():
+	for row in _available_list().get_children():
 		assert_eq(row.mouse_filter, Control.MOUSE_FILTER_PASS)
-		assert_lte(row.size.x, scroll.size.x)
+		assert_lte(row.size.x, picker_scroll.size.x)
 	for name in ["MoveButton", "RemoveButton", "DisbandButton"]:
 		assert_eq(_screen().get_node("%" + name).mouse_filter, Control.MOUSE_FILTER_PASS)
 	_assert_labels_ignore_input(_screen())
@@ -412,13 +456,15 @@ func test_all_idle_heroes_render_in_static_margin_scroll_at_reported_sizes() -> 
 	viewport.size = Vector2i(1065, 1280)
 	await _boot(viewport)
 	await _open_formation()
+	_open_picker(0)
 	var expected_ids := PackedStringArray()
 	for hero in GameState.roster:
 		assert_eq(hero.status, HeroData.HeroStatus.IDLE)
 		expected_ids.append(hero.hero_id)
 	var margin := _screen().get_node("Margin") as MarginContainer
 	assert_null(margin.get_script())
-	var scroll := _screen().get_node("%Scroll") as ScrollContainer
+	assert_null((_selector().get_node("ModalMargin") as MarginContainer).get_script())
+	var scroll := _selector().find_child("ModalScroll", true, false) as ScrollContainer
 	for extent in [
 		Vector2i(720, 1280), Vector2i(720, 1600),
 		Vector2i(960, 1280), Vector2i(1065, 1280),
@@ -432,10 +478,10 @@ func test_all_idle_heroes_render_in_static_margin_scroll_at_reported_sizes() -> 
 			margin.get_theme_constant("margin_right"),
 			margin.get_theme_constant("margin_bottom"),
 		], [24, 24, 24, 24])
-		var list := _screen().get_node("%AvailableList") as VBoxContainer
+		var list := _available_list()
 		assert_true(list.is_visible_in_tree())
 		assert_eq(list.get_child_count(), expected_ids.size())
-		assert_false(_screen().get_node("%NoAvailableLabel").visible)
+		assert_false(_selector().find_child("ModalEmptyLabel", true, false).visible)
 		for index in expected_ids.size():
 			var row := list.get_child(index) as Button
 			assert_eq(row.get_meta("hero_id"), expected_ids[index])
@@ -501,6 +547,8 @@ func test_touch_swipes_do_not_select_slots_or_heroes_but_taps_place_once() -> vo
 	var viewport: SubViewport = add_child_autofree(SubViewport.new())
 	viewport.size = Vector2i(720, 1280)
 	await _boot(viewport)
+	for hero in GameState.roster:
+		hero.hero_name = "Alexandria of the Distant Northern Mountains and Moonlit Lakes of the Ancient Silver Shield Order"
 	await _open_formation()
 	await get_tree().process_frame
 	var scroll := _screen().get_node("%Scroll") as ScrollContainer
@@ -509,20 +557,22 @@ func test_touch_swipes_do_not_select_slots_or_heroes_but_taps_place_once() -> vo
 	await _swipe(viewport, _slot(2))
 	assert_eq(_screen().get("_selected_slot"), 0, "Dragging a slot must not select it.")
 	assert_gt(scroll.scroll_vertical, 0)
+	_open_picker(2)
 	var row := _available(GameState.roster[0].hero_id)
-	scroll.ensure_control_visible(row)
+	var picker_scroll := _selector().find_child("ModalScroll", true, false) as ScrollContainer
+	picker_scroll.ensure_control_visible(row)
 	await get_tree().process_frame
-	var before := scroll.scroll_vertical
+	var before := picker_scroll.scroll_vertical
 	await _swipe(viewport, row)
-	assert_gt(scroll.scroll_vertical, before)
+	assert_gt(picker_scroll.scroll_vertical, before)
 	assert_eq(_draft().heroes(), [])
 	assert_null(GameState.current_party)
-	scroll.ensure_control_visible(row)
+	picker_scroll.ensure_control_visible(row)
 	await get_tree().process_frame
 	var position := row.get_global_rect().get_center()
 	_mouse_button(viewport, position, true)
 	_mouse_button(viewport, position, false)
 	assert_eq(_draft().heroes().size(), 1)
-	assert_same(_draft().slots[0], GameState.roster[0])
+	assert_same(_draft().slots[2], GameState.roster[0])
 	assert_eq(GameState.roster[0].status, HeroData.HeroStatus.IDLE)
 	await get_tree().process_frame

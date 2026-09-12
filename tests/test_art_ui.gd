@@ -98,6 +98,7 @@ func test_equipment_icons_follow_draft_but_cancel_and_failed_confirm_preserve_ow
 	var portrait := HeroUI.portrait_texture(GameState.roster[0])
 	await _go(EQUIPMENT)
 	assert_same(_node("WeaponButton").icon, Art.equipment_icon(null, "Weapon"))
+	_node("WeaponButton").pressed.emit()
 	assert_same(_node("Item_short_sword").icon, Art.item_icon("short_sword"))
 	_node("Item_short_sword").pressed.emit()
 	assert_same(_node("WeaponButton").icon, Art.item_icon("short_sword"))
@@ -112,6 +113,7 @@ func test_equipment_icons_follow_draft_but_cancel_and_failed_confirm_preserve_ow
 	assert_same(_node("WeaponIcon").texture, Art.equipment_icon(null, "Weapon"))
 	SaveManager.fault_injector = Callable()
 	await _go(EQUIPMENT)
+	_node("WeaponButton").pressed.emit()
 	_node("Item_short_sword").pressed.emit()
 	_node("ConfirmButton").pressed.emit()
 	await get_tree().process_frame
@@ -124,7 +126,8 @@ func test_formation_uses_stable_portraits_and_an_explicit_row_hint() -> void:
 	var hero := GameState.roster[0]
 	var before := SaveManager.capture_state()
 	await _go(FORMATION)
-	var row := _node("AvailableList").get_child(0)
+	_node("SlotGrid").get_child(0).pressed.emit()
+	var row := _node("ModalOptions").get_child(0)
 	assert_eq(row.find_child("DetailHint", true, false).text, "Place in selected slot")
 	assert_same(row.find_child("Portrait", true, false).texture, HeroUI.portrait_texture(hero))
 	row.pressed.emit()

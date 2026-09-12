@@ -44,11 +44,13 @@ godot --path .
 - Heroes retain their original stable IDs when recruited and after reload.
   Each has zero or one of eight flat-stat trade-off traits. Conditional combat/recovery
   traits are deferred, not represented as working effects.
-- Hero Detail shows attributes, derived stats, traits, status, cumulative XP and
-  next-level progress. **Manage equipment** opens a weapon/armor draft with
-  before/after stat changes. Confirm saves ownership; Cancel/Android Back
-  discards the draft. All classes can use either slot's items while Idle,
-  Assigned or Resting, but equipment is locked during an Expedition.
+- Hero Detail shows the equipped weapon and armor near the top, followed by
+  attributes, derived stats, traits, status, cumulative XP and next-level
+  progress. **Manage equipment** opens a dedicated weapon/armor draft; tapping
+  either slot opens a scrollable compatible-item popup with an Unequip option.
+  Confirm saves ownership; Cancel/Android Back discards the draft. All classes
+  can use either slot's items while Idle, Assigned or Resting, but equipment is
+  locked during an Expedition.
 - Inventory holds unequipped item copies, including duplicates. Equipping
   consumes one copy and replacing/unequipping returns one. The starter pool
   contains Short Sword, Hunting Bow, Apprentice Staff, Leather Armor, Chainmail
@@ -71,9 +73,10 @@ godot --path .
 
 ## Forming a Party
 
-- Open **Form Party** from Home or Company Roster. Tap one of the four named
-  front/back slots, then an available Hero to place them. Remove or move
-  members explicitly; occupied slots are never silently overwritten.
+- Open **Form Party** from Home or Company Roster. Tap an empty named front/back
+  slot to open a scrollable popup of available Heroes, then tap a Hero to place
+  them. Tapping an occupied slot selects it for the existing explicit Remove or
+  Move actions; occupied slots are never silently overwritten.
 - Only `Idle` roster Heroes may be newly added. Heroes already in your
   confirmed Party remain editable while `Assigned`.
 - Slot edits are a local draft. Heroes disappear from the available pool when

@@ -10,17 +10,27 @@ var _isolation: RefCounted
 var _time: int = 1000
 var _original_pool: Array[EncounterEntryResource] = []
 var _original_durations: Array[int] = []
+var _original_item_pool: Dictionary
+var _original_item_chance: float
+var _original_enemies: Array[Dictionary]
+
+
+func before_all() -> void:
+	_original_pool = REGION.encounter_pool.duplicate()
+	_original_durations = REGION.duration_options_seconds.duplicate()
+	_original_item_pool = ExpeditionCatalog.LOOT.item_pool.duplicate(true)
+	_original_item_chance = ExpeditionCatalog.LOOT.item_drop_chance
+	_original_enemies = CombatCatalog.BANDIT_SKIRMISHERS.enemies.duplicate(true)
 
 
 func before_each() -> void:
-	_original_pool.assign(REGION.encounter_pool)
-	_original_durations.assign(REGION.duration_options_seconds)
 	var safe_entry := EncounterEntryResource.new()
 	safe_entry.kind = "Loot"
 	safe_entry.content_id = ExpeditionCatalog.LOOT.loot_id
 	safe_entry.weight = 1.0
 	var region := REGION
-	region.encounter_pool = [safe_entry]
+	region.encounter_pool.assign([safe_entry])
+	region.duration_options_seconds.assign(_original_durations)
 	_isolation = Isolation.new()
 	assert_true(_isolation.begin())
 	_time = 1000
@@ -32,8 +42,14 @@ func before_each() -> void:
 
 
 func after_each() -> void:
-	REGION.encounter_pool.assign(_original_pool)
-	REGION.duration_options_seconds.assign(_original_durations)
+	var region := REGION
+	region.encounter_pool.assign(_original_pool)
+	region.duration_options_seconds.assign(_original_durations)
+	var loot := ExpeditionCatalog.LOOT
+	loot.item_pool = _original_item_pool.duplicate(true)
+	loot.item_drop_chance = _original_item_chance
+	var enemies := CombatCatalog.BANDIT_SKIRMISHERS
+	enemies.enemies = _original_enemies.duplicate(true)
 	_isolation.finish()
 
 
@@ -64,6 +80,35 @@ func _reset_company() -> void:
 	assert_true(SaveManager.last_committed, SaveManager.last_error)
 
 
+func _rewards(run: ExpeditionData) -> Dictionary:
+	var result := {"gold": 0, "items": 0}
+	for step in run.steps:
+		result.gold += int(step.result.gold)
+		result.items += step.result.get("item_ids", []).size()
+	return result
+
+
+func _assert_successor_stopped(reason: String, before: Dictionary) -> void:
+	var state := ExpeditionManager.get_automation_state()
+	assert_eq(int(state.completed_runs), 1)
+	assert_eq(state.summaries.size(), 1)
+	assert_false(bool(state.enabled))
+	assert_string_contains(String(state.stop_reason), reason)
+	assert_eq(int(state.pending_offline_seconds), 0)
+	assert_eq(ExpeditionManager.get_active_expedition().status, ExpeditionData.Status.COMPLETED)
+	assert_eq(GameState.expedition_sequence, 1)
+	var summary: Dictionary = state.summaries[0]
+	assert_eq(GameState.gold, int(before.gold) + int(summary.gold))
+	assert_eq(GameState.inventory.size(), int(before.items) + int(summary.item_count))
+	assert_eq(GameState.roster[0].xp, int(before.xp) + int(summary.xp_per_hero))
+	var saved := SaveManager.capture_state()
+	SaveManager.load_or_create()
+	assert_true(SaveManager.last_success, SaveManager.last_error)
+	assert_eq(SaveManager.capture_state(), saved)
+	_observe(2000)
+	assert_eq(SaveManager.capture_state(), saved)
+
+
 func test_automation_state_rejects_overflow_mismatched_totals_and_excess_resting_heroes() -> void:
 	var state := ExpeditionAutomationState.create(REGION, _confirm(), 60, 2)
 	assert_not_null(state)
@@ -82,6 +127,25 @@ func test_automation_state_rejects_overflow_mismatched_totals_and_excess_resting
 	bad.cumulative_gold = 2
 	bad.summaries[0].resting_hero_count = 2
 	assert_false(ExpeditionAutomationState.valid(bad))
+	var completed := state.serialize()
+	completed.completed_runs = 2
+	completed.enabled = false
+	completed.stop_reason = ExpeditionAutomationState.COMPLETED_REASON
+	completed.summaries = [
+		{
+			"run_number": 1, "region_name": REGION.display_name, "outcome": "COMPLETED",
+			"gold": 0, "item_count": 0, "xp_per_hero": 0, "resting_hero_count": 0,
+		},
+		{
+			"run_number": 2, "region_name": REGION.display_name, "outcome": "COMPLETED",
+			"gold": 0, "item_count": 0, "xp_per_hero": 0, "resting_hero_count": 0,
+		},
+	]
+	assert_true(ExpeditionAutomationState.valid(completed))
+	for change in [["cancelled", true], ["stop_reason", "Stopped."]]:
+		bad = completed.duplicate(true)
+		bad[change[0]] = change[1]
+		assert_false(ExpeditionAutomationState.valid(bad), str(change))
 
 
 func test_one_run_remains_manual_and_invalid_counts_do_not_mutate() -> void:
@@ -206,6 +270,19 @@ func test_cancelling_the_final_run_normalizes_to_completed_series() -> void:
 	assert_eq(String(completed.stop_reason), "Completed all requested Expeditions.")
 
 
+func test_final_run_rest_preserves_completed_series_reason() -> void:
+	_start(2)
+	ExpeditionManager.balancing.recovery_hp_percent = 100
+	_observe(1060)
+	_observe(1120)
+	var completed := ExpeditionManager.get_automation_state()
+	assert_eq(int(completed.completed_runs), 2)
+	assert_false(bool(completed.enabled))
+	assert_false(bool(completed.cancelled))
+	assert_eq(String(completed.stop_reason), ExpeditionAutomationState.COMPLETED_REASON)
+	assert_eq(GameState.roster[0].status, HeroData.HeroStatus.RESTING)
+
+
 func test_series_stops_safely_when_the_next_duration_is_removed() -> void:
 	_start(3)
 	REGION.duration_options_seconds.assign([120])
@@ -218,6 +295,94 @@ func test_series_stops_safely_when_the_next_duration_is_removed() -> void:
 	assert_eq(ExpeditionManager.get_active_expedition().status, ExpeditionData.Status.COMPLETED)
 	assert_eq(GameState.roster[0].status, HeroData.HeroStatus.IDLE)
 	assert_true(SaveManager.validate_snapshot(SaveManager.capture_state()))
+
+
+func test_successor_progression_overflow_commits_current_run_once_and_stops() -> void:
+	var run := _start(3)
+	GameState.roster[0].xp = HeroCatalog.MAX_SAFE_INT - run.xp_award
+	SaveManager.save()
+	assert_true(SaveManager.last_committed, SaveManager.last_error)
+	var before := {
+		"gold": GameState.gold, "items": GameState.inventory.size(), "xp": GameState.roster[0].xp,
+	}
+	_observe(1060)
+	_assert_successor_stopped("progression", before)
+
+
+func test_successor_recovery_overflow_commits_current_run_once_and_stops() -> void:
+	_start(3)
+	ExpeditionManager.balancing.base_recovery_seconds = HeroCatalog.MAX_SAFE_INT
+	var before := {
+		"gold": GameState.gold, "items": GameState.inventory.size(), "xp": GameState.roster[0].xp,
+	}
+	_observe(1060)
+	_assert_successor_stopped("recovery deadline", before)
+
+
+func test_successor_inventory_limit_commits_current_run_once_and_stops() -> void:
+	var loot := ExpeditionCatalog.LOOT
+	loot.item_pool = {"short_sword": 1.0}
+	loot.item_drop_chance = 1.0
+	var run := _start(3)
+	var current_rewards := _rewards(run)
+	assert_gt(int(current_rewards.items), 0)
+	GameState.inventory.resize(SaveManager.MAX_INVENTORY_ITEMS - int(current_rewards.items))
+	GameState.inventory.fill(ItemCatalog.SHORT_SWORD)
+	SaveManager.save()
+	assert_true(SaveManager.last_committed, SaveManager.last_error)
+	var before := {
+		"gold": GameState.gold, "items": GameState.inventory.size(), "xp": GameState.roster[0].xp,
+	}
+	_observe(1060)
+	_assert_successor_stopped("inventory capacity", before)
+
+
+func test_successor_gold_limit_commits_current_run_once_and_stops() -> void:
+	var run := _start(3)
+	var current_rewards := _rewards(run)
+	assert_gt(int(current_rewards.gold), 0)
+	GameState.gold = HeroCatalog.MAX_SAFE_INT - int(current_rewards.gold)
+	SaveManager.save()
+	assert_true(SaveManager.last_committed, SaveManager.last_error)
+	var before := {
+		"gold": GameState.gold, "items": GameState.inventory.size(), "xp": GameState.roster[0].xp,
+	}
+	_observe(1060)
+	_assert_successor_stopped("gold capacity", before)
+
+
+func test_successor_save_limit_commits_current_run_once_and_stops() -> void:
+	var party := PartyData.new()
+	for index in GameState.roster.size():
+		party.place_hero(index, GameState.roster[index])
+	assert_true(PartyFormationService.confirm(party, ExpeditionManager.balancing))
+	ExpeditionManager.start_expedition(REGION, GameState.current_party, 60, 3)
+	assert_true(ExpeditionManager.last_committed, ExpeditionManager.last_error)
+	for index in GameState.roster.size():
+		GameState.roster[index].hero_name = ("%d" % index) + "H".repeat(127)
+	var combat := EncounterEntryResource.new()
+	combat.kind = "Combat"
+	combat.content_id = CombatCatalog.BANDIT_SKIRMISHERS.group_id
+	combat.weight = 1.0
+	var region := REGION
+	region.encounter_pool.assign([combat])
+	var group := CombatCatalog.BANDIT_SKIRMISHERS
+	var enemies: Array[Dictionary] = []
+	for index in CombatCatalog.MAX_ENEMIES:
+		var enemy: Dictionary = _original_enemies[index % _original_enemies.size()].duplicate(true)
+		enemy.combatant_id = "oversize-enemy-%d" % index
+		enemy.display_name = ("%d" % index) + "E".repeat(127)
+		enemies.append(enemy)
+	group.enemies = enemies
+	ExpeditionManager.balancing.max_combat_rounds = CombatCatalog.MAX_ROUNDS
+	ExpeditionManager.balancing.base_hit_chance = 0.0
+	ExpeditionManager.balancing.min_hit_chance = 0.0
+	ExpeditionManager.balancing.max_hit_chance = 0.0
+	var before := {
+		"gold": GameState.gold, "items": GameState.inventory.size(), "xp": GameState.roster[0].xp,
+	}
+	_observe(1060)
+	_assert_successor_stopped("save limits", before)
 
 
 func test_version_six_migrates_with_null_automation_without_rewriting_the_run() -> void:

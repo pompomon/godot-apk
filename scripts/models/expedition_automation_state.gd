@@ -14,6 +14,7 @@ const SUMMARY_KEYS := [
 	"xp_per_hero", "resting_hero_count",
 ]
 const OUTCOMES := ["COMPLETED", "RETREAT", "DEFEAT"]
+const COMPLETED_REASON := "Completed all requested Expeditions."
 
 var _data: Dictionary
 var region_id: String:
@@ -109,7 +110,7 @@ func append_summary(summary: Dictionary) -> bool:
 	if next.completed_runs >= next.requested_runs:
 		next.enabled = false
 		next.cancelled = false
-		next.stop_reason = "Completed all requested Expeditions."
+		next.stop_reason = COMPLETED_REASON
 	if not valid(next):
 		return false
 	_data = next
@@ -150,6 +151,9 @@ static func valid(data: Variant) -> bool:
 			or int(data.completed_runs) >= int(data.requested_runs)):
 		return false
 	if not data.enabled and data.stop_reason.is_empty():
+		return false
+	if int(data.completed_runs) == int(data.requested_runs) and (
+			data.enabled or data.cancelled or data.stop_reason != COMPLETED_REASON):
 		return false
 	if int(data.duration_seconds) > HeroCatalog.MAX_SAFE_INT / int(data.requested_runs):
 		return false

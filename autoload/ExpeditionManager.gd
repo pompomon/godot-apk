@@ -457,7 +457,7 @@ func _reveal_automated_progress(now: int) -> void:
 				"Automated Expedition history is invalid. Reload before retrying progress.")
 			return
 		completed_count += 1
-		if finalization.resting_count > 0:
+		if _automation.enabled and finalization.resting_count > 0:
 			_automation.stop("Stopped because a participating Hero needs to rest.")
 		elif not _automation.enabled:
 			if _automation.cancelled and _automation.completed_runs < _automation.requested_runs:

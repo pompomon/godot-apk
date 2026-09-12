@@ -40,6 +40,19 @@ func _node(node_name: String) -> Node:
 	return _screen().find_child(node_name, true, false)
 
 
+func _selector() -> Control:
+	return _screen().get_node("EquipmentSelector") as Control
+
+
+func _options() -> VBoxContainer:
+	return _selector().find_child("ModalOptions", true, false) as VBoxContainer
+
+
+func _open_items(slot: String = "Weapon") -> void:
+	_node("%sButton" % slot).pressed.emit()
+	assert_true(_selector().visible)
+
+
 func _go(path: String, id: String = "hero-1") -> void:
 	UIManager.show_screen(path, {"hero_id": id})
 	await get_tree().process_frame
@@ -52,6 +65,7 @@ func test_detail_navigation_preview_cancel_and_android_back_are_draft_only() -> 
 	await get_tree().process_frame
 	assert_eq(_screen().scene_file_path, EQUIPMENT)
 	var before := SaveManager.capture_state()
+	_open_items()
 	_node("Item_short_sword").pressed.emit()
 	assert_string_contains(_node("StatPreview").text, "Attack:")
 	assert_string_contains(_node("StatPreview").text, "→")
@@ -64,6 +78,12 @@ func test_detail_navigation_preview_cancel_and_android_back_are_draft_only() -> 
 	assert_eq(_screen().scene_file_path, DETAIL)
 	assert_string_contains(_node("WeaponLabel").text, "Empty")
 	await _go(EQUIPMENT)
+	_open_items()
+	_main.notification(NOTIFICATION_WM_GO_BACK_REQUEST)
+	await get_tree().process_frame
+	assert_eq(_screen().scene_file_path, EQUIPMENT)
+	assert_false(_selector().visible)
+	_open_items()
 	_node("Item_short_sword").pressed.emit()
 	_main.notification(NOTIFICATION_WM_GO_BACK_REQUEST)
 	await get_tree().process_frame
@@ -73,6 +93,7 @@ func test_detail_navigation_preview_cancel_and_android_back_are_draft_only() -> 
 
 func test_confirm_retry_unequip_and_correct_detail_refresh() -> void:
 	await _go(EQUIPMENT)
+	_open_items()
 	assert_string_contains(_node("Item_short_sword").text, "×2")
 	_node("Item_short_sword").pressed.emit()
 	_node("ArmorButton").pressed.emit()
@@ -90,6 +111,7 @@ func test_confirm_retry_unequip_and_correct_detail_refresh() -> void:
 	assert_string_contains(_node("ArmorLabel").text, ItemCatalog.LEATHER_ARMOR.display_name)
 	assert_eq(GameState.inventory.size(), 1)
 	await _go(EQUIPMENT)
+	_open_items()
 	_node("UnequipButton").pressed.emit()
 	_node("ConfirmButton").pressed.emit()
 	await get_tree().process_frame
@@ -100,8 +122,9 @@ func test_confirm_retry_unequip_and_correct_detail_refresh() -> void:
 func test_empty_inventory_missing_hero_and_status_changes_are_safe() -> void:
 	GameState.inventory.clear()
 	await _go(EQUIPMENT)
+	_open_items()
 	assert_null(_node("Item_short_sword"))
-	assert_string_contains(_node("InventoryList").get_child(1).text, "No weapon")
+	assert_string_contains(_node("ModalEmptyLabel").text, "No weapon")
 	await _go(EQUIPMENT, "missing-hero")
 	assert_true(_node("ConfirmButton").disabled)
 	_node("CancelButton").pressed.emit()
@@ -135,11 +158,40 @@ func test_open_detail_refreshes_xp_stats_and_recovery_after_commit_signal() -> v
 func test_portrait_equipment_uses_scroll_and_touch_targets() -> void:
 	_main.size = Vector2(720, 1280)
 	await _go(EQUIPMENT)
+	_open_items()
 	await get_tree().process_frame
 	var scroll := _screen().get_node("Margin/Scroll") as ScrollContainer
+	var picker_scroll := _node("ModalScroll") as ScrollContainer
 	assert_eq(scroll.horizontal_scroll_mode, ScrollContainer.SCROLL_MODE_DISABLED)
-	for name in ["WeaponButton", "ArmorButton", "ConfirmButton", "CancelButton", "Item_short_sword"]:
+	assert_eq(picker_scroll.horizontal_scroll_mode, ScrollContainer.SCROLL_MODE_DISABLED)
+	for name in ["WeaponButton", "ArmorButton", "ConfirmButton", "CancelButton",
+			"Item_short_sword", "ModalCloseButton"]:
 		var button := _node(name) as Button
 		assert_gte(button.custom_minimum_size.y, 96.0, name)
 		assert_eq(button.mouse_filter, Control.MOUSE_FILTER_PASS)
 		assert_lte(button.size.x, 720.0, name)
+
+
+func test_detail_prioritizes_equipment_before_attributes_and_progression() -> void:
+	await _go(DETAIL)
+	var content := _node("HeroContent")
+	assert_lt(_node("EquipmentHeading").get_index(), _node("AttributesAndStats").get_index())
+	assert_lt(_node("EquipmentButton").get_index(), _node("ProgressionHeading").get_index())
+	assert_same(_node("EquipmentHeading").get_parent(), content)
+
+
+func test_item_picker_filters_slots_and_blocks_the_screen_until_closed() -> void:
+	await _go(EQUIPMENT)
+	_open_items("Weapon")
+	assert_string_contains(_node("ModalTitle").text, "weapon")
+	assert_not_null(_node("Item_short_sword"))
+	assert_null(_node("Item_leather_armor"))
+	assert_eq(_selector().mouse_filter, Control.MOUSE_FILTER_STOP)
+	assert_eq(_selector().get_global_rect(), _screen().get_global_rect())
+	_node("ModalCloseButton").pressed.emit()
+	assert_false(_selector().visible)
+	assert_eq(_options().get_child_count(), 0)
+	_open_items("Armor")
+	assert_string_contains(_node("ModalTitle").text, "armor")
+	assert_null(_node("Item_short_sword"))
+	assert_not_null(_node("Item_leather_armor"))

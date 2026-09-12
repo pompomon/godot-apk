@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scenes/ui/party_formation/party_formation_screen.gd" id="1_party"]
+[ext_resource type="PackedScene" path="res://scenes/ui/components/modal_selector.tscn" id="2_selector"]
 
 [node name="PartyFormationScreen" type="Control"]
 layout_mode = 3
@@ -57,7 +58,7 @@ size_flags_horizontal = 3
 [node name="Help" type="Label" parent="Margin/Layout/Scroll/Content"]
 layout_mode = 2
 mouse_filter = 2
-text = "Select a slot, then tap a Hero. Changes stay in this draft until Confirm. Cancel keeps your previously confirmed Party."
+text = "Tap an empty slot to choose a Hero. Changes stay in this draft until Confirm. Cancel keeps your previously confirmed Party."
 autowrap_mode = 3
 
 [node name="MemberCountLabel" type="Label" parent="Margin/Layout/Scroll/Content"]
@@ -117,30 +118,6 @@ layout_mode = 2
 mouse_filter = 2
 autowrap_mode = 3
 
-[node name="AvailableHeading" type="Label" parent="Margin/Layout/Scroll/Content"]
-layout_mode = 2
-mouse_filter = 2
-theme_override_font_sizes/font_size = 34
-text = "Available Heroes"
-autowrap_mode = 3
-
-[node name="AvailableHelp" type="Label" parent="Margin/Layout/Scroll/Content"]
-layout_mode = 2
-mouse_filter = 2
-text = "Idle roster Heroes and retained members of your confirmed Party only. Selected Heroes are excluded. Inspect Hero details in Company Roster."
-autowrap_mode = 3
-
-[node name="NoAvailableLabel" type="Label" parent="Margin/Layout/Scroll/Content"]
-unique_name_in_owner = true
-layout_mode = 2
-mouse_filter = 2
-text = "No available Heroes. Remove a draft member, or return to Company Roster to inspect or recruit Heroes."
-autowrap_mode = 3
-
-[node name="AvailableList" type="VBoxContainer" parent="Margin/Layout/Scroll/Content"]
-unique_name_in_owner = true
-layout_mode = 2
-
 [node name="DisbandButton" type="Button" parent="Margin/Layout/Scroll/Content"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
@@ -166,3 +143,5 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 text = "Cancel / Back"
+
+[node name="HeroSelector" parent="." instance=ExtResource("2_selector")]

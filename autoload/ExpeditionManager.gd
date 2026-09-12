@@ -582,6 +582,60 @@ func _automation_party() -> Dictionary:
 	return {"party": party, "region": region}
 
 
+func automation_completion_fits_save_limit(snapshot: Dictionary) -> bool:
+	var expedition: Variant = snapshot.get("expedition")
+	var automation: Variant = snapshot.get("expedition_automation")
+	if not expedition is Dictionary or not automation is Dictionary \
+			or int(expedition.get("status", ExpeditionData.Status.COMPLETED)) != ExpeditionData.Status.RUNNING:
+		return true
+	var projected := snapshot.duplicate(true)
+	var run: Dictionary = projected.expedition
+	var state: Dictionary = projected.expedition_automation
+	for index in range(int(run.last_revealed_index) + 1, run.steps.size()):
+		var step: Dictionary = run.steps[index]
+		var reward := int(step.result.gold)
+		if reward > HeroCatalog.MAX_SAFE_INT - int(projected.gold):
+			return false
+		projected.gold += reward
+		for id in step.result.get("item_ids", []):
+			projected.inventory.append(id)
+	var progression := CompanyProgression.preview(
+		int(projected.gold), projected.unlocked_regions, int(projected.roster_capacity), balancing)
+	if progression.has("error"):
+		return false
+	projected.unlocked_regions = progression.unlocked_regions
+	projected.roster_capacity = progression.roster_capacity
+	projected.gold = HeroCatalog.MAX_SAFE_INT
+	for hero in projected.roster:
+		if hero.hero_id in state.party_hero_ids:
+			hero.level = HeroCatalog.MAX_SAFE_INT
+			hero.xp = HeroCatalog.MAX_SAFE_INT
+			hero.recovery_ready_at = HeroCatalog.MAX_SAFE_INT
+	run.last_observed_utc = HeroCatalog.MAX_SAFE_INT
+	run.credited_elapsed_seconds = HeroCatalog.MAX_SAFE_INT
+	run.last_revealed_index = ExpeditionCatalog.MAX_STEPS
+	run.status = ExpeditionData.Status.COMPLETED
+	state.completed_runs += 1
+	state.enabled = false
+	state.cancelled = false
+	state.stop_reason = "x".repeat(256)
+	state.pending_offline_seconds = 0
+	state.cumulative_gold = HeroCatalog.MAX_SAFE_INT
+	state.cumulative_item_count = HeroCatalog.MAX_SAFE_INT
+	state.cumulative_xp_per_hero = HeroCatalog.MAX_SAFE_INT
+	state.summaries.append({
+		"run_number": HeroCatalog.MAX_SAFE_INT,
+		"region_name": run.region_name,
+		"outcome": "COMPLETED",
+		"gold": HeroCatalog.MAX_SAFE_INT,
+		"item_count": HeroCatalog.MAX_SAFE_INT,
+		"xp_per_hero": HeroCatalog.MAX_SAFE_INT,
+		"resting_hero_count": HeroCatalog.MAX_SAFE_INT,
+	})
+	return JSON.stringify(projected, "\t", true, true).to_utf8_buffer().size() \
+		<= SaveManager.MAX_SAVE_BYTES
+
+
 func _start_automated_successor(previous: ExpeditionData, start_timestamp: int) -> String:
 	var input := _automation_party()
 	if input.has("error"):
@@ -616,7 +670,8 @@ func _start_automated_successor(previous: ExpeditionData, start_timestamp: int) 
 	_expedition = resolved
 	var snapshot := SaveManager.capture_state()
 	var encoded_size := JSON.stringify(snapshot, "\t", true, true).to_utf8_buffer().size()
-	if not SaveManager.validate_snapshot(snapshot) or encoded_size > SaveManager.MAX_SAVE_BYTES:
+	if not SaveManager.validate_snapshot(snapshot) or encoded_size > SaveManager.MAX_SAVE_BYTES \
+			or not automation_completion_fits_save_limit(snapshot):
 		_expedition = previous
 		GameState.expedition_sequence = sequence_before
 		for hero in statuses:

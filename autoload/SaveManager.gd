@@ -86,6 +86,9 @@ func save() -> void:
 	if not validate_snapshot(snapshot):
 		last_error = "Company data is invalid; the existing save was not replaced."
 		return
+	if not ExpeditionManager.automation_completion_fits_save_limit(snapshot):
+		last_error = "Save cannot reserve enough space to complete the active automated Expedition."
+		return
 	_write_snapshot(snapshot, not _recovering_backup)
 
 

@@ -10,6 +10,7 @@ var _isolation: RefCounted
 var _time: int = 1000
 var _original_pool: Array[EncounterEntryResource] = []
 var _original_durations: Array[int] = []
+var _original_travel_step_count: int
 var _original_item_pool: Dictionary
 var _original_item_chance: float
 var _original_enemies: Array[Dictionary]
@@ -18,6 +19,7 @@ var _original_enemies: Array[Dictionary]
 func before_all() -> void:
 	_original_pool = REGION.encounter_pool.duplicate()
 	_original_durations = REGION.duration_options_seconds.duplicate()
+	_original_travel_step_count = REGION.travel_step_count
 	_original_item_pool = ExpeditionCatalog.LOOT.item_pool.duplicate(true)
 	_original_item_chance = ExpeditionCatalog.LOOT.item_drop_chance
 	_original_enemies = CombatCatalog.BANDIT_SKIRMISHERS.enemies.duplicate(true)
@@ -45,6 +47,7 @@ func after_each() -> void:
 	var region := REGION
 	region.encounter_pool.assign(_original_pool)
 	region.duration_options_seconds.assign(_original_durations)
+	region.travel_step_count = _original_travel_step_count
 	var loot := ExpeditionCatalog.LOOT
 	loot.item_pool = _original_item_pool.duplicate(true)
 	loot.item_drop_chance = _original_item_chance
@@ -181,6 +184,41 @@ func test_automated_start_preflights_frozen_gold_without_consuming_the_party() -
 	assert_eq(SaveManager.capture_state(), before)
 	assert_same(GameState.current_party, party)
 	assert_true(ExpeditionManager.get_automation_state().is_empty())
+
+
+func test_running_save_reserves_space_for_its_terminal_summary() -> void:
+	var party := _confirm()
+	var region := REGION
+	region.travel_step_count = 128
+	region.duration_options_seconds.assign([256])
+	var candidate := ExpeditionGenerator.generate(
+		REGION, party, ExpeditionManager.next_seed(), 256, _time, ExpeditionManager.balancing)
+	var automation := ExpeditionAutomationState.create(REGION, party, 256, 2)
+	assert_not_null(candidate)
+	assert_not_null(automation)
+	var running := SaveManager.capture_state()
+	running.current_party = null
+	running.expedition = candidate.serialize()
+	running.expedition_automation = automation.serialize()
+	running.expedition_sequence += 1
+	for hero in running.roster:
+		if hero.hero_id in running.expedition_automation.party_hero_ids:
+			hero.status = "ON_EXPEDITION"
+	var remaining := SaveManager.MAX_SAVE_BYTES - JSON.stringify(
+		running, "\t", true, true).to_utf8_buffer().size()
+	for step in running.expedition.steps:
+		var added := mini(remaining, 4096 - String(step.journal_text).length())
+		step.journal_text += "x".repeat(added)
+		remaining -= added
+	assert_eq(remaining, 0)
+	assert_true(SaveManager.validate_snapshot(running))
+	assert_eq(JSON.stringify(running, "\t", true, true).to_utf8_buffer().size(),
+		SaveManager.MAX_SAVE_BYTES)
+	assert_false(ExpeditionManager.automation_completion_fits_save_limit(running))
+	SaveManager._apply_validated(running)
+	SaveManager.save()
+	assert_false(SaveManager.last_committed)
+	assert_string_contains(SaveManager.last_error, "reserve enough space")
 
 
 func test_catchup_is_bounded_reentrant_safe_and_preserves_sequential_timestamps() -> void:

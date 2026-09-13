@@ -9,7 +9,7 @@ const STATE_KEYS := [
 	"completed", "revealed_steps", "newly_revealed_indexes",
 ]
 const STAGE_HEIGHT := 320.0
-const PORTRAIT_SIZE := 72.0
+const PORTRAIT_SIZE := 64.0
 
 var _stage: PanelContainer
 var _layers: Control
@@ -189,7 +189,10 @@ func present_committed_state(state: Dictionary) -> bool:
 	_show_step(step)
 	var prefix := ""
 	if newly_revealed.size() > 1:
-		prefix = "%d steps completed while away · Latest reveal\n" % newly_revealed.size()
+		prefix = "%s%d steps completed while away · Latest reveal\n" % [
+			"Expedition complete · " if _completed else "",
+			newly_revealed.size(),
+		]
 	elif _completed:
 		prefix = "Expedition complete\n"
 	_status.text = prefix + _step_summary(step, cursor, total)
@@ -261,13 +264,13 @@ func _show_step(step: Dictionary) -> void:
 	match kind:
 		ExpeditionStep.StepKind.EVENT:
 			_encounter_art = HeroUI.artwork(
-				HeroUI.Art.event(String(step.content_id)), Vector2(112, 112))
+				HeroUI.Art.event(String(step.content_id)), Vector2(128, 128))
 		ExpeditionStep.StepKind.COMBAT:
 			_encounter_art = HeroUI.artwork(
-				HeroUI.Art.enemy(String(step.content_id)), Vector2(112, 112))
+				HeroUI.Art.enemy(String(step.content_id)), Vector2(128, 128))
 			_outcome_icon = HeroUI.artwork(
 				HeroUI.Art.outcome_icon(String(step.result.get("outcome", ""))),
-				Vector2(64, 64))
+				Vector2(48, 48))
 			_outcome_icon.name = "RunOutcomeIcon"
 			_reveal_art.add_child(_outcome_icon)
 	if _encounter_art != null:
@@ -382,12 +385,12 @@ func _layout_visuals() -> void:
 		_step_icon.size = Vector2(48, 48)
 	if is_instance_valid(_encounter_art):
 		_encounter_art.position = Vector2(
-			_layers.size.x * 0.76 - 56, _layers.size.y * 0.56 - 56)
-		_encounter_art.size = Vector2(112, 112)
+			_layers.size.x * 0.76 - 64, _layers.size.y * 0.56 - 64)
+		_encounter_art.size = Vector2(128, 128)
 	if is_instance_valid(_outcome_icon):
 		_outcome_icon.position = Vector2(
-			_layers.size.x * 0.82 - 32, _layers.size.y * 0.78 - 32)
-		_outcome_icon.size = Vector2(64, 64)
+			_layers.size.x * 0.82 - 24, _layers.size.y * 0.78 - 24)
+		_outcome_icon.size = Vector2(48, 48)
 	if is_instance_valid(_reward_icon):
 		_reward_icon.position = Vector2(
 			_layers.size.x * 0.68 - 32, _layers.size.y * 0.78 - 32)

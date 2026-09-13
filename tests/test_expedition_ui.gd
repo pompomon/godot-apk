@@ -475,6 +475,19 @@ func test_run_view_presents_all_revealed_kinds_and_outcomes_without_mutation() -
 	assert_true(view.begin_run(report.region_id, report.party_snapshot.slots))
 	assert_string_contains(view.find_child("RunStatusLabel", true, false).text, "Step 0")
 	assert_null(view.find_child("RunStepKindIcon", true, false))
+	assert_false(view.present_committed_state({
+		"cursor": -1,
+		"credited_elapsed_seconds": 0,
+		"duration_seconds": 6,
+		"total_step_count": 6,
+		"completed": false,
+		"revealed_steps": [{"kind": ExpeditionStep.StepKind.COMBAT,
+			"content_id": "bandit_skirmishers", "title": "Uncommitted",
+			"result": {"gold": 0, "outcome": "DEFEAT"}}],
+		"newly_revealed_indexes": [],
+	}))
+	assert_false(_visible_text(view).contains("Uncommitted"))
+	assert_null(view.find_child("RunEncounterArt", true, false))
 	var revealed: Array[Dictionary] = []
 	var cases := [
 		{
@@ -666,6 +679,8 @@ func test_completion_routes_once_report_survives_home_and_acknowledgment_retries
 	await get_tree().process_frame
 	assert_eq(_screen().scene_file_path, REPORT)
 	assert_string_contains(_node("StatusLabel").text, "Completed")
+	assert_string_contains(_node("RunStatusLabel").text, "Expedition complete")
+	assert_false((_node("ExpeditionRunView") as ExpeditionRunView).is_processing())
 	assert_eq(_node("Journal").get_child_count(), 10)
 	assert_true(_node("AcknowledgeButton").visible)
 	var report := ExpeditionManager.get_active_expedition()

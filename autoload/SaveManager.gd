@@ -653,7 +653,10 @@ func _protected_save_path(path: String) -> bool:
 		return false
 	var selected := ProjectSettings.globalize_path(path).simplify_path()
 	var primary := ProjectSettings.globalize_path(get_save_path()).simplify_path()
-	return selected in [primary, primary + ".bak", primary + ".tmp", primary + ".bak.tmp"]
+	for protected_path in [primary, primary + ".bak", primary + ".tmp", primary + ".bak.tmp"]:
+		if selected.nocasecmp_to(protected_path) == 0:
+			return true
+	return false
 
 
 func _write_external_document(path: String, text: String) -> bool:

@@ -71,6 +71,9 @@ func test_home_opens_settings_with_native_json_pickers_and_touch_targets() -> vo
 	assert_true(export_dialog.use_native_dialog)
 	assert_true(import_dialog.use_native_dialog)
 	assert_eq(export_dialog.filters, PackedStringArray(["*.json ; JSON save files"]))
+	var confirmation := _node("ReplaceDialog") as ConfirmationDialog
+	assert_gte(confirmation.get_ok_button().get_combined_minimum_size().y, 96.0)
+	assert_gte(confirmation.get_cancel_button().get_combined_minimum_size().y, 96.0)
 	_node("BackButton").pressed.emit()
 	await get_tree().process_frame
 	assert_eq(_screen().scene_file_path, HOME)
@@ -105,6 +108,10 @@ func test_restore_requires_confirmation_then_replaces_and_returns_home() -> void
 	var confirmation := _node("ReplaceDialog") as ConfirmationDialog
 	assert_true(confirmation.visible)
 	assert_string_contains(confirmation.dialog_text, "replaces")
+	assert_string_contains(confirmation.dialog_text, "active Expedition")
+	assert_string_contains(confirmation.dialog_text, "completed Expedition report")
+	assert_string_contains(_node("PortableSaveHelp").text, "active Expedition")
+	assert_string_contains(_node("PortableSaveHelp").text, "completed Expedition report")
 	assert_eq(GameState.gold, 222)
 	_screen().call("cancel_draft")
 	assert_false(confirmation.visible)

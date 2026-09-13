@@ -20,7 +20,8 @@ func _ready() -> void:
 	HeroUI.add_section_divider(content)
 	var help := HeroUI.label(
 		"Portable backups contain Heroes, unequipped items, gold, and opened Regions. "
-		+ "They do not contain the current Party, Expedition report, or automated plan.")
+		+ "They do not contain the current Party, active Expedition, completed Expedition "
+		+ "report, or automated plan.")
 	help.name = "PortableSaveHelp"
 	content.add_child(help)
 	var export_button := HeroUI.button("Export portable backup")
@@ -52,9 +53,11 @@ func _ready() -> void:
 	_replace_dialog.name = "ReplaceDialog"
 	_replace_dialog.title = "Replace Company?"
 	_replace_dialog.dialog_text = (
-		"Restoring replaces this Company. The current Party, Expedition report, "
-		+ "and automated plan will be discarded. This cannot be merged.")
+		"Restoring replaces this Company. The current Party, active Expedition, completed "
+		+ "Expedition report, and automated plan will be discarded. This cannot be merged.")
 	_replace_dialog.ok_button_text = "Replace Company"
+	_replace_dialog.get_ok_button().custom_minimum_size.y = 96
+	_replace_dialog.get_cancel_button().custom_minimum_size.y = 96
 	_replace_dialog.confirmed.connect(_confirm_import)
 	_replace_dialog.canceled.connect(_cancel_import)
 	add_child(_replace_dialog)

@@ -395,6 +395,8 @@ func test_export_protects_private_files_and_preserves_existing_destination_on_fa
 			SaveManager.get_save_path(), SaveManager.get_save_path() + ".bak",
 			SaveManager.get_save_path() + ".tmp",
 			SaveManager.get_save_path() + ".bak.tmp",
+			SaveManager.get_save_path().get_base_dir().path_join(
+				SaveManager.get_save_path().get_file().to_upper()),
 	]:
 		SaveManager.export_external_save(path)
 		assert_false(SaveManager.last_success)
@@ -406,3 +408,4 @@ func test_export_protects_private_files_and_preserves_existing_destination_on_fa
 	SaveManager.export_external_save(destination)
 	assert_false(SaveManager.last_success)
 	assert_eq(_read_text(destination), "old portable data")
+	assert_eq(DirAccess.remove_absolute(destination + ".tmp"), OK)

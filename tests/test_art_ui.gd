@@ -425,6 +425,24 @@ func test_safe_area_conversion_handles_scaling_window_offsets_and_invalid_rects(
 		Transform2D(Vector2.ZERO, Vector2.ZERO, Vector2.ZERO)), Rect2(Vector2.ZERO, extent))
 
 
+func _assert_scrollbar_thickness(scroll: ScrollContainer, context: String) -> void:
+	assert_not_null(scroll, "%s must have a ScrollContainer." % context)
+	if scroll == null:
+		return
+	var vertical := scroll.get_v_scroll_bar()
+	var horizontal := scroll.get_h_scroll_bar()
+	assert_eq(vertical.get_combined_minimum_size().x, HeroUI.SCROLLBAR_THICKNESS,
+		"%s vertical minimum must use the shared thickness." % context)
+	assert_eq(horizontal.get_combined_minimum_size().y, HeroUI.SCROLLBAR_THICKNESS,
+		"%s horizontal minimum must use the shared thickness." % context)
+	if vertical.is_visible_in_tree():
+		assert_eq(vertical.size.x, HeroUI.SCROLLBAR_THICKNESS,
+			"%s visible vertical bar must use the shared thickness." % context)
+	if horizontal.is_visible_in_tree():
+		assert_eq(horizontal.size.y, HeroUI.SCROLLBAR_THICKNESS,
+			"%s visible horizontal bar must use the shared thickness." % context)
+
+
 func _check_control_widths(parent: Node, width: float) -> void:
 	for child in parent.get_children():
 		if child is Control and child.is_visible_in_tree():

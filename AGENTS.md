@@ -44,11 +44,14 @@ Separate screenshot-heavy investigation from implementation:
    and display configuration, diagnostic mode, exact observed markers,
    observations versus hypotheses, bounded fix, acceptance criteria, and missing
    evidence. Do not embed the images again in the handoff.
-3. Start implementation as a fresh task using that text and the published
-   revision. A follow-up comment, subagent, or restored session is not proof of
-   clean history. If the platform does not expose fresh context, state that
-   limitation and ask the maintainer to start a separate task; do not promise
-   that a text-only follow-up removed earlier media.
+3. End the visual task after publishing that handoff. Start implementation as a
+   fresh task containing the text and published revision, without attachments,
+   inline images, or raw attachment URLs. A source comment identifier is enough;
+   do not copy its media into the implementation prompt.
+4. A follow-up comment, subagent, or restored session is not proof of clean
+   history. If the platform does not expose fresh context, state that limitation
+   and ask the maintainer to start a separate task; do not promise that a
+   text-only follow-up removed earlier media.
 
 For generated previews, publish the implementation and validation checkpoint
 before handing off to a separate visual-review task. Keep visual and device
@@ -61,6 +64,9 @@ acceptance unverified until actually performed.
   If still able to respond, request a fresh supported attachment or a textual
   diagnostic transcription; after a fatal session error, use the recovery
   procedure below in a fresh task.
+- If media is accidentally repeated in an implementation task, do not fetch or
+  inspect it. Continue only from the established textual diagnostic contract,
+  or request a clean text-only task when that contract is missing.
 - Never claim inaccessible media was inspected or infer a game defect from a
   media-service failure. Attribute user-provided transcriptions as such.
 - Do not commit screenshots or private diagnostic data just to make them

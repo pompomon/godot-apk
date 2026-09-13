@@ -71,6 +71,42 @@ godot --path .
   atomic replacement or durability across arbitrary power loss. Do not delete
   a player's save to troubleshoot; copy the primary and backup elsewhere first.
 
+### Portable Company backups
+
+- Open **Settings & Backups** from Home to export or restore a portable JSON
+  backup. Restoring is an explicit replacement operation, never a merge, and
+  requires confirmation before the current Company is changed.
+- Portable schema version 1 uses the format marker
+  `adventurers-march-portable-save`, an independent `schema_version`,
+  `minimum_reader_version`, strict `payload`, and namespaced optional
+  `extensions`. The payload contains only Heroes, unequipped item IDs (including
+  duplicates), gold, and opened Region IDs. Hero records retain stable IDs,
+  names, classes, levels, XP, original rolled attributes, traits, persistent
+  statuses/recovery deadlines, and equipped-item IDs.
+- Confirmed Parties, recruitment offers and RNG bookkeeping, active or completed
+  Expeditions/reports, and automated plans are deliberately excluded. Assigned
+  and On Expedition Heroes export as Idle; Resting, Wounded, and Dead statuses
+  remain. On restore, deterministic seeds and fresh recruitment offers are
+  reconstructed without colliding with imported Hero IDs, and permanent
+  gold/Region capacity progression is reapplied.
+- Each released core schema is validated before migration. Unknown namespaced
+  optional extensions are ignored with visible feedback. A future document is
+  accepted only when its minimum reader version permits this reader and its core
+  payload still satisfies the version-1 contract; required incompatible versions
+  are rejected without changing memory or disk. Existing private
+  `save_version` 1–7 files can also be selected and are first validated/migrated,
+  then projected to the same durable subset.
+- Imports and exports are limited to 1 MiB and known content IDs. A successful
+  import commits through the normal temporary-file/backup transaction, so the
+  replaced valid private save becomes `save.json.bak`; a pre-commit failure
+  leaves the live Company and primary unchanged. Export never writes
+  `save.json` or its siblings.
+- The file picker requests no broad Android storage permission. Native picker
+  and document-provider capabilities vary by platform: ordinary filesystem
+  destinations use a validated sibling temporary file, while a provider URI is
+  written and reopened for validation when Godot exposes it to `FileAccess`.
+  Unsupported providers report an error and do not change the private save.
+
 ## Forming a Party
 
 - Open **Form Party** from Home or Company Roster. Tap an empty named front/back
@@ -316,8 +352,10 @@ GUT addon are excluded from the Android APK.
   calculation are pure; generated attributes are not overwritten by growth.
   Class-specific stat bases and weights live on authored class Resources.
 - `SaveManager` owns validation, migration dispatch, serialization, and backup
-  recovery. Recruitment saves its gold, Hero, offer, ID, and seed changes
-  together and rolls back a failed pre-commit purchase.
+  recovery. `ExternalSaveCodec` separately owns portable projection, strict
+  schema compatibility, and deterministic reconstruction. Recruitment saves its
+  gold, Hero, offer, ID, and seed changes together and rolls back a failed
+  pre-commit purchase.
 - `PartyData` is a `RefCounted` four-slot model referencing canonical roster
   Heroes. Drafts copy only its mapping; deterministic slot order is front-left,
   front-right, back-left, back-right. `PartyEvaluator` is pure and consumes

@@ -362,6 +362,7 @@ func test_every_precommit_import_failure_preserves_live_and_primary_state() -> v
 			func(boundary: String) -> bool: return boundary == stage)
 		SaveManager.import_external_save(path)
 		assert_false(SaveManager.last_committed, stage)
+		assert_false(SaveManager.last_warning.contains("Imported Company"), stage)
 		assert_eq(SaveManager.capture_state(), before, stage)
 		assert_eq(FileAccess.get_file_as_string(SaveManager.get_save_path()), disk, stage)
 	SaveManager.fault_injector = Callable()

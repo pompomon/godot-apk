@@ -11,6 +11,7 @@ const EQUIPMENT := "res://scenes/ui/equipment/equipment_screen.tscn"
 const FORMATION := "res://scenes/ui/party_formation/party_formation_screen.tscn"
 const REGION := "res://scenes/ui/region_select/region_select_screen.tscn"
 const REPORT := "res://scenes/ui/expedition_report/expedition_report_screen.tscn"
+const SETTINGS := "res://scenes/ui/settings/settings_screen.tscn"
 var _isolation: RefCounted
 var _main: Control
 var _viewport: SubViewport
@@ -220,6 +221,7 @@ func test_shared_theme_decorations_and_design_touch_targets_cover_every_screen()
 		EQUIPMENT: {"SectionDivider": Art.decoration("section_divider")},
 		FORMATION: {"FormationEmblem": Art.decoration("formation_emblem")},
 		REGION: {"SectionDivider": Art.decoration("section_divider")},
+		SETTINGS: {"SectionDivider": Art.decoration("section_divider")},
 	}
 	for path in decorations:
 		await _go(path)
@@ -262,16 +264,16 @@ func test_presentation_palette_meets_text_contrast_targets_and_never_uses_color_
 
 
 func test_visible_copy_has_no_known_placeholder_language() -> void:
-	for path in [HOME, ROSTER, DETAIL, EQUIPMENT, FORMATION, REGION]:
+	for path in [HOME, ROSTER, DETAIL, EQUIPMENT, FORMATION, REGION, SETTINGS]:
 		await _go(path)
 		var copy := _visible_text(_screen()).to_lower()
 		for placeholder in ["lorem ipsum", "todo", "expeditions are not available yet"]:
 			assert_false(copy.contains(placeholder), "%s contains %s" % [path, placeholder])
 
 
-func test_all_seven_screens_keep_art_crisp_passive_and_inside_portrait_width() -> void:
+func test_all_eight_screens_keep_art_crisp_passive_and_inside_portrait_width() -> void:
 	GameState.roster[0].hero_name = "Alexandria of the Distant Northern Mountains and Moonlit Lakes"
-	for path in [HOME, ROSTER, DETAIL, EQUIPMENT, FORMATION, REGION]:
+	for path in [HOME, ROSTER, DETAIL, EQUIPMENT, FORMATION, SETTINGS, REGION]:
 		await _go(path)
 		await _check_art_bounds()
 		await _capture_preview(path.get_base_dir().get_file())
@@ -288,7 +290,7 @@ func test_all_seven_screens_keep_art_crisp_passive_and_inside_portrait_width() -
 
 func test_all_screens_resize_with_target_static_margins_and_no_horizontal_overflow() -> void:
 	_dispatch()
-	for path in [HOME, ROSTER, DETAIL, EQUIPMENT, FORMATION, REGION, REPORT]:
+	for path in [HOME, ROSTER, DETAIL, EQUIPMENT, FORMATION, REGION, SETTINGS, REPORT]:
 		await _go(path)
 		var margin: MarginContainer = _node("Margin")
 		var target_static: bool = path == ROSTER or path == FORMATION
@@ -396,6 +398,8 @@ func test_safe_area_conversion_handles_scaling_window_offsets_and_invalid_rects(
 
 func _check_control_widths(parent: Node, width: float) -> void:
 	for child in parent.get_children():
+		if child is Window:
+			continue
 		if child is Control and child.is_visible_in_tree():
 			assert_gte(child.get_global_rect().position.x, 0.0, str(child.get_path()))
 			assert_lte(child.get_global_rect().end.x, width, str(child.get_path()))
@@ -409,6 +413,8 @@ func _visible_text(parent: Node) -> String:
 	elif parent is BaseButton and parent.visible:
 		result += parent.text + "\n"
 	for child in parent.get_children():
+		if child is Window:
+			continue
 		result += _visible_text(child)
 	return result
 
@@ -434,6 +440,8 @@ func _assert_presentation_foundation(decorations: Dictionary) -> void:
 
 func _assert_touch_targets(parent: Node) -> void:
 	for child in parent.get_children():
+		if child is Window:
+			continue
 		if child is BaseButton:
 			assert_gte(child.get_combined_minimum_size().y, 96.0, str(child.get_path()))
 		_assert_touch_targets(child)
@@ -476,6 +484,8 @@ func _art_images(parent: Node) -> Array[TextureRect]:
 	var images: Array[TextureRect] = []
 	# find_children also returns Godot's internal overscroll TextureRects.
 	for child in parent.get_children():
+		if child is Window:
+			continue
 		if child is TextureRect:
 			images.append(child)
 		images.append_array(_art_images(child))

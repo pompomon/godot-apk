@@ -150,10 +150,10 @@ func import_external_save(path: String) -> void:
 		if not import_warning.contains(String(warning)):
 			import_warning += "\n" + String(warning)
 	_write_snapshot(snapshot, true)
-	retain_warning(import_warning)
 	if not last_committed:
 		return
 	_apply_validated(snapshot)
+	retain_warning(import_warning)
 
 
 func _clear_result() -> void:
@@ -626,6 +626,8 @@ func _read_json_file(path: String) -> Dictionary:
 	file.close()
 	if read_error != OK and read_error != ERR_FILE_EOF:
 		return {"error": "Could not read the selected save."}
+	if text.to_utf8_buffer().size() > MAX_SAVE_BYTES:
+		return {"error": "Selected save exceeds the supported size."}
 	var parser := JSON.new()
 	if parser.parse(text) != OK:
 		return {"error": "Selected save is not valid JSON."}

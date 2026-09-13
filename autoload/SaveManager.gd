@@ -659,6 +659,19 @@ func _protected_save_path(path: String) -> bool:
 	return false
 
 
+func _path_contains_link(path: String) -> bool:
+	var cursor := ProjectSettings.globalize_path(path).simplify_path()
+	while not cursor.is_empty():
+		var parent := cursor.get_base_dir()
+		var access := DirAccess.open(parent)
+		if access != null and access.is_link(cursor.get_file()):
+			return true
+		if parent == cursor:
+			break
+		cursor = parent
+	return false
+
+
 func _write_external_document(path: String, text: String) -> bool:
 	if path.strip_edges().is_empty():
 		last_error = "Choose a destination for the portable save."
@@ -676,6 +689,9 @@ func _write_external_document(path: String, text: String) -> bool:
 			+ "the exported file was verified after writing.")
 		return true
 	var temporary := path + ".tmp"
+	if _path_contains_link(path) or _path_contains_link(temporary):
+		last_error = "Choose a destination without symbolic links."
+		return false
 	if not _write_external_text(temporary, text):
 		return false
 	var parsed := _read_json_file(temporary)

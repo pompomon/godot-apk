@@ -409,3 +409,26 @@ func test_export_protects_private_files_and_preserves_existing_destination_on_fa
 	assert_false(SaveManager.last_success)
 	assert_eq(_read_text(destination), "old portable data")
 	assert_eq(DirAccess.remove_absolute(destination + ".tmp"), OK)
+
+
+func test_export_rejects_symlinked_parent_and_temporary_file() -> void:
+	var primary_path := SaveManager.get_save_path()
+	var primary := FileAccess.get_file_as_string(primary_path)
+	var access := DirAccess.open(_isolation.directory)
+	assert_not_null(access)
+	var linked_directory := _path("linked-private")
+	assert_eq(access.create_link(_isolation.directory, linked_directory), OK)
+	SaveManager.export_external_save(linked_directory.path_join(primary_path.get_file()))
+	assert_false(SaveManager.last_success)
+	assert_string_contains(SaveManager.last_error, "symbolic links")
+	assert_eq(FileAccess.get_file_as_string(primary_path), primary)
+	assert_eq(DirAccess.remove_absolute(linked_directory), OK)
+	var destination := _path("portable.json")
+	var linked_temporary := destination + ".tmp"
+	assert_eq(access.create_link(primary_path, linked_temporary), OK)
+	SaveManager.export_external_save(destination)
+	assert_false(SaveManager.last_success)
+	assert_string_contains(SaveManager.last_error, "symbolic links")
+	assert_eq(FileAccess.get_file_as_string(primary_path), primary)
+	assert_false(FileAccess.file_exists(destination))
+	assert_eq(DirAccess.remove_absolute(linked_temporary), OK)

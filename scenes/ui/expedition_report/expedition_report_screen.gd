@@ -2,6 +2,7 @@ extends Control
 
 const HeroUI = preload("res://scenes/ui/hero_ui.gd")
 const HOME_SCREEN := "res://scenes/ui/home/home_screen.tscn"
+const RUN_VIEW_SCENE := preload("res://scenes/ui/expedition_run/expedition_run_view.tscn")
 var _report: ExpeditionData
 var _status: Label
 var _series_status: Label
@@ -9,9 +10,10 @@ var _feedback: Label
 var _journal: VBoxContainer
 var _acknowledge: Button
 var _shown_cursor: int = -2
+var _animation_cursor: int = -2
+var _animation_report: ExpeditionData
 var _leaving: bool = false
-var _backdrop: TextureRect
-var _party_art: HBoxContainer
+var _run_view: ExpeditionRunView
 var _scroll: ScrollContainer
 var _scroll_anchor: Control
 var _anchor_y: float
@@ -29,8 +31,8 @@ func _ready() -> void:
 	_scroll.scroll_ended.connect(_on_scroll_ended)
 	content.add_child(HeroUI.label("Expedition Report", 44))
 	HeroUI.add_section_divider(content)
-	_backdrop = HeroUI.region_banner(_report.region_id if _report != null else "")
-	content.add_child(_backdrop)
+	_run_view = RUN_VIEW_SCENE.instantiate()
+	content.add_child(_run_view)
 	_status = HeroUI.label("")
 	_status.name = "StatusLabel"
 	content.add_child(_status)
@@ -52,11 +54,6 @@ func _ready() -> void:
 	home.name = "HomeButton"
 	home.pressed.connect(cancel_draft)
 	content.add_child(home)
-	_party_art = HBoxContainer.new()
-	_party_art.name = "DispatchedPartyArt"
-	_party_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	content.add_child(_party_art)
-	_populate_party_art()
 	_journal = VBoxContainer.new()
 	_journal.name = "Journal"
 	content.add_child(_journal)
@@ -74,17 +71,19 @@ func _refresh() -> void:
 	if (_report != current and current != null and not automation.is_empty()):
 		_report = current
 		_shown_cursor = -2
+		_animation_cursor = -2
+		_animation_report = null
 		_scroll_anchor = null
-		_backdrop.texture = HeroUI.Art.region(_report.region_id)
-		_populate_party_art()
 	var available := _report != null and _report == ExpeditionManager.get_active_expedition()
 	if available and _shown_cursor != _report.last_revealed_index:
 		_remember_reading_position()
 	_acknowledge.visible = available and _report.status == ExpeditionData.Status.COMPLETED
-	_backdrop.visible = available
-	_party_art.visible = available
+	_run_view.visible = available
 	_series_status.visible = available and not automation.is_empty()
 	if not available:
+		_run_view.clear_run()
+		_animation_report = null
+		_animation_cursor = -2
 		_status.text = "No report is available. Return Home."
 		_series_status.text = ""
 		HeroUI.clear_children(_journal)
@@ -94,6 +93,7 @@ func _refresh() -> void:
 		return
 	if UIManager.is_current_screen(self):
 		ExpeditionManager.mark_report_viewed()
+	_refresh_run_view()
 	_status.text = "%s · %s\nStep %d / %d · %d seconds remaining\nGold credited: %d" % [
 		_report.region_name, "Running" if _report.status == ExpeditionData.Status.RUNNING else "Completed",
 		_report.last_revealed_index + 1, _report.display_step_count(),
@@ -133,21 +133,32 @@ func _refresh() -> void:
 		_restore_reading_position()
 
 
-func _populate_party_art() -> void:
-	if _party_art == null:
-		return
-	HeroUI.clear_children(_party_art)
-	if _report == null:
-		return
-	for member in _report.party_snapshot.slots.values():
-		if member == null:
-			continue
-		var portrait := HeroUI.artwork(
-			HeroUI.Art.portrait(member.hero_id, member.class_id), Vector2(64, 64))
-		portrait.set_meta("hero_id", member.hero_id)
-		portrait.tooltip_text = "%s · %s (at dispatch)" % [
-			member.hero_name, member.class_name]
-		_party_art.add_child(portrait)
+func _refresh_run_view() -> void:
+	if _animation_report != _report:
+		if not _run_view.begin_run(_report.region_id, _report.party_snapshot.slots):
+			return
+		_animation_report = _report
+		_animation_cursor = -2
+	var cursor := _report.last_revealed_index
+	var newly_revealed: Array[int] = []
+	if _animation_cursor >= -1 and cursor > _animation_cursor:
+		for index in range(_animation_cursor + 1, cursor + 1):
+			newly_revealed.append(index)
+	var revealed_steps: Array[Dictionary] = []
+	var steps := _report.steps
+	for index in range(cursor + 1):
+		revealed_steps.append(steps[index].serialize())
+	var effective_duration := _report.effective_end_timestamp - _report.start_timestamp
+	_run_view.present_committed_state({
+		"cursor": cursor,
+		"credited_elapsed_seconds": _report.credited_elapsed_seconds,
+		"duration_seconds": effective_duration,
+		"total_step_count": _report.display_step_count(),
+		"completed": _report.status == ExpeditionData.Status.COMPLETED,
+		"revealed_steps": revealed_steps,
+		"newly_revealed_indexes": newly_revealed,
+	})
+	_animation_cursor = cursor
 
 
 func _input(event: InputEvent) -> void:
@@ -166,8 +177,14 @@ func _on_scroll_ended() -> void:
 
 
 func _notification(what: int) -> void:
-	if what in [NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_APPLICATION_PAUSED,
-			NOTIFICATION_APPLICATION_RESUMED] and is_node_ready():
+	if what in [NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_APPLICATION_PAUSED] \
+			and is_node_ready():
+		_run_view.set_application_active(false)
+		_pointer_down = false
+		_scrolling = false
+	elif what in [NOTIFICATION_APPLICATION_FOCUS_IN, NOTIFICATION_APPLICATION_RESUMED] \
+			and is_node_ready():
+		_run_view.set_application_active(true)
 		_pointer_down = false
 		_scrolling = false
 		_refresh.call_deferred()

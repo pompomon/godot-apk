@@ -234,16 +234,26 @@ func test_shared_theme_decorations_and_design_touch_targets_cover_every_screen()
 
 
 func test_shared_theme_sets_scrollbar_cross_axis_dimensions() -> void:
+	assert_eq(HeroUI.SCROLLBAR_THICKNESS, 4.0)
+	assert_between(HeroUI.SCROLLBAR_THICKNESS, 2.0, 4.0)
+	for type_name in ["VScrollBar", "HScrollBar"]:
+		for style_name in [
+			"scroll", "scroll_focus", "grabber", "grabber_highlight", "grabber_pressed",
+		]:
+			var minimum := _screen().theme.get_stylebox(style_name, type_name).get_minimum_size()
+			var cross_axis := minimum.x if type_name == "VScrollBar" else minimum.y
+			assert_eq(cross_axis, HeroUI.SCROLLBAR_THICKNESS,
+				"%s/%s must preserve the shared thickness." % [type_name, style_name])
 	var scroll := ScrollContainer.new()
 	scroll.theme = _screen().theme
 	scroll.size = Vector2(200, 200)
+	HeroUI.configure_scroll_container(scroll)
 	_viewport.add_child(scroll)
 	var overflowing_content := Control.new()
 	overflowing_content.custom_minimum_size = Vector2(400, 400)
 	scroll.add_child(overflowing_content)
 	await get_tree().process_frame
-	assert_gte(scroll.get_v_scroll_bar().size.x, 48.0)
-	assert_gte(scroll.get_h_scroll_bar().size.y, 48.0)
+	_assert_scrollbar_thickness(scroll, "Dynamic ScrollContainer")
 
 
 func test_presentation_palette_meets_text_contrast_targets_and_never_uses_color_alone() -> void:
@@ -311,6 +321,8 @@ func test_all_screens_resize_with_target_static_margins_and_no_horizontal_overfl
 			_viewport.size = extent
 			await _check_art_bounds()
 			assert_eq(_screen().size, Vector2(extent))
+			_assert_scrollbar_thickness(_node("Scroll") as ScrollContainer,
+				"%s at %s" % [path, extent])
 			if target_static:
 				assert_eq(PackedInt32Array([
 					margin.get_theme_constant("margin_left"),
@@ -329,6 +341,26 @@ func test_all_screens_resize_with_target_static_margins_and_no_horizontal_overfl
 				assert_false(margin.resized.is_connected(Callable(margin, "_update_margins")))
 			_check_control_widths(_screen(), extent.x)
 			await _capture_preview("%s_%dx%d" % [path.get_base_dir().get_file(), extent.x, extent.y])
+
+
+func test_both_modal_selectors_inherit_shared_scrollbar_thickness() -> void:
+	for path in [EQUIPMENT, FORMATION]:
+		await _go(path)
+		var selector_name := "EquipmentSelector" if path == EQUIPMENT else "HeroSelector"
+		var selector := _screen().get_node(selector_name) as Control
+		var overflow := Control.new()
+		overflow.custom_minimum_size = Vector2(0, 2000)
+		selector.find_child("ModalOptions", true, false).add_child(overflow)
+		selector.show()
+		for extent in [
+			Vector2i(720, 1280), Vector2i(720, 1600), Vector2i(960, 1280),
+			Vector2i(1065, 1280),
+		]:
+			_viewport.size = extent
+			await get_tree().process_frame
+			var scroll := selector.find_child("ModalScroll", true, false) as ScrollContainer
+			assert_true(scroll.get_v_scroll_bar().is_visible_in_tree())
+			_assert_scrollbar_thickness(scroll, "%s modal at %s" % [path, extent])
 
 
 func test_screen_margins_defer_coalesce_and_skip_unchanged_updates() -> void:
@@ -394,6 +426,30 @@ func test_safe_area_conversion_handles_scaling_window_offsets_and_invalid_rects(
 		Rect2(Vector2.ZERO, extent))
 	assert_eq(ScreenMargin.local_safe_rect(extent, Rect2(0, 60, 1080, 2280),
 		Transform2D(Vector2.ZERO, Vector2.ZERO, Vector2.ZERO)), Rect2(Vector2.ZERO, extent))
+
+
+func _assert_scrollbar_thickness(scroll: ScrollContainer, context: String) -> void:
+	assert_not_null(scroll, "%s must have a ScrollContainer." % context)
+	if scroll == null:
+		return
+	assert_true(scroll.follow_focus, "%s must scroll focused content into view." % context)
+	var vertical := scroll.get_v_scroll_bar()
+	var horizontal := scroll.get_h_scroll_bar()
+	for scrollbar in [vertical, horizontal]:
+		assert_eq(scrollbar.mouse_filter, Control.MOUSE_FILTER_IGNORE,
+			"%s narrow scrollbar must not accept pointer input." % context)
+		assert_eq(scrollbar.focus_mode, Control.FOCUS_NONE,
+			"%s narrow scrollbar must not accept focus." % context)
+	assert_eq(vertical.get_combined_minimum_size().x, HeroUI.SCROLLBAR_THICKNESS,
+		"%s vertical minimum must use the shared thickness." % context)
+	assert_eq(horizontal.get_combined_minimum_size().y, HeroUI.SCROLLBAR_THICKNESS,
+		"%s horizontal minimum must use the shared thickness." % context)
+	if vertical.is_visible_in_tree():
+		assert_eq(vertical.size.x, HeroUI.SCROLLBAR_THICKNESS,
+			"%s visible vertical bar must use the shared thickness." % context)
+	if horizontal.is_visible_in_tree():
+		assert_eq(horizontal.size.y, HeroUI.SCROLLBAR_THICKNESS,
+			"%s visible horizontal bar must use the shared thickness." % context)
 
 
 func _check_control_widths(parent: Node, width: float) -> void:

@@ -429,6 +429,9 @@ GUT addon are excluded from the Android APK.
   static strategy consistently retained Hero rows where dynamic modes did not.
   Backgrounds still fill the window and both screens remain vertically
   scrollable.
+- All in-game scroll containers inherit a 4-design-unit scrollbar thickness
+  from the shared theme. The narrow visual track is noninteractive; content
+  swipes and focus-following provide scrolling without a precision target.
 - Hero status badges stay on one line, including `On expedition`; names and
   descriptions still wrap. Artwork retains its aspect ratio and filtering.
 - The existing art UI tests cover live resizing at 720×1280, 720×1600,

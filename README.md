@@ -505,6 +505,22 @@ encounter artwork only when its corresponding journal step has been revealed.
 Shared ornaments and screen theme styles remain presentation-only; they do not
 change Party, Expedition, combat, reward, or save contracts.
 
+Expedition Report also places a fixed-height animated run panel above the
+journal. It reuses the static Region, portrait, encounter, item and outcome
+textures with lightweight movement, fades and pulses; it does not replay
+round-by-round combat. The panel accepts only the frozen Party and already
+committed reveal prefix from the Report screen. It has no gameplay-state,
+persistence or RNG access, so unrevealed encounters and outcomes cannot be
+surfaced through animation. Multi-step offline catch-up shows one compact
+summary and the latest revealed state rather than queueing a long replay.
+Automated successor runs reset the panel before any of their steps are shown.
+
+**Pause motion** freezes the panel in an equivalent labeled static state for
+the current screen session. Motion also stops while the app is backgrounded or
+the panel is hidden; resume rebuilds from committed state without replaying
+missed frames. The readable newest-first journal remains authoritative and
+keeps its existing touch-scroll and reading-position behavior.
+
 Artwork uses lossless imports without mipmaps and nearest-neighbor sampling;
 text retains the existing fonts and labels. Native sizes are 64×64 for portraits
 and encounter vignettes, 24×24 for small icons, 32×32 for items, 320×144 for
@@ -514,9 +530,9 @@ Aspect-preserving display targets integer artwork scales where space permits;
 Texture clarity, ≥48×48dp touch areas, contrast and scrolling require device
 inspection, not an inference from the 720×1280 design viewport.
 
-This is an initial visual slice, **not completion of Milestone 8**. Audio,
-Settings, animation, a full accessibility audit and physical-device visual
-acceptance remain separate work. No balancing or
+These are bounded visual slices, **not completion of Milestone 8**. Audio,
+Settings volume controls, a full accessibility audit and physical-device visual
+and motion acceptance remain separate work. No balancing or
 Milestone 7 acceptance criteria are changed.
 
 ## Build the Android APK

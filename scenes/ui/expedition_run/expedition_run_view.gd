@@ -27,6 +27,7 @@ var _reward_icon: TextureRect
 var _reveal_tween: Tween
 var _configured: bool = false
 var _completed: bool = false
+var _presented_cursor: int = -2
 var _motion_paused: bool = false
 var _application_active: bool = true
 var _motion_time: float = 0.0
@@ -124,6 +125,7 @@ func begin_run(region_id: String, party_slots: Dictionary) -> bool:
 	_cancel_reveal()
 	_configured = true
 	_completed = false
+	_presented_cursor = -2
 	_motion_time = 0.0
 	_backdrop.texture = HeroUI.Art.region(region_id)
 	_clear_children(_party_art)
@@ -169,12 +171,17 @@ func present_committed_state(state: Dictionary) -> bool:
 	var revealed: Array = snapshot.revealed_steps
 	var newly_revealed: Array = snapshot.newly_revealed_indexes
 	_completed = bool(snapshot.completed)
-	_progress.max_value = total
-	_progress.value = cursor + 1
-	_progress.tooltip_text = "Expedition progress: %d of %d steps" % [cursor + 1, total]
+	_progress.max_value = int(snapshot.duration_seconds)
+	_progress.value = int(snapshot.credited_elapsed_seconds)
+	_progress.tooltip_text = "Expedition progress: %d of %d steps · %d of %d seconds" % [
+		cursor + 1, total, int(snapshot.credited_elapsed_seconds), int(snapshot.duration_seconds)]
+	if cursor == _presented_cursor and newly_revealed.is_empty():
+		_update_processing()
+		return true
 	if cursor < 0:
 		_clear_step_visuals()
 		_status.text = "The Party is travelling.\nStep 0 of %d" % total
+		_presented_cursor = cursor
 		_update_processing()
 		return true
 
@@ -190,6 +197,7 @@ func present_committed_state(state: Dictionary) -> bool:
 		_animate_reveal()
 	else:
 		_show_static_reveal()
+	_presented_cursor = cursor
 	_update_processing()
 	return true
 
@@ -424,6 +432,7 @@ func _clear_run() -> void:
 	_cancel_reveal()
 	_configured = false
 	_completed = false
+	_presented_cursor = -2
 	_motion_time = 0.0
 	if is_instance_valid(_party_art):
 		_clear_children(_party_art)

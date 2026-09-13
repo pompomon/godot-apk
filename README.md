@@ -392,8 +392,8 @@ GUT addon are excluded from the Android APK.
   Backgrounds still fill the window and both screens remain vertically
   scrollable.
 - All in-game scroll containers inherit a 4-design-unit scrollbar thickness
-  from the shared theme. Content swipes remain the primary touch-scrolling
-  gesture; the narrow visual track is not treated as a 48-unit touch target.
+  from the shared theme. The narrow visual track is noninteractive; content
+  swipes and focus-following provide scrolling without a precision target.
 - Hero status badges stay on one line, including `On expedition`; names and
   descriptions still wrap. Artwork retains its aspect ratio and filtering.
 - The existing art UI tests cover live resizing at 720×1280, 720×1600,
@@ -604,12 +604,11 @@ APKs from different sessions can update one another.
    a nonempty APK. Keep both GUT hooks. Local shell execution does not certify
    hosted action execution.
 3. After default-branch activation, use a small authorized fresh implementation
-   task with a textual diagnostic handoff and no attachments, inline images, or
-   raw attachment URLs. Verify setup and guidance use from session evidence and
-   record the run URL, revision, published checkpoint, validation results,
-   completion status and blockers in the normal discussion. Leave the hosted
-   pilot pending until actually observed; do not deliberately inject inaccessible
-   attachments or broken gameplay to exercise it.
+   task with a textual diagnostic handoff. Verify setup and guidance use from
+   session evidence and record the run URL, revision, published checkpoint,
+   validation results, completion status and blockers in the normal discussion.
+   Leave the hosted pilot pending until actually observed; do not deliberately
+   inject inaccessible attachments or broken gameplay to exercise it.
 
 Review these workflow scenarios alongside the
 [review calibration cases](.github/skills/game-quality-code-review/references/review-rubric.md#calibration-cases):
@@ -622,7 +621,6 @@ Review these workflow scenarios alongside the
 | CI awaiting approval | Report `action_required` and the approval blocker, not test success/failure. |
 | No native-device evidence | Leave device acceptance unverified even if headless tests pass. |
 | Restored screenshot-heavy history | Request a fresh task using the textual handoff; do not assume another comment or subagent clears history. |
-| Media repeated in an implementation task | Do not fetch it; use the established textual handoff or request a clean text-only task. |
 | Partial setup | Report the exact missing tool/configuration before work requiring game validation. |
 
 These scenarios are guidance checks, not evidence of a hosted pilot. Platform

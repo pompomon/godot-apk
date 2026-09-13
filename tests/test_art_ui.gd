@@ -245,6 +245,7 @@ func test_shared_theme_sets_scrollbar_cross_axis_dimensions() -> void:
 	var scroll := ScrollContainer.new()
 	scroll.theme = _screen().theme
 	scroll.size = Vector2(200, 200)
+	HeroUI.configure_scroll_container(scroll)
 	_viewport.add_child(scroll)
 	var overflowing_content := Control.new()
 	overflowing_content.custom_minimum_size = Vector2(400, 400)
@@ -429,8 +430,14 @@ func _assert_scrollbar_thickness(scroll: ScrollContainer, context: String) -> vo
 	assert_not_null(scroll, "%s must have a ScrollContainer." % context)
 	if scroll == null:
 		return
+	assert_true(scroll.follow_focus, "%s must scroll focused content into view." % context)
 	var vertical := scroll.get_v_scroll_bar()
 	var horizontal := scroll.get_h_scroll_bar()
+	for scrollbar in [vertical, horizontal]:
+		assert_eq(scrollbar.mouse_filter, Control.MOUSE_FILTER_IGNORE,
+			"%s narrow scrollbar must not accept pointer input." % context)
+		assert_eq(scrollbar.focus_mode, Control.FOCUS_NONE,
+			"%s narrow scrollbar must not accept focus." % context)
 	assert_eq(vertical.get_combined_minimum_size().x, HeroUI.SCROLLBAR_THICKNESS,
 		"%s vertical minimum must use the shared thickness." % context)
 	assert_eq(horizontal.get_combined_minimum_size().y, HeroUI.SCROLLBAR_THICKNESS,

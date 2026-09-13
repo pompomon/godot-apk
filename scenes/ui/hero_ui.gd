@@ -51,6 +51,8 @@ static func apply_theme(screen: Control) -> void:
 	ui_theme.set_constant("h_separation", "GridContainer", 20)
 	ui_theme.set_constant("v_separation", "GridContainer", 8)
 	screen.theme = ui_theme
+	for child in screen.find_children("*", "ScrollContainer", true, false):
+		configure_scroll_container(child as ScrollContainer)
 
 
 static func _ensure_background(screen: Control) -> void:
@@ -98,6 +100,13 @@ static func _scrollbar_box(color: Color, type_name: String) -> StyleBoxFlat:
 		style.content_margin_top = SCROLLBAR_THICKNESS / 2.0
 		style.content_margin_bottom = SCROLLBAR_THICKNESS / 2.0
 	return style
+
+
+static func configure_scroll_container(scroll: ScrollContainer) -> void:
+	scroll.follow_focus = true
+	for scrollbar in [scroll.get_v_scroll_bar(), scroll.get_h_scroll_bar()]:
+		scrollbar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		scrollbar.focus_mode = Control.FOCUS_NONE
 
 
 static func _box(color: Color, padding: int = 20, radius: int = 16) -> StyleBoxFlat:
@@ -219,6 +228,7 @@ static func scrollable_content(screen: Control) -> VBoxContainer:
 	scroll.name = "Scroll"
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.follow_focus = true
+	configure_scroll_container(scroll)
 	margin.add_child(scroll)
 	var content := VBoxContainer.new()
 	content.name = "Content"

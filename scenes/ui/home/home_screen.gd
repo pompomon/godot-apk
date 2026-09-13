@@ -5,6 +5,7 @@ const ROSTER_SCREEN := "res://scenes/ui/roster/roster_screen.tscn"
 const PARTY_SCREEN := "res://scenes/ui/party_formation/party_formation_screen.tscn"
 const REGION_SCREEN := "res://scenes/ui/region_select/region_select_screen.tscn"
 const REPORT_SCREEN := "res://scenes/ui/expedition_report/expedition_report_screen.tscn"
+const SETTINGS_SCREEN := "res://scenes/ui/settings/settings_screen.tscn"
 const BALANCING: BalancingConfig = preload("res://data/balancing/default_balancing.tres")
 
 @onready var _gold_label: Label = %GoldLabel
@@ -23,6 +24,7 @@ func _ready() -> void:
 	%ExpeditionButton.pressed.connect(_open_expedition)
 	%StopAutomationButton.pressed.connect(_stop_automation)
 	%RetryProgressButton.pressed.connect(_retry_progress)
+	%SettingsButton.pressed.connect(_open_settings)
 	ExpeditionManager.changed.connect(_refresh)
 	ExpeditionManager.operation_failed.connect(_refresh)
 	ExpeditionManager.reveal_progress()
@@ -98,6 +100,10 @@ func _open_formation() -> void:
 
 func _open_expedition() -> void:
 	UIManager.show_screen(REPORT_SCREEN if ExpeditionManager.get_active_expedition() != null else REGION_SCREEN)
+
+
+func _open_settings() -> void:
+	UIManager.show_screen(SETTINGS_SCREEN)
 
 
 func _retry_progress() -> void:

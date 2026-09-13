@@ -92,6 +92,70 @@ func save() -> void:
 	_write_snapshot(snapshot, not _recovering_backup)
 
 
+func export_external_save(path: String) -> void:
+	_clear_result()
+	if not GameState.initialized:
+		last_error = "Company is not initialized; nothing was exported."
+		return
+	if _protected_save_path(path):
+		last_error = "Choose a destination outside the app's private save files."
+		return
+	var snapshot := capture_state()
+	if not validate_snapshot(snapshot):
+		last_error = "Company data is invalid; no portable save was exported."
+		return
+	var encoded := ExternalSaveCodec.encode(snapshot, MAX_INVENTORY_ITEMS)
+	if encoded.has("error"):
+		last_error = String(encoded.error)
+		return
+	var text := JSON.stringify(encoded.document, "\t", true, true)
+	if text.to_utf8_buffer().size() > MAX_SAVE_BYTES:
+		last_error = "Portable save exceeds the supported size."
+		return
+	if not _write_external_document(path, text):
+		return
+	last_success = true
+	if ExpeditionManager.get_active_expedition() != null \
+			or not ExpeditionManager.get_automation_state().is_empty():
+		retain_warning(
+			"Portable saves exclude the current Party, Expedition report, "
+			+ "and automated Expedition plan.")
+
+
+func import_external_save(path: String) -> void:
+	_clear_result()
+	var parsed := _read_json_file(path)
+	if parsed.has("error"):
+		last_error = String(parsed.error)
+		return
+	var portable := _portable_import_document(parsed.data)
+	if portable.has("error"):
+		last_error = String(portable.error)
+		return
+	var rebuilt := ExternalSaveCodec.build_internal(
+		portable.document, SAVE_VERSION, MAX_INVENTORY_ITEMS, ExpeditionManager.balancing)
+	if rebuilt.has("error"):
+		last_error = String(rebuilt.error)
+		return
+	var snapshot: Dictionary = rebuilt.snapshot
+	if not validate_snapshot(snapshot):
+		last_error = "Imported Company could not form a valid current save."
+		return
+	var import_warning := (
+		"Imported Company data. Current Party, Expeditions, reports, "
+		+ "and automated plans were not imported.")
+	for warning in portable.get("warnings", []):
+		import_warning += "\n" + String(warning)
+	for warning in rebuilt.warnings:
+		if not import_warning.contains(String(warning)):
+			import_warning += "\n" + String(warning)
+	_write_snapshot(snapshot, true)
+	if not last_committed:
+		return
+	_apply_validated(snapshot)
+	retain_warning(import_warning)
+
+
 func _clear_result() -> void:
 	last_success = false
 	last_committed = false
@@ -545,6 +609,120 @@ func _read_validated(path: String) -> Dictionary:
 		return {}
 	var data := migrate(parser.data)
 	return data if validate_snapshot(data) else {}
+
+
+func _read_json_file(path: String) -> Dictionary:
+	if path.strip_edges().is_empty():
+		return {"error": "Choose a JSON save file."}
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return {"error": "Cannot open the selected file (%s)." % error_string(
+			FileAccess.get_open_error())}
+	if file.get_length() > MAX_SAVE_BYTES:
+		file.close()
+		return {"error": "Selected save exceeds the supported size."}
+	var text := file.get_as_text()
+	var read_error := file.get_error()
+	file.close()
+	if read_error != OK and read_error != ERR_FILE_EOF:
+		return {"error": "Could not read the selected save."}
+	if text.to_utf8_buffer().size() > MAX_SAVE_BYTES:
+		return {"error": "Selected save exceeds the supported size."}
+	var parser := JSON.new()
+	if parser.parse(text) != OK:
+		return {"error": "Selected save is not valid JSON."}
+	return {"data": parser.data}
+
+
+func _portable_import_document(data: Variant) -> Dictionary:
+	if data is Dictionary and data.has("format"):
+		return ExternalSaveCodec.decode(data, MAX_INVENTORY_ITEMS)
+	if not data is Dictionary or not data.has("save_version"):
+		return {"error": "Selected JSON is not a supported portable or private save."}
+	var migrated := migrate(data)
+	if migrated.is_empty():
+		return {"error": "Selected private save version is invalid or unsupported."}
+	var encoded := ExternalSaveCodec.encode(migrated, MAX_INVENTORY_ITEMS)
+	if encoded.has("error"):
+		return encoded
+	return {"document": encoded.document, "warnings": []}
+
+
+func _protected_save_path(path: String) -> bool:
+	if path.strip_edges().is_empty():
+		return false
+	var selected := ProjectSettings.globalize_path(path).simplify_path()
+	var primary := ProjectSettings.globalize_path(get_save_path()).simplify_path()
+	for protected_path in [primary, primary + ".bak", primary + ".tmp", primary + ".bak.tmp"]:
+		if selected.nocasecmp_to(protected_path) == 0:
+			return true
+	return false
+
+
+func _path_contains_link(path: String) -> bool:
+	var cursor := ProjectSettings.globalize_path(path).simplify_path()
+	while not cursor.is_empty():
+		var parent := cursor.get_base_dir()
+		var access := DirAccess.open(parent)
+		if access != null and access.is_link(cursor.get_file()):
+			return true
+		if parent == cursor:
+			break
+		cursor = parent
+	return false
+
+
+func _write_external_document(path: String, text: String) -> bool:
+	if path.strip_edges().is_empty():
+		last_error = "Choose a destination for the portable save."
+		return false
+	if path.begins_with("content://"):
+		if not _write_external_text(path, text):
+			return false
+		var direct := _read_json_file(path)
+		if direct.has("error") or ExternalSaveCodec.decode(
+				direct.get("data"), MAX_INVENTORY_ITEMS).has("error"):
+			last_error = "The storage provider wrote an invalid portable save."
+			return false
+		last_warning = (
+			"The storage provider does not support sibling temporary files; "
+			+ "the exported file was verified after writing.")
+		return true
+	var temporary := path + ".tmp"
+	if _path_contains_link(path) or _path_contains_link(temporary):
+		last_error = "Choose a destination without symbolic links."
+		return false
+	if not _write_external_text(temporary, text):
+		return false
+	var parsed := _read_json_file(temporary)
+	if parsed.has("error") or ExternalSaveCodec.decode(
+			parsed.get("data"), MAX_INVENTORY_ITEMS).has("error"):
+		DirAccess.remove_absolute(temporary)
+		last_error = "Portable temporary-file validation failed."
+		return false
+	var replace_error := DirAccess.rename_absolute(temporary, path)
+	if replace_error != OK:
+		DirAccess.remove_absolute(temporary)
+		last_error = "Could not replace the portable save (%s)." % error_string(replace_error)
+		return false
+	return true
+
+
+func _write_external_text(path: String, text: String) -> bool:
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		last_error = "Cannot open the portable save destination (%s)." % error_string(
+			FileAccess.get_open_error())
+		return false
+	file.store_string(text)
+	var write_error := file.get_error()
+	file.flush()
+	var flush_error := file.get_error()
+	file.close()
+	if write_error != OK or flush_error != OK:
+		last_error = "Could not write and flush the portable save."
+		return false
+	return true
 
 
 func _write_text(path: String, text: String) -> bool:

@@ -488,6 +488,18 @@ func test_run_view_presents_all_revealed_kinds_and_outcomes_without_mutation() -
 	}))
 	assert_false(_visible_text(view).contains("Uncommitted"))
 	assert_null(view.find_child("RunEncounterArt", true, false))
+	for malformed_result in [null, [], "invalid", {"item_ids": "short_sword"}]:
+		assert_false(view.present_committed_state({
+			"cursor": 0,
+			"credited_elapsed_seconds": 1,
+			"duration_seconds": 6,
+			"total_step_count": 6,
+			"completed": false,
+			"revealed_steps": [{"kind": ExpeditionStep.StepKind.LOOT,
+				"content_id": "green_hollow_loot", "title": "Malformed",
+				"result": malformed_result}],
+			"newly_revealed_indexes": [0],
+		}))
 	var revealed: Array[Dictionary] = []
 	var cases := [
 		{
@@ -579,6 +591,16 @@ func test_run_view_pause_background_resume_and_exit_keep_static_summary() -> voi
 	_screen().call("_refresh")
 	assert_same(view.get("_reveal_tween"), reveal_tween,
 		"A duplicate refresh must not cancel the active reveal.")
+	_screen().hide()
+	assert_null(view.get("_reveal_tween"))
+	assert_false(view.is_processing())
+	assert_eq(reveal_icon.modulate, Color.WHITE)
+	assert_eq(reveal_icon.scale, Vector2.ONE)
+	assert_eq((_node("RevealFlash") as ColorRect).color.a, 0.0)
+	_screen().show()
+	await get_tree().process_frame
+	assert_true(view.is_processing())
+	assert_null(view.get("_reveal_tween"))
 	_screen().notification(NOTIFICATION_APPLICATION_FOCUS_OUT)
 	assert_false(view.is_processing())
 	assert_eq(reveal_icon.modulate, Color.WHITE)

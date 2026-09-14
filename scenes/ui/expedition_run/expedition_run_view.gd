@@ -114,7 +114,7 @@ func _ready() -> void:
 	add_child(_motion_toggle)
 
 	_layers.resized.connect(_layout_visuals)
-	visibility_changed.connect(_update_processing)
+	visibility_changed.connect(_on_visibility_changed)
 	_clear_run()
 
 
@@ -254,6 +254,10 @@ func _state_valid(state: Dictionary) -> bool:
 		for key in ["kind", "content_id", "title", "result"]:
 			if not step.has(key):
 				return false
+		if not step.result is Dictionary:
+			return false
+		if step.result.has("item_ids") and not step.result.item_ids is Array:
+			return false
 	return true
 
 
@@ -414,6 +418,14 @@ func _update_processing() -> void:
 	set_process(
 		_configured and not _completed and not _motion_paused
 		and _application_active and is_visible_in_tree())
+
+
+func _on_visibility_changed() -> void:
+	if not is_visible_in_tree():
+		_cancel_reveal()
+		_apply_static_positions()
+		_show_static_reveal()
+	_update_processing()
 
 
 func _cancel_reveal() -> void:

@@ -148,11 +148,15 @@ func _refresh_run_view() -> void:
 	var steps := _report.steps
 	for index in range(cursor + 1):
 		revealed_steps.append(steps[index].serialize())
-	var effective_duration := _report.effective_end_timestamp - _report.start_timestamp
+	var display_duration := (
+		_report.duration_seconds
+		if _report.status == ExpeditionData.Status.RUNNING
+		else _report.effective_end_timestamp - _report.start_timestamp
+	)
 	_run_view.present_committed_state({
 		"cursor": cursor,
 		"credited_elapsed_seconds": _report.credited_elapsed_seconds,
-		"duration_seconds": effective_duration,
+		"duration_seconds": display_duration,
 		"total_step_count": _report.display_step_count(),
 		"completed": _report.status == ExpeditionData.Status.COMPLETED,
 		"revealed_steps": revealed_steps,

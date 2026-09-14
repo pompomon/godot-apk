@@ -570,11 +570,21 @@ func test_run_view_pause_background_resume_and_exit_keep_static_summary() -> voi
 	await _dispatch()
 	await _go(REPORT)
 	var view := _node("ExpeditionRunView") as ExpeditionRunView
-	var summary: String = _node("RunStatusLabel").text
 	assert_true(view.is_processing())
+	_time = 1006
+	ExpeditionManager.observe_foreground()
+	var reveal_icon := _node("RunStepKindIcon") as TextureRect
+	var reveal_tween: Tween = view.get("_reveal_tween")
+	assert_not_null(reveal_tween)
+	_screen().call("_refresh")
+	assert_same(view.get("_reveal_tween"), reveal_tween,
+		"A duplicate refresh must not cancel the active reveal.")
 	_screen().notification(NOTIFICATION_APPLICATION_FOCUS_OUT)
 	assert_false(view.is_processing())
-	assert_eq(_node("RunStatusLabel").text, summary)
+	assert_eq(reveal_icon.modulate, Color.WHITE)
+	assert_eq(reveal_icon.scale, Vector2.ONE)
+	assert_eq((_node("RevealFlash") as ColorRect).color.a, 0.0)
+	var summary: String = _node("RunStatusLabel").text
 	_screen().notification(NOTIFICATION_APPLICATION_RESUMED)
 	await get_tree().process_frame
 	assert_true(view.is_processing())
@@ -776,6 +786,25 @@ func test_progress_save_error_stays_retryable_without_future_journal_and_stale_r
 	assert_not_null(ExpeditionManager.get_active_expedition())
 
 
+func test_single_step_retry_keeps_reveal_art_visible_after_duplicate_refresh() -> void:
+	await _dispatch()
+	await _go(REPORT)
+	SaveManager.fault_injector = func(stage: String) -> bool: return stage == "before_temp_write"
+	_time = 1006
+	_node("RetryButton").pressed.emit()
+	assert_eq(ExpeditionManager.get_active_expedition().last_revealed_index, -1)
+	SaveManager.fault_injector = Callable()
+	_node("RetryButton").pressed.emit()
+	var view := _node("ExpeditionRunView") as ExpeditionRunView
+	var icon := _node("RunStepKindIcon") as TextureRect
+	assert_not_null(view.get("_reveal_tween"),
+		"Retry's explicit refresh must not cancel the committed reveal.")
+	await get_tree().create_timer(0.5).timeout
+	assert_eq(icon.modulate, Color.WHITE)
+	assert_eq(icon.scale, Vector2.ONE)
+	assert_eq((_node("RevealFlash") as ColorRect).color.a, 0.0)
+
+
 func test_outgoing_home_cannot_redirect_or_consume_completion_route() -> void:
 	await _dispatch()
 	var home := _screen()
@@ -903,6 +932,8 @@ func test_terminal_combat_is_hidden_until_committed_and_saved_log_survives_retun
 	assert_string_contains(_node("ExpeditionLabel").text, "Step 1 / 10")
 	assert_string_contains(_node("ExpeditionLabel").text, "49 seconds remaining")
 	await _go(REPORT)
+	assert_eq(_node("RunProgressBar").max_value, 60.0)
+	assert_string_contains(_node("RunProgressBar").tooltip_text, "11 of 60 seconds")
 	assert_false(_visible_text(_screen()).contains("Hidden ambush"))
 	assert_false(_visible_text(_screen()).contains("Hidden raider"))
 	assert_false(_visible_text(_screen()).contains("Defeat"))
@@ -925,6 +956,8 @@ func test_terminal_combat_is_hidden_until_committed_and_saved_log_survives_retun
 	assert_eq(GameState.roster[0].status, HeroData.HeroStatus.RESTING)
 	assert_string_contains(_node("StatusLabel").text, "Step 2 / 2")
 	assert_string_contains(_node("StatusLabel").text, "0 seconds remaining")
+	assert_eq(_node("RunProgressBar").max_value, 12.0)
+	assert_string_contains(_node("RunProgressBar").tooltip_text, "12 of 12 seconds")
 	var journal := _visible_text(_node("Journal"))
 	assert_string_contains(journal, "Hidden ambush")
 	assert_string_contains(journal, "Hidden raider")

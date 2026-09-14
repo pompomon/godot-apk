@@ -164,20 +164,21 @@ func begin_run(region_id: String, party_slots: Dictionary) -> bool:
 func present_committed_state(state: Dictionary) -> bool:
 	if not _configured or not _state_valid(state):
 		return false
-	_cancel_reveal()
 	var snapshot := state.duplicate(true)
 	var cursor := int(snapshot.cursor)
 	var total := int(snapshot.total_step_count)
 	var revealed: Array = snapshot.revealed_steps
 	var newly_revealed: Array = snapshot.newly_revealed_indexes
-	_completed = bool(snapshot.completed)
+	var completed := bool(snapshot.completed)
 	_progress.max_value = int(snapshot.duration_seconds)
 	_progress.value = int(snapshot.credited_elapsed_seconds)
 	_progress.tooltip_text = "Expedition progress: %d of %d steps · %d of %d seconds" % [
 		cursor + 1, total, int(snapshot.credited_elapsed_seconds), int(snapshot.duration_seconds)]
-	if cursor == _presented_cursor and newly_revealed.is_empty():
+	if cursor == _presented_cursor and newly_revealed.is_empty() and completed == _completed:
 		_update_processing()
 		return true
+	_cancel_reveal()
+	_completed = completed
 	if cursor < 0:
 		_clear_step_visuals()
 		_status.text = "The Party is travelling.\nStep 0 of %d" % total
@@ -214,6 +215,7 @@ func set_application_active(active: bool) -> void:
 	if not active:
 		_cancel_reveal()
 		_apply_static_positions()
+		_show_static_reveal()
 	_update_processing()
 
 

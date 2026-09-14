@@ -8,6 +8,7 @@ const REPORT := "res://scenes/ui/expedition_report/expedition_report_screen.tscn
 const ROSTER := "res://scenes/ui/roster/roster_screen.tscn"
 const DETAIL := "res://scenes/ui/hero_detail/hero_detail_screen.tscn"
 const FORMATION := "res://scenes/ui/party_formation/party_formation_screen.tscn"
+const RUN_VIEW := "res://scenes/ui/expedition_run/expedition_run_view.tscn"
 var _isolation: RefCounted
 var _main: Control
 var _root: Control
@@ -220,6 +221,9 @@ func test_automated_report_switches_to_successor_and_retains_compact_history() -
 	assert_string_contains(_node("SeriesStatusLabel").text, "Run 1")
 	assert_eq(_node("Journal").get_child_count(), 1)
 	assert_string_contains(_visible_text(_node("Journal")), "departed")
+	assert_string_contains(_node("RunStatusLabel").text, "Step 0 of 10")
+	assert_null(_node("RunEncounterArt"))
+	assert_null(_node("RunOutcomeIcon"))
 	_time = 1120
 	ExpeditionManager.observe_foreground()
 	assert_false(ExpeditionManager.is_expedition_active())
@@ -246,9 +250,28 @@ func test_running_and_partial_report_never_disclose_unrevealed_results() -> void
 	assert_eq(_screen().scene_file_path, REPORT)
 	assert_false(_node("AcknowledgeButton").visible)
 	var run := ExpeditionManager.get_active_expedition()
+	var run_view := _node("ExpeditionRunView") as ExpeditionRunView
+	assert_true(run_view.visible)
+	assert_true(run_view.is_processing())
+	assert_string_contains(_node("RunStatusLabel").text, "Step 0 of 10")
+	assert_eq(_node("RunProgressBar").value, 0.0)
+	assert_null(_node("RunStepKindIcon"))
+	assert_null(_node("RunEncounterArt"))
+	assert_null(_node("RunOutcomeIcon"))
 	for step in run.steps:
 		assert_false(_visible_text(_node("Journal")).contains(step.journal_text))
 	assert_string_contains(_node("StatusLabel").text, "Gold credited: 0")
+	var frozen_steps: Array = run.serialize().steps
+	_time = 1006
+	ExpeditionManager.observe_foreground()
+	assert_string_contains(_node("RunStatusLabel").text, run.steps[0].title)
+	assert_eq(_node("RunProgressBar").value, 6.0)
+	assert_eq(_node("RunProgressBar").max_value, 60.0)
+	assert_same(_node("RunStepKindIcon").texture, Art.journal_icon(
+		ExpeditionStep.StepKind.TRAVEL))
+	assert_null(_node("RunEncounterArt"))
+	assert_null(_node("RunOutcomeIcon"))
+	assert_eq(run.serialize().steps, frozen_steps)
 	_time = 1012
 	ExpeditionManager.observe_foreground()
 	assert_eq(_node("Journal").get_child_count(), 2)
@@ -275,14 +298,17 @@ func test_report_prepends_single_steps_and_catchup_batches_without_mutating_save
 	_time = 1012
 	ExpeditionManager.observe_foreground()
 	_assert_journal_order(2)
+	assert_string_contains(_node("RunStatusLabel").text, "2 steps completed while away")
 	var oldest := _node("Journal").get_child(1)
 	_time = 1018
 	ExpeditionManager.observe_foreground()
 	_assert_journal_order(3)
+	assert_false(_node("RunStatusLabel").text.contains("while away"))
 	assert_same(_node("Journal").get_child(2), oldest)
 	_time = 1048
 	ExpeditionManager.observe_foreground()
 	_assert_journal_order(8)
+	assert_string_contains(_node("RunStatusLabel").text, "5 steps completed while away")
 	assert_same(_node("Journal").get_child(7), oldest)
 	var shown := _node("Journal").get_children()
 	ExpeditionManager.observe_foreground()
@@ -440,6 +466,166 @@ func test_reveals_wait_for_held_swipes_and_inertia_without_cancelling_the_gestur
 	_assert_journal_order(8)
 
 
+func test_run_view_presents_all_revealed_kinds_and_outcomes_without_mutation() -> void:
+	await _dispatch()
+	var report := ExpeditionManager.get_active_expedition()
+	var before := SaveManager.capture_state()
+	var view: ExpeditionRunView = add_child_autofree(load(RUN_VIEW).instantiate())
+	await get_tree().process_frame
+	assert_true(view.begin_run(report.region_id, report.party_snapshot.slots))
+	assert_string_contains(view.find_child("RunStatusLabel", true, false).text, "Step 0")
+	assert_null(view.find_child("RunStepKindIcon", true, false))
+	assert_false(view.present_committed_state({
+		"cursor": -1,
+		"credited_elapsed_seconds": 0,
+		"duration_seconds": 6,
+		"total_step_count": 6,
+		"completed": false,
+		"revealed_steps": [{"kind": ExpeditionStep.StepKind.COMBAT,
+			"content_id": "bandit_skirmishers", "title": "Uncommitted",
+			"result": {"gold": 0, "outcome": "DEFEAT"}}],
+		"newly_revealed_indexes": [],
+	}))
+	assert_false(_visible_text(view).contains("Uncommitted"))
+	assert_null(view.find_child("RunEncounterArt", true, false))
+	for malformed_result in [null, [], "invalid", {"item_ids": "short_sword"}]:
+		assert_false(view.present_committed_state({
+			"cursor": 0,
+			"credited_elapsed_seconds": 1,
+			"duration_seconds": 6,
+			"total_step_count": 6,
+			"completed": false,
+			"revealed_steps": [{"kind": ExpeditionStep.StepKind.LOOT,
+				"content_id": "green_hollow_loot", "title": "Malformed",
+				"result": malformed_result}],
+			"newly_revealed_indexes": [0],
+		}))
+	var revealed: Array[Dictionary] = []
+	var cases := [
+		{
+			"step": {"kind": ExpeditionStep.StepKind.TRAVEL, "content_id": "",
+				"title": "Visible trail", "result": {"gold": 0}},
+			"encounter": null,
+		},
+		{
+			"step": {"kind": ExpeditionStep.StepKind.LOOT, "content_id": "green_hollow_loot",
+				"title": "Visible cache",
+				"result": {"gold": 7, "item_ids": ["short_sword"]}},
+			"encounter": null,
+		},
+		{
+			"step": {"kind": ExpeditionStep.StepKind.EVENT,
+				"content_id": "green_hollow_bridge", "title": "Visible bridge",
+				"result": {"gold": 3, "item_ids": []}},
+			"encounter": Art.event("green_hollow_bridge"),
+		},
+	]
+	for index in cases.size():
+		var entry: Dictionary = cases[index]
+		revealed.append(entry.step)
+		assert_true(_present_run_state(view, revealed, index, [index], 6))
+		assert_same(
+			view.find_child("RunStepKindIcon", true, false).texture,
+			Art.journal_icon(int(entry.step.kind)))
+		var encounter := view.find_child("RunEncounterArt", true, false) as TextureRect
+		if entry.encounter == null:
+			assert_null(encounter)
+		else:
+			assert_same(encounter.texture, entry.encounter)
+		assert_null(view.find_child("RunOutcomeIcon", true, false))
+		if int(entry.step.kind) == ExpeditionStep.StepKind.LOOT:
+			assert_same(
+				view.find_child("RunRewardItemIcon", true, false).texture,
+				Art.item_icon("short_sword"))
+		assert_string_contains(
+			view.find_child("RunStatusLabel", true, false).text,
+			String(entry.step.title))
+	for outcome in CombatResult.OUTCOMES:
+		var combat := {
+			"kind": ExpeditionStep.StepKind.COMBAT,
+			"content_id": "bandit_skirmishers",
+			"title": "Visible combat",
+			"result": {"gold": 0, "outcome": outcome},
+		}
+		revealed.append(combat)
+		var cursor := revealed.size() - 1
+		assert_true(_present_run_state(
+			view, revealed, cursor, [cursor], cases.size() + CombatResult.OUTCOMES.size()))
+		assert_same(
+			view.find_child("RunEncounterArt", true, false).texture,
+			Art.enemy("bandit_skirmishers"))
+		assert_same(
+			view.find_child("RunOutcomeIcon", true, false).texture,
+			Art.outcome_icon(outcome))
+		assert_string_contains(
+			view.find_child("RunStatusLabel", true, false).text,
+			String(outcome).capitalize())
+	assert_eq(SaveManager.capture_state(), before)
+
+
+func _present_run_state(
+		view: ExpeditionRunView, revealed: Array[Dictionary], cursor: int,
+		newly_revealed: Array, total: int, completed: bool = false
+) -> bool:
+	return view.present_committed_state({
+		"cursor": cursor,
+		"credited_elapsed_seconds": cursor + 1,
+		"duration_seconds": total,
+		"total_step_count": total,
+		"completed": completed,
+		"revealed_steps": revealed,
+		"newly_revealed_indexes": newly_revealed,
+	})
+
+
+func test_run_view_pause_background_resume_and_exit_keep_static_summary() -> void:
+	await _dispatch()
+	await _go(REPORT)
+	var view := _node("ExpeditionRunView") as ExpeditionRunView
+	assert_true(view.is_processing())
+	_time = 1006
+	ExpeditionManager.observe_foreground()
+	var reveal_icon := _node("RunStepKindIcon") as TextureRect
+	var reveal_tween: Tween = view.get("_reveal_tween")
+	assert_not_null(reveal_tween)
+	_screen().call("_refresh")
+	assert_same(view.get("_reveal_tween"), reveal_tween,
+		"A duplicate refresh must not cancel the active reveal.")
+	_screen().hide()
+	assert_null(view.get("_reveal_tween"))
+	assert_false(view.is_processing())
+	assert_eq(reveal_icon.modulate, Color.WHITE)
+	assert_eq(reveal_icon.scale, Vector2.ONE)
+	assert_eq((_node("RevealFlash") as ColorRect).color.a, 0.0)
+	_screen().show()
+	await get_tree().process_frame
+	assert_true(view.is_processing())
+	assert_null(view.get("_reveal_tween"))
+	_screen().notification(NOTIFICATION_APPLICATION_FOCUS_OUT)
+	assert_false(view.is_processing())
+	assert_eq(reveal_icon.modulate, Color.WHITE)
+	assert_eq(reveal_icon.scale, Vector2.ONE)
+	assert_eq((_node("RevealFlash") as ColorRect).color.a, 0.0)
+	var summary: String = _node("RunStatusLabel").text
+	_screen().notification(NOTIFICATION_APPLICATION_RESUMED)
+	await get_tree().process_frame
+	assert_true(view.is_processing())
+	var toggle := _node("MotionToggleButton") as Button
+	toggle.pressed.emit()
+	assert_true(view.motion_paused())
+	assert_false(view.is_processing())
+	assert_string_contains(toggle.text, "Resume motion")
+	assert_eq(_node("RunStatusLabel").text, summary)
+	toggle.pressed.emit()
+	assert_false(view.motion_paused())
+	assert_true(view.is_processing())
+	var old_view := view
+	_node("HomeButton").pressed.emit()
+	await get_tree().process_frame
+	assert_eq(_screen().scene_file_path, HOME)
+	assert_false(is_instance_valid(old_view))
+
+
 func _report_mouse_button(viewport: Viewport, position: Vector2, pressed: bool) -> void:
 	var touch := InputEventScreenTouch.new()
 	touch.index = 0
@@ -525,6 +711,8 @@ func test_completion_routes_once_report_survives_home_and_acknowledgment_retries
 	await get_tree().process_frame
 	assert_eq(_screen().scene_file_path, REPORT)
 	assert_string_contains(_node("StatusLabel").text, "Completed")
+	assert_string_contains(_node("RunStatusLabel").text, "Expedition complete")
+	assert_false((_node("ExpeditionRunView") as ExpeditionRunView).is_processing())
 	assert_eq(_node("Journal").get_child_count(), 10)
 	assert_true(_node("AcknowledgeButton").visible)
 	var report := ExpeditionManager.get_active_expedition()
@@ -554,6 +742,7 @@ func test_completion_routes_once_report_survives_home_and_acknowledgment_retries
 	await _go(REPORT)
 	assert_string_contains(_node("StatusLabel").text, "No report")
 	assert_false(_node("AcknowledgeButton").visible)
+	assert_false(_node("ExpeditionRunView").visible)
 
 
 func test_foreground_timer_and_focus_resume_work_off_home_without_duplicate_writes() -> void:
@@ -603,16 +792,39 @@ func test_progress_save_error_stays_retryable_without_future_journal_and_stale_r
 	assert_eq(run.last_revealed_index, -1)
 	assert_string_contains(_node("FeedbackLabel").text, "not saved")
 	assert_false(_visible_text(_node("Journal")).contains(run.steps[1].journal_text))
+	assert_string_contains(_node("RunStatusLabel").text, "Step 0 of 10")
+	assert_null(_node("RunEncounterArt"))
+	assert_null(_node("RunOutcomeIcon"))
 	SaveManager.fault_injector = Callable()
 	_node("RetryButton").pressed.emit()
 	assert_eq(run.last_revealed_index, 1)
 	assert_string_contains(_visible_text(_node("Journal")), run.steps[1].journal_text)
+	assert_string_contains(_node("RunStatusLabel").text, "2 steps completed while away")
 	SaveManager.load_or_create()
 	_screen().call("_refresh")
 	assert_string_contains(_node("StatusLabel").text, "No report")
 	_screen().call("_acknowledge_report")
 	assert_false(ExpeditionManager.last_committed)
 	assert_not_null(ExpeditionManager.get_active_expedition())
+
+
+func test_single_step_retry_keeps_reveal_art_visible_after_duplicate_refresh() -> void:
+	await _dispatch()
+	await _go(REPORT)
+	SaveManager.fault_injector = func(stage: String) -> bool: return stage == "before_temp_write"
+	_time = 1006
+	_node("RetryButton").pressed.emit()
+	assert_eq(ExpeditionManager.get_active_expedition().last_revealed_index, -1)
+	SaveManager.fault_injector = Callable()
+	_node("RetryButton").pressed.emit()
+	var view := _node("ExpeditionRunView") as ExpeditionRunView
+	var icon := _node("RunStepKindIcon") as TextureRect
+	assert_not_null(view.get("_reveal_tween"),
+		"Retry's explicit refresh must not cancel the committed reveal.")
+	await get_tree().create_timer(0.5).timeout
+	assert_eq(icon.modulate, Color.WHITE)
+	assert_eq(icon.scale, Vector2.ONE)
+	assert_eq((_node("RevealFlash") as ColorRect).color.a, 0.0)
 
 
 func test_outgoing_home_cannot_redirect_or_consume_completion_route() -> void:
@@ -742,6 +954,8 @@ func test_terminal_combat_is_hidden_until_committed_and_saved_log_survives_retun
 	assert_string_contains(_node("ExpeditionLabel").text, "Step 1 / 10")
 	assert_string_contains(_node("ExpeditionLabel").text, "49 seconds remaining")
 	await _go(REPORT)
+	assert_eq(_node("RunProgressBar").max_value, 60.0)
+	assert_string_contains(_node("RunProgressBar").tooltip_text, "11 of 60 seconds")
 	assert_false(_visible_text(_screen()).contains("Hidden ambush"))
 	assert_false(_visible_text(_screen()).contains("Hidden raider"))
 	assert_false(_visible_text(_screen()).contains("Defeat"))
@@ -764,6 +978,8 @@ func test_terminal_combat_is_hidden_until_committed_and_saved_log_survives_retun
 	assert_eq(GameState.roster[0].status, HeroData.HeroStatus.RESTING)
 	assert_string_contains(_node("StatusLabel").text, "Step 2 / 2")
 	assert_string_contains(_node("StatusLabel").text, "0 seconds remaining")
+	assert_eq(_node("RunProgressBar").max_value, 12.0)
+	assert_string_contains(_node("RunProgressBar").tooltip_text, "12 of 12 seconds")
 	var journal := _visible_text(_node("Journal"))
 	assert_string_contains(journal, "Hidden ambush")
 	assert_string_contains(journal, "Hidden raider")

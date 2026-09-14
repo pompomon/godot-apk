@@ -177,6 +177,35 @@ Audio, `AudioManager`, Settings, and new gameplay/content remain explicitly
 deferred. Milestone 7 is still incomplete, so this graphics slice does not close
 any full-Milestone-8 acceptance checkbox below.
 
+### Animated Expedition Report slice (2026-09-13)
+
+This bounded follow-up adds a fixed-height Expedition Run panel above the
+existing newest-first journal. It reuses the current static pixel-art bank with
+subtle Party travel, backdrop motion, reveal fades, flashes and outcome pulses;
+there are no new assets and no action-by-action Combat reenactment. The complete
+text journal remains the authoritative report.
+
+The panel is a read-only presentation component. Expedition Report passes it the
+frozen Party plus only the committed reveal prefix, cursor and elapsed progress.
+It does not access `GameState`, `ExpeditionManager`, persistence or RNG. A failed
+save therefore cannot reveal a step, and neither animation nor its pause control
+can alter gameplay state. Single steps receive a short vignette; offline
+catch-up batches collapse to one count plus the latest committed step, and an
+automated successor resets to neutral travel before displaying its own results.
+
+An in-screen **Pause motion** control supplies an equivalent labeled static
+state without adding a save setting. Motion and reveal tweens stop when paused,
+backgrounded, hidden or removed. Resume reflects the current committed state
+without replaying missed frames. The stage has a fixed height, all decorative
+controls ignore input, and the existing journal scroll anchoring and touch
+inertia remain unchanged.
+
+Automated checks cover neutral departure, committed disclosure, every step kind
+and Combat outcome, catch-up coalescing, save retry, automated successor reset,
+lifecycle suspension, motion pause/resume, state immutability and the existing
+responsive layouts. Physical Android performance, fold/unfold, readability,
+touch scrolling and motion-comfort acceptance remain separate evidence.
+
 ### Full presentation milestone
 
 1. Produce/source final Hero class icons, status-effect icons, item-slot

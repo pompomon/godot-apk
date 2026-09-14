@@ -889,12 +889,13 @@ App boot (main.tscn)
   numbers/icons rather than animated combat, so art budget should prioritize
   **Hero portraits, class icons, item icons, and Region backdrops** over
   combat animation.
-- **Combat/Expedition Report presentation:** present the pre-resolved
-  combat log as a readable, scrollable log with small icon/portrait
-  accents (e.g., a damage/heal icon per line) rather than real-time
-  animated battle scenes — consistent with the "resolve-at-start" design
-  ([§8](#8-expeditions-travel-encounters-outcomes-deterministic-resolution))
-  and cheaper to produce.
+- **Combat/Expedition Report presentation:** retain the pre-resolved combat log
+  as the authoritative readable, scrollable record. A lightweight run panel may
+  animate existing static portraits and encounter art for already committed
+  steps, but must not rerun simulation, reveal future results or attempt
+  action-by-action battle playback. This remains consistent with the
+  "resolve-at-start" design
+  ([§8](#8-expeditions-travel-encounters-outcomes-deterministic-resolution)).
 - **Iconography:** consistent icon language for classes, status effects,
   item slots, and Region difficulty, reused across all screens.
 - **Initial asset slice:** eight fixed 64×64 portraits per class, 24×24
@@ -908,8 +909,9 @@ App boot (main.tscn)
 - **Color:** limited, high-contrast palette per class/status for quick
   scanning of the roster grid; pair every color cue with an icon/label for
   accessibility (§2).
-- **Post-MVP:** lightweight portrait animation (idle blink/breathing) and a
-  simplified overworld map visualization for Region select.
+- **Post-MVP:** a simplified overworld map visualization for Region select;
+  additional sprite frames and full combat reenactment remain optional,
+  separately scoped work.
 
 ## 15. Audio
 

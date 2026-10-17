@@ -169,6 +169,82 @@ static func run(regions: Array[RegionResource], trials: int, seed_value: int,
 
 ## Implementation and validation evidence
 
+### Third balance cycle protocol (2026-10-17)
+
+The user requested implementation of the agreed third-cycle plan with its
+stated defaults: finish Milestone 7 (not Milestone 8), run a third tuning cycle
+with six fresh holdout seeds, adjust Ashen and Frostbound HP/Attack first, keep
+Green Hollow frozen, add a multi-seed aggregate mode, and report attrition
+without a new target. The cycle starts from merged **`c9f4d28`**. Since the
+second-cycle candidate `644a96c`, no Region, enemy, class, item, balancing,
+combat, Power or Hero-generation input changed; the Expedition generator only
+gained narrative-variant prose, which never consumes gameplay RNG. The parent
+owns numerical content, documentation and validation for this cycle.
+
+**Baseline evidence (`c9f4d28`).** Clean import, the pixel-art `--check` and an
+Android debug export (nonempty **28,885,323-byte** APK; no device available)
+passed, and the full GUT suite passed **43 scripts / 463 tests / 52,005
+assertions**. All nine known reports
+(7001, 7002, 9001, 91001–91003, 92001–92003; 256 trials per Region/tier) reproduce
+the published `644a96c` development and holdout counts exactly, including the
+**146,023-byte** largest development journal. Pooled over all nine seeds
+(**2,304 trials per row**), the baseline is:
+
+| Region | Below (<50%) | At (70–85%) | Above (70–85%) |
+|---|---:|---:|---:|
+| Green Hollow | 41.36% | 72.92% | 82.77% |
+| Ashen Reach | 48.31% | 71.92% | 72.48% |
+| Frostbound Pass | 40.93% | 73.48% | **85.11%** |
+
+Per enemy, Icebound Sentinels rise from 63.9% to 80.5% Victory between the at
+and above tiers, while Snowcrest Prowlers are nearly saturated (89.6% / 92.8%).
+Both Ashen groups are flat between at and above (Raiders 72.1% / 72.7%, Jackals
+71.6% / 72.2%) and close to the below ceiling (46.2% / 51.5%).
+
+**Protocol.**
+
+- Development uses all nine known seeds above with 256 distinct Parties per
+  Region/tier/seed: **2,304 trials per aggregate row**.
+- Predeclared fresh holdouts are **93001, 93002, 93003, 93004, 93005, 93006**,
+  with the same per-seed sample: **1,536 trials per aggregate row**. Nobody runs
+  them until the numerical candidate is frozen and published. They are evaluated
+  once, in a separate task, on the published frozen revision. Insufficient
+  distinct Parties count as a failure. Any miss ends the cycle with a recorded
+  blocker and no further numerical tuning.
+- Pass rules are unchanged: both aggregates must meet all nine point-estimate
+  bands (below <50% Victory; at and modestly above 70–85%, inclusive). Sum raw
+  counts; Wilson intervals, band margins and individual seeds are diagnostics.
+- Tuning objective: every development row should be at least **3 percentage
+  points** inside its band. A candidate with any margin below about **2.5
+  points** is not frozen without the user's approval. Green Hollow is frozen, so
+  its known margins (Green Hollow above: 2.23 points) are reported, not tuned.
+- Allowed levers, in order: HP/Attack of the four Ashen and Frostbound enemy
+  groups; then, only if still needed, their Evasion, CritChance or Initiative,
+  or the Sentinel/Prowler or Raider/Jackal weight split with each Region's total
+  Combat weight unchanged; last, a recommended-Power change with its displayed
+  guidance, sampling and future-XP effects disclosed and historical awards
+  protected by regression tests. Enemy, event and Region IDs, Green Hollow,
+  global coefficients, formulas, skills, targeting, round limit, durations,
+  unlocks, capacities, report tiers/sampling and save version 7 stay fixed.
+- A candidate is one authored configuration evaluated on all nine development
+  seeds; the cap is **12**. Each row's group choice and Combat seeds are fixed
+  before Combat, so one group's outcomes do not depend on another group's
+  stats. Already evaluated group variants may be combined arithmetically for
+  diagnosis, but the frozen candidate must be confirmed by a direct run.
+- Every candidate reports Region and per-enemy Victory/Retreat/Defeat, complete
+  Expedition completion and resting-Hero counts, and largest journal bytes.
+  Attrition remains a reported trade-off, not a new gate. If the cap is reached
+  without a qualifying candidate, the best candidate is published as an honest
+  incomplete handoff instead of continuing.
+
+`res://tools/balance_simulation.gd` now accepts `--seeds=7001,7002,…` to run
+several seeds and sum their raw counts into one report, with per-seed outcomes,
+band margins and per-enemy totals. `--seed` remains the single-report mode.
+Before tuning, `--seeds=7001,7002,9001,91001,91002,91003` reproduced every
+published second-cycle development row exactly. Duplicate seeds, mixed trial
+counts and mismatched Region rows are rejected. The tool still never loads or
+saves a Company and is excluded from the APK.
+
 ### Second balance cycle protocol (2026-09-08)
 
 The user requested implementation of the continuation plan. This cycle starts

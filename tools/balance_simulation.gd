@@ -8,12 +8,14 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var trials := 256
-	var seed_value := 7001
+	var seeds: Array[int] = [7001]
+	var seed_options := 0
+	var aggregate_seeds := false
 	var regions := ExpeditionCatalog.regions()
 	for argument in OS.get_cmdline_user_args():
 		var pair := argument.split("=", true, 1)
 		if pair.size() != 2:
-			_fail("Use --trials=N, --seed=N, or --region=registered_id.")
+			_fail("Use --trials=N, --seed=N or --seeds=N,M, and --region=registered_id.")
 			return
 		match pair[0]:
 			"--trials", "--seed":
@@ -23,7 +25,17 @@ func _run() -> void:
 				if pair[0] == "--trials":
 					trials = pair[1].to_int()
 				else:
-					seed_value = pair[1].to_int()
+					seed_options += 1
+					seeds = [pair[1].to_int()]
+			"--seeds":
+				seed_options += 1
+				aggregate_seeds = true
+				seeds = []
+				for part in pair[1].split(","):
+					if not part.is_valid_int() or seeds.has(part.to_int()):
+						_fail("Expected distinct comma-separated integers for --seeds.")
+						return
+					seeds.append(part.to_int())
 			"--region":
 				var region := ExpeditionCatalog.region_by_id(pair[1])
 				if region == null:
@@ -33,12 +45,24 @@ func _run() -> void:
 			_:
 				_fail("Unknown option: %s." % pair[0])
 				return
-	var report := BalanceReport.run(regions, trials, seed_value,
-		load("res://data/balancing/default_balancing.tres"))
-	if report.has("error"):
-		_fail(report.error)
+	if seed_options > 1:
+		_fail("Use either --seed or --seeds once.")
 		return
-	print(JSON.stringify(report, "\t", true, true))
+	var balancing: BalancingConfig = load("res://data/balancing/default_balancing.tres")
+	var reports: Array = []
+	for seed_value in seeds:
+		var report := BalanceReport.run(regions, trials, seed_value, balancing)
+		if report.has("error"):
+			_fail(report.error)
+			return
+		reports.append(report)
+	var output: Dictionary = reports[0]
+	if aggregate_seeds:
+		output = BalanceReport.aggregate(reports)
+		if output.has("error"):
+			_fail(output.error)
+			return
+	print(JSON.stringify(output, "\t", true, true))
 	quit(0)
 
 

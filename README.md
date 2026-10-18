@@ -264,10 +264,13 @@ godot --headless --path . -s res://tools/balance_simulation.gd -- --trials=256 -
 ```
 
 Optionally restrict the report with `--region=green_hollow`, `--region=ashen_reach`,
-or `--region=frostbound_pass`. The tool prints JSON to stdout and never loads
-or saves a Company. It samples generated 1–4-Hero Parties at levels 1–12, with
-distinct classes and optional starter equipment. Party selection uses only
-Power, not eventual combat outcomes. The report identifies actual Power ranges,
+or `--region=frostbound_pass`. Use `--seeds=7001,7002,9001` instead of `--seed`
+to run several distinct seeds and sum their raw counts into one aggregate report
+with per-seed outcomes and diagnostic band margins; rates are never averaged.
+A Region-filtered run reproduces that Region's rows from a full run. The tool
+prints JSON to stdout and never loads or saves a Company. It samples generated
+1–4-Hero Parties at levels 1–12, with distinct classes and optional starter
+equipment. Party selection uses only Power, not eventual combat outcomes. The report identifies actual Power ranges,
 member counts, distinct sampled Parties, Victory/Retreat/Defeat counts, a Wilson
 95% Victory-rate interval, and per-enemy outcomes. Every independent Combat starts
 at full HP; separate complete Expedition trials retain HP carryover and report
@@ -296,6 +299,15 @@ The second-cycle holdouts have now been evaluated once on `644a96c`: **8/9**
 bands pass. They are also known data now, not fresh holdouts for future tuning.
 Frostbound-above remains a balance-acceptance blocker; Android device acceptance
 is still pending.
+
+The third balance cycle uses all nine known seeds **7001, 7002, 9001,
+91001–91003 and 92001–92003** for development (**2,304 trials** per aggregate
+row) and predeclares six fresh holdouts, **93001–93006** (**1,536 trials** per
+row). Run the holdouts once, only after the numerical candidate is frozen and
+published. The pass rules are unchanged; tuning aims for at least 3 percentage
+points of margin in every development row, and a holdout miss ends the cycle.
+Green Hollow is frozen. See the
+[third-cycle protocol](docs/adventurers-march/milestones/07-content-expansion.md#third-balance-cycle-protocol-2026-10-17).
 
 ## Run the tests
 
